@@ -1,0 +1,42 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.env
+.venv/
+venv/
+.pytest_cache/
+
+# Database
+*.db
+*.db-shm
+*.db-wal
+*.sqlite3
+
+# Temp / PID / Log files
+*.pid
+*.err.log
+*.out.log
+tmp-*
+
+# Test artifacts and chain output
+*_result.txt
+*_result.json
+*_test.txt
+temp_*.txt
+
+# Node / Frontend
+node_modules/
+dist/
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
