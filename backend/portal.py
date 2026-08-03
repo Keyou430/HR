@@ -2,12 +2,17 @@ from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends
 
+from auth.dependencies import get_current_user
 from config import Settings, get_settings
 from schemas import PortalBootstrapResponse
 from store import store
 
 
-router = APIRouter(prefix="/api/v1/portal", tags=["portal"])
+router = APIRouter(
+    prefix="/api/v1/portal",
+    tags=["portal"],
+    dependencies=[Depends(get_current_user)],
+)
 
 CAPABILITIES: list[dict[str, Any]] = [
     {
@@ -57,9 +62,18 @@ def build_skills_catalog() -> list[dict[str, Any]]:
 @router.get("/bootstrap", response_model=PortalBootstrapResponse)
 async def portal_bootstrap(
     settings: Annotated[Settings, Depends(get_settings)],
+    current_user: dict[str, Any] = Depends(get_current_user),
 ) -> dict[str, Any]:
     capabilities = build_capability_catalog()
     skills = build_skills_catalog()
+    payload = store.bootstrap_payload(user=current_user)
+
+    # Override the hardcoded profile with the authenticated user's identity
+    payload.setdefault("portal", {})["profile"] = {
+        "name": current_user.get("display_name", current_user.get("username", "")),
+        "department": current_user.get("default_dept_id") or "",
+        "last_login": current_user.get("last_login_at") or "",
+    }
 
     return {
         "embed_urls": {
@@ -74,5 +88,5 @@ async def portal_bootstrap(
             "items": skills,
             "total": len(skills),
         },
-        **store.bootstrap_payload(),
+        **payload,
     }

@@ -41,16 +41,37 @@ class Settings(BaseSettings):
     FEISHU_EMBED_URL: str | None = "https://www.feishu.cn/"
     DINGTALK_EMBED_URL: str | None = "https://www.dingtalk.com/"
 
+    # ── Auth & Security ─────────────────────────────────────────
+    JWT_SECRET_KEY: str = "change-me-in-production-use-openssl-rand-hex-32"
+    JWT_ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(default=15, gt=0)
+    REFRESH_TOKEN_EXPIRE_DAYS: int = Field(default=7, gt=0)
+    REFRESH_TOKEN_BYTES: int = Field(default=32, gt=0)
+    LOGIN_MAX_ATTEMPTS: int = Field(default=5, gt=0)
+    LOGIN_WINDOW_SECONDS: int = Field(default=300, gt=0)
+    BCRYPT_ROUNDS: int = Field(default=12, gt=0)
+
+    @property
+    def jwt_secret_is_default(self) -> bool:
+        return self.JWT_SECRET_KEY == "change-me-in-production-use-openssl-rand-hex-32"
+
     # ── Database ────────────────────────────────────────────────
     # SQLite for dev; switch to postgresql+psycopg://... for prod (pgvector)
-    DATABASE_URL: str = "sqlite:///./replica_platform.db"
+    # Path is resolved relative to this config file so the DB lives in backend/
+    # regardless of the working directory the app is started from.
+    DATABASE_URL: str = f"sqlite:///{(Path(__file__).parent / 'replica_platform.db').as_posix()}"
 
 
 def _pytest_database_url(default_url: str) -> str:
+    """Redirect to a per-test temp database when running under pytest,
+    unless DATABASE_URL was explicitly set in the environment.
+    """
     current_test = os.getenv("PYTEST_CURRENT_TEST")
     if not current_test:
         return default_url
-    if default_url != "sqlite:///./replica_platform.db":
+    # If DATABASE_URL was explicitly set by the test fixture (not the class
+    # default), respect the override.
+    if os.getenv("DATABASE_URL"):
         return default_url
 
     safe_test_name = re.sub(r"[^A-Za-z0-9_.-]+", "_", current_test).strip("_")

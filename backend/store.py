@@ -5,7 +5,7 @@ import json
 from threading import RLock
 from typing import Any, Iterator
 
-from sqlalchemy import Boolean, Column, Integer, MetaData, String, Table, Text, delete, func, insert, select, text, update
+from sqlalchemy import Boolean, Column, Integer, MetaData, String, Table, Text, and_, delete, func, insert, or_, select, text, update
 from sqlalchemy.orm import Session
 
 from config import get_settings
@@ -22,6 +22,12 @@ tasks_table = Table(
     Column("tag", String(32), nullable=False),
     Column("due_time", String(8), nullable=True),
     Column("done", Boolean, nullable=False, default=False),
+    # ── Phase 4: RBAC data-attribution columns ──────────────────
+    Column("org_id", String(64), nullable=True),
+    Column("department_id", String(64), nullable=True),
+    Column("owner_id", Integer, nullable=True),
+    Column("visibility", String(16), nullable=False, default="private"),
+    Column("sensitivity", String(16), nullable=False, default="normal"),
 )
 
 events_table = Table(
@@ -31,6 +37,12 @@ events_table = Table(
     Column("date", String(10), nullable=False),
     Column("title", String(255), nullable=False),
     Column("tone", String(16), nullable=False),
+    # ── Phase 4: RBAC data-attribution columns ──────────────────
+    Column("org_id", String(64), nullable=True),
+    Column("department_id", String(64), nullable=True),
+    Column("owner_id", Integer, nullable=True),
+    Column("visibility", String(16), nullable=False, default="private"),
+    Column("sensitivity", String(16), nullable=False, default="normal"),
 )
 
 settings_table = Table(
@@ -56,6 +68,12 @@ knowledge_mappings_table = Table(
     Column("last_imported_at", String(32), nullable=True),
     Column("stale", Boolean, nullable=False, default=False),
     Column("updated_at", String(32), nullable=False),
+    # ── Phase 4: RBAC data-attribution columns ──────────────────
+    Column("org_id", String(64), nullable=True),
+    Column("department_id", String(64), nullable=True),
+    Column("owner_id", Integer, nullable=True),
+    Column("visibility", String(16), nullable=False, default="dept"),
+    Column("sensitivity", String(16), nullable=False, default="internal"),
 )
 
 knowledge_import_records_table = Table(
@@ -71,25 +89,64 @@ knowledge_import_records_table = Table(
     Column("created_at", String(32), nullable=False),
 )
 
+chat_sessions_table = Table(
+    "chat_sessions",
+    metadata,
+    Column("id", String(64), primary_key=True),
+    Column("title", String(255), nullable=False, default=""),
+    Column("created_at", String(32), nullable=False),
+    Column("updated_at", String(32), nullable=False),
+)
+
+chat_messages_table = Table(
+    "chat_messages",
+    metadata,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("session_id", String(64), nullable=False),
+    Column("role", String(16), nullable=False),
+    Column("content", Text, nullable=False),
+    Column("action", String(32), nullable=True),
+    Column("created_at", String(32), nullable=False),
+)
+
 
 DEFAULT_EMBED_URLS = {
     "feishu": "https://www.feishu.cn/",
     "dingtalk": "https://www.dingtalk.com/",
 }
 
+# Phase 4: DEFAULT_TASKS now include RBAC attribution columns.
+# All default tasks are seeded as org-scoped, normal sensitivity,
+# owned by system_seed (user 1) so they are visible to all org members.
+_DEFAULT_TASK_BASE = {
+    "org_id": "default",
+    "department_id": "HQ",
+    "owner_id": 1,
+    "visibility": "org",
+    "sensitivity": "normal",
+}
+
 DEFAULT_TASKS = [
-    {"id": 1, "title": "完成季度工作复盘表", "tag": "今天", "due_time": "10:00", "done": False},
-    {"id": 2, "title": "确认信息安全培训名单", "tag": "今天", "due_time": "15:00", "done": False},
-    {"id": 3, "title": "整理部门知识库目录", "tag": "本周", "due_time": None, "done": False},
-    {"id": 4, "title": "回复项目推进反馈", "tag": "本周", "due_time": None, "done": False},
-    {"id": 5, "title": "更新服务目录", "tag": "已完成", "due_time": None, "done": True},
+    {**_DEFAULT_TASK_BASE, "id": 1, "title": "完成季度工作复盘表", "tag": "今天", "due_time": "10:00", "done": False},
+    {**_DEFAULT_TASK_BASE, "id": 2, "title": "确认信息安全培训名单", "tag": "今天", "due_time": "15:00", "done": False},
+    {**_DEFAULT_TASK_BASE, "id": 3, "title": "整理部门知识库目录", "tag": "本周", "due_time": None, "done": False},
+    {**_DEFAULT_TASK_BASE, "id": 4, "title": "回复项目推进反馈", "tag": "本周", "due_time": None, "done": False},
+    {**_DEFAULT_TASK_BASE, "id": 5, "title": "更新服务目录", "tag": "已完成", "due_time": None, "done": True},
 ]
 
+_DEFAULT_EVENT_BASE = {
+    "org_id": "default",
+    "department_id": "HQ",
+    "owner_id": 1,
+    "visibility": "org",
+    "sensitivity": "normal",
+}
+
 DEFAULT_EVENTS = [
-    {"id": 1, "date": "2026-07-02", "title": "项目周会", "tone": "blue"},
-    {"id": 2, "date": "2026-07-06", "title": "信息安全培训", "tone": "green"},
-    {"id": 3, "date": "2026-07-10", "title": "季度复盘", "tone": "orange"},
-    {"id": 4, "date": "2026-07-27", "title": "部门周例会", "tone": "blue"},
+    {**_DEFAULT_EVENT_BASE, "id": 1, "date": "2026-07-02", "title": "项目周会", "tone": "blue"},
+    {**_DEFAULT_EVENT_BASE, "id": 2, "date": "2026-07-06", "title": "信息安全培训", "tone": "green"},
+    {**_DEFAULT_EVENT_BASE, "id": 3, "date": "2026-07-10", "title": "季度复盘", "tone": "orange"},
+    {**_DEFAULT_EVENT_BASE, "id": 4, "date": "2026-07-27", "title": "部门周例会", "tone": "blue"},
 ]
 
 DEFAULT_SHORTCUTS = [
@@ -149,8 +206,75 @@ DEFAULT_DOCUMENTS = [
 ]
 
 
+# ═════════════════════════════════════════════════════════════════════
+# Helpers
+# ═════════════════════════════════════════════════════════════════════
+
+
+def _alembic_has_run(engine: Any) -> bool:
+    """Return True if the alembic_version table exists (i.e. Alembic migrations have been applied).
+
+    When Alembic manages the schema we must NOT call metadata.create_all()
+    because that would recreate tables the migration already created or altered.
+
+    Uses SQLAlchemy's dialect-agnostic inspector so this works on both
+    SQLite (dev) and PostgreSQL (prod).
+    """
+    try:
+        from sqlalchemy import inspect
+        return inspect(engine).has_table("alembic_version")
+    except Exception:
+        return False
+
+
 def list_response(items: list[dict[str, Any]] | list[str]) -> dict[str, Any]:
     return {"items": deepcopy(items), "total": len(items)}
+
+
+def _build_scope_context(user: dict[str, Any] | None, db: Session):
+    """Build an AccessContext from a user dict + DB session.
+
+    Returns None when *user* is None (no scope filtering — internal / seed path).
+    """
+    if user is None:
+        return None
+    from authorization.scope import get_access_context as _get_ctx
+    return _get_ctx(user, db)
+
+
+def _scope_filter(ctx, table):
+    """Return a SQLAlchemy WHERE clause for *table* scoped to *ctx*, or True."""
+    if ctx is None:
+        return True  # No user context — return everything (seed / internal path)
+    from authorization.sql_filters import (
+        calendar_visibility_filter,
+        knowledge_visibility_filter,
+        task_visibility_filter,
+    )
+    table_name = str(table.name)
+    if table_name == "portal_tasks":
+        return task_visibility_filter(ctx, table)
+    elif table_name == "portal_calendar_events":
+        return calendar_visibility_filter(ctx, table)
+    elif table_name == "knowledge_dataset_mappings":
+        return knowledge_visibility_filter(ctx, table)
+    return True
+
+
+def _scope_single(ctx, table, resource_id: int | str) -> Any:
+    """Build WHERE clause for single-resource access (update/delete).
+
+    Returns a clause that yields 0 rows if the user lacks access.
+    """
+    if ctx is None:
+        return table.c.id == resource_id
+    from authorization.sql_filters import resource_owner_filter
+    return resource_owner_filter(ctx, table, resource_id)
+
+
+# ═════════════════════════════════════════════════════════════════════
+# PortalStore
+# ═════════════════════════════════════════════════════════════════════
 
 
 class PortalStore:
@@ -170,55 +294,86 @@ class PortalStore:
     def _ensure_schema(self) -> None:
         with self._lock:
             engine = get_engine()
-            metadata.create_all(bind=engine)
-            self._ensure_sqlite_columns(engine)
-            session_local = get_session_local()
-            with session_local() as db:
-                # Only seed defaults once (never re-seed after user deletes data)
-                tasks_seeded = db.scalar(
-                    select(settings_table.c.value_json).where(settings_table.c.key == "tasks_seeded"),
+            # Phase 1: if Alembic has been run, skip DDL (create_all / ensure columns)
+            # so we don't conflict with migration-managed schema.  Data seeding
+            # still runs so the app has default content out of the box.
+            alembic_managed = _alembic_has_run(engine)
+            if not alembic_managed:
+                metadata.create_all(bind=engine)
+                self._ensure_sqlite_columns(engine)
+            self._seed_defaults(engine)
+
+    def _seed_defaults(self, engine: Any) -> None:
+        """Seed default tasks, events, and embed URLs if not already present."""
+        session_local = get_session_local()
+        with session_local() as db:
+            tasks_seeded = db.scalar(
+                select(settings_table.c.value_json).where(settings_table.c.key == "tasks_seeded"),
+            )
+            if tasks_seeded is None and db.scalar(select(func.count()).select_from(tasks_table)) == 0:
+                db.execute(insert(tasks_table), DEFAULT_TASKS)
+                db.execute(
+                    insert(settings_table).values(
+                        key="tasks_seeded",
+                        value_json=json.dumps("true", ensure_ascii=False),
+                    ),
                 )
-                if tasks_seeded is None and db.scalar(select(func.count()).select_from(tasks_table)) == 0:
-                    db.execute(insert(tasks_table), DEFAULT_TASKS)
+            events_seeded = db.scalar(
+                select(settings_table.c.value_json).where(settings_table.c.key == "events_seeded"),
+            )
+            if events_seeded is None and db.scalar(select(func.count()).select_from(events_table)) == 0:
+                db.execute(insert(events_table), DEFAULT_EVENTS)
+                db.execute(
+                    insert(settings_table).values(
+                        key="events_seeded",
+                        value_json=json.dumps("true", ensure_ascii=False),
+                    ),
+                )
+            for key, value in DEFAULT_EMBED_URLS.items():
+                existing = db.scalar(
+                    select(settings_table.c.value_json).where(settings_table.c.key == key),
+                )
+                if existing is None:
                     db.execute(
                         insert(settings_table).values(
-                            key="tasks_seeded",
-                            value_json=json.dumps("true", ensure_ascii=False),
+                            key=key,
+                            value_json=json.dumps(value, ensure_ascii=False),
                         ),
                     )
-                events_seeded = db.scalar(
-                    select(settings_table.c.value_json).where(settings_table.c.key == "events_seeded"),
-                )
-                if events_seeded is None and db.scalar(select(func.count()).select_from(events_table)) == 0:
-                    db.execute(insert(events_table), DEFAULT_EVENTS)
-                    db.execute(
-                        insert(settings_table).values(
-                            key="events_seeded",
-                            value_json=json.dumps("true", ensure_ascii=False),
-                        ),
-                    )
-                for key, value in DEFAULT_EMBED_URLS.items():
-                    existing = db.scalar(
-                        select(settings_table.c.value_json).where(settings_table.c.key == key),
-                    )
-                    if existing is None:
-                        db.execute(
-                            insert(settings_table).values(
-                                key=key,
-                                value_json=json.dumps(value, ensure_ascii=False),
-                            ),
-                        )
-                db.commit()
+            db.commit()
 
     def _ensure_sqlite_columns(self, engine: Any) -> None:
         if not str(engine.url).startswith("sqlite"):
             return
         expected = {
+            "portal_tasks": {
+                "due_time": "VARCHAR(8)",
+                # Phase 4: RBAC attribution columns
+                "org_id": "VARCHAR(64)",
+                "department_id": "VARCHAR(64)",
+                "owner_id": "INTEGER",
+                "visibility": "VARCHAR(16) NOT NULL DEFAULT 'private'",
+                "sensitivity": "VARCHAR(16) NOT NULL DEFAULT 'normal'",
+            },
+            "portal_calendar_events": {
+                # Phase 4: RBAC attribution columns
+                "org_id": "VARCHAR(64)",
+                "department_id": "VARCHAR(64)",
+                "owner_id": "INTEGER",
+                "visibility": "VARCHAR(16) NOT NULL DEFAULT 'private'",
+                "sensitivity": "VARCHAR(16) NOT NULL DEFAULT 'normal'",
+            },
             "knowledge_dataset_mappings": {
                 "is_default_import_target": "BOOLEAN NOT NULL DEFAULT 0",
                 "last_synced_at": "VARCHAR(32)",
                 "last_imported_at": "VARCHAR(32)",
                 "stale": "BOOLEAN NOT NULL DEFAULT 0",
+                # Phase 4: RBAC attribution columns
+                "org_id": "VARCHAR(64)",
+                "department_id": "VARCHAR(64)",
+                "owner_id": "INTEGER",
+                "visibility": "VARCHAR(16) NOT NULL DEFAULT 'dept'",
+                "sensitivity": "VARCHAR(16) NOT NULL DEFAULT 'internal'",
             },
         }
         with engine.begin() as conn:
@@ -245,6 +400,8 @@ class PortalStore:
                     data[row["key"]] = value
             return data
 
+    # ── Row helpers ───────────────────────────────────────────────
+
     def _task_from_row(self, row: Any) -> dict[str, Any]:
         item = dict(row)
         item["done"] = bool(item["done"])
@@ -253,10 +410,14 @@ class PortalStore:
     def _event_from_row(self, row: Any) -> dict[str, Any]:
         return dict(row)
 
-    def bootstrap_payload(self) -> dict[str, Any]:
+    # ═════════════════════════════════════════════════════════════
+    # Bootstrap
+    # ═════════════════════════════════════════════════════════════
+
+    def bootstrap_payload(self, user: dict[str, Any] | None = None) -> dict[str, Any]:
         return {
             "workspace": {
-                "tasks": self.list_tasks(),
+                "tasks": self.list_tasks(user=user),
                 "shortcuts": DEFAULT_SHORTCUTS,
                 "resources": list_response([
                     {"title": "制度手册", "description": "组织制度与办事指南", "tone": "app-red"},
@@ -269,9 +430,9 @@ class PortalStore:
             },
             "portal": {
                 "profile": {
-                    "name": "郝锐",
-                    "department": "应用物理与材料学院",
-                    "last_login": "2026-07-16 10:56",
+                    "name": user.get("display_name") or "郝锐" if user else "郝锐",
+                    "department": user.get("default_dept_id") or "" if user else "应用物理与材料学院",
+                    "last_login": user.get("last_login_at") or "" if user else "2026-07-16 10:56",
                 },
                 "systems": list_response(DEFAULT_SYSTEMS),
                 "services": list_response(DEFAULT_SERVICES),
@@ -282,85 +443,195 @@ class PortalStore:
                     {"title": "信息安全与数据合规培训报名通知", "source": "安全办公室", "date": "07/16"},
                 ]),
             },
-            "calendar": {"events": self.list_events()},
-            "knowledge": {"spaces": self.list_knowledge_spaces()},
+            "calendar": {"events": self.list_events(user=user)},
+            "knowledge": {"spaces": self.list_knowledge_spaces(user=user)},
         }
 
-    def list_tasks(self) -> dict[str, Any]:
+    # ═════════════════════════════════════════════════════════════
+    # Tasks
+    # ═════════════════════════════════════════════════════════════
+
+    def list_tasks(self, user: dict[str, Any] | None = None) -> dict[str, Any]:
         with self._session() as db:
-            rows = db.execute(select(tasks_table).order_by(tasks_table.c.id.desc())).mappings().all()
+            ctx = _build_scope_context(user, db)
+            stmt = (
+                select(tasks_table)
+                .where(_scope_filter(ctx, tasks_table))
+                .order_by(tasks_table.c.id.desc())
+            )
+            rows = db.execute(stmt).mappings().all()
             items = [self._task_from_row(row) for row in rows]
             return list_response(items)
 
-    def create_task(self, payload: dict[str, Any]) -> dict[str, Any]:
+    def create_task(self, payload: dict[str, Any], user: dict[str, Any] | None = None) -> dict[str, Any]:
         with self._lock:
             with self._session() as db:
-                result = db.execute(
-                    insert(tasks_table).values(
-                        title=payload["title"],
-                        tag=payload.get("tag") or "今天",
-                        due_time=payload.get("due_time") or None,
-                        done=False,
-                    ),
-                )
+                values = {
+                    "title": payload["title"],
+                    "tag": payload.get("tag") or "今天",
+                    "due_time": payload.get("due_time") or None,
+                    "done": False,
+                }
+                # Phase 4: set attribution from user context
+                if user is not None:
+                    ctx = _build_scope_context(user, db)
+                    values["org_id"] = payload.get("org_id") or (ctx.default_org_id if ctx else "default")
+                    values["department_id"] = payload.get("department_id") or (ctx.default_dept_id if ctx else "HQ")
+                    values["owner_id"] = ctx.user_id if ctx else None
+                    values["visibility"] = payload.get("visibility", "private")
+                    values["sensitivity"] = payload.get("sensitivity", "normal")
+                else:
+                    values.setdefault("org_id", "default")
+                    values.setdefault("department_id", "HQ")
+                    values.setdefault("visibility", "private")
+                    values.setdefault("sensitivity", "normal")
+
+                result = db.execute(insert(tasks_table).values(**values))
                 db.commit()
                 task_id = int(result.inserted_primary_key[0])
-                row = db.execute(select(tasks_table).where(tasks_table.c.id == task_id)).mappings().one()
+
+                # Re-read through scope filter so the response is consistent
+                scope_clause = _scope_single(ctx, tasks_table, task_id) if user is not None else (tasks_table.c.id == task_id)
+                row = db.execute(select(tasks_table).where(scope_clause)).mappings().first()
+                if row is None:
+                    # Shouldn't happen (just created by this user), but be defensive
+                    row = db.execute(select(tasks_table).where(tasks_table.c.id == task_id)).mappings().one()
                 return self._task_from_row(row)
 
-    def update_task(self, task_id: int, payload: dict[str, Any]) -> dict[str, Any] | None:
+    def update_task(self, task_id: int, payload: dict[str, Any], user: dict[str, Any] | None = None) -> dict[str, Any] | None:
         with self._lock:
             with self._session() as db:
+                ctx = _build_scope_context(user, db)
+                scope_clause = _scope_single(ctx, tasks_table, task_id)
+
+                # Verify access before mutating
+                existing = db.execute(
+                    select(tasks_table).where(scope_clause)
+                ).mappings().first()
+                if existing is None:
+                    return None  # Not found or not authorized (uniform response)
+
                 updates = {key: value for key, value in payload.items() if key in {"title", "tag", "due_time", "done"}}
                 if updates:
-                    db.execute(update(tasks_table).where(tasks_table.c.id == task_id).values(**updates))
+                    db.execute(
+                        update(tasks_table)
+                        .where(scope_clause)
+                        .values(**updates),
+                    )
                     db.commit()
-                row = db.execute(select(tasks_table).where(tasks_table.c.id == task_id)).mappings().first()
+
+                row = db.execute(select(tasks_table).where(scope_clause)).mappings().first()
                 return self._task_from_row(row) if row else None
 
-    def delete_task(self, task_id: int) -> bool:
+    def delete_task(self, task_id: int, user: dict[str, Any] | None = None) -> bool:
         with self._lock:
             with self._session() as db:
-                result = db.execute(delete(tasks_table).where(tasks_table.c.id == task_id))
+                ctx = _build_scope_context(user, db)
+                scope_clause = _scope_single(ctx, tasks_table, task_id)
+
+                result = db.execute(delete(tasks_table).where(scope_clause))
                 db.commit()
                 return result.rowcount > 0
 
-    def clear_done_tasks(self) -> int:
+    def clear_done_tasks(self, user: dict[str, Any] | None = None) -> int:
         with self._lock:
             with self._session() as db:
-                result = db.execute(delete(tasks_table).where(tasks_table.c.done.is_(True)))
+                ctx = _build_scope_context(user, db)
+                # Scope the mass-delete to user-visible tasks that are done.
+                result = db.execute(
+                    delete(tasks_table)
+                    .where(tasks_table.c.done.is_(True))
+                    .where(_scope_filter(ctx, tasks_table)),
+                )
                 db.commit()
                 return int(result.rowcount or 0)
 
-    def list_events(self) -> dict[str, Any]:
+    # ═════════════════════════════════════════════════════════════
+    # Calendar Events
+    # ═════════════════════════════════════════════════════════════
+
+    def list_events(self, user: dict[str, Any] | None = None) -> dict[str, Any]:
         with self._session() as db:
-            rows = db.execute(select(events_table).order_by(events_table.c.date, events_table.c.id)).mappings().all()
+            ctx = _build_scope_context(user, db)
+            stmt = (
+                select(events_table)
+                .where(_scope_filter(ctx, events_table))
+                .order_by(events_table.c.date, events_table.c.id)
+            )
+            rows = db.execute(stmt).mappings().all()
             items = [self._event_from_row(row) for row in rows]
             return list_response(items)
 
-    def create_event(self, payload: dict[str, Any]) -> dict[str, Any]:
+    def create_event(self, payload: dict[str, Any], user: dict[str, Any] | None = None) -> dict[str, Any]:
         with self._lock:
             with self._session() as db:
-                result = db.execute(insert(events_table).values(**payload))
+                values = dict(payload)
+                # Phase 4: set attribution from user context
+                if user is not None:
+                    ctx = _build_scope_context(user, db)
+                    values["org_id"] = payload.get("org_id") or (ctx.default_org_id if ctx else "default")
+                    values["department_id"] = payload.get("department_id") or (ctx.default_dept_id if ctx else "HQ")
+                    values["owner_id"] = ctx.user_id if ctx else None
+                    values.setdefault("visibility", "private")
+                    values.setdefault("sensitivity", "normal")
+                else:
+                    values.setdefault("org_id", "default")
+                    values.setdefault("department_id", "HQ")
+                    values.setdefault("visibility", "private")
+                    values.setdefault("sensitivity", "normal")
+
+                result = db.execute(insert(events_table).values(**values))
                 db.commit()
                 event_id = int(result.inserted_primary_key[0])
-                row = db.execute(select(events_table).where(events_table.c.id == event_id)).mappings().one()
+
+                scope_clause = _scope_single(ctx, events_table, event_id) if user is not None else (events_table.c.id == event_id)
+                row = db.execute(select(events_table).where(scope_clause)).mappings().first()
+                if row is None:
+                    row = db.execute(select(events_table).where(events_table.c.id == event_id)).mappings().one()
                 return self._event_from_row(row)
 
-    def update_event(self, event_id: int, payload: dict[str, Any]) -> dict[str, Any] | None:
+    def update_event(self, event_id: int, payload: dict[str, Any], user: dict[str, Any] | None = None) -> dict[str, Any] | None:
         with self._lock:
             with self._session() as db:
-                db.execute(update(events_table).where(events_table.c.id == event_id).values(**payload))
-                db.commit()
-                row = db.execute(select(events_table).where(events_table.c.id == event_id)).mappings().first()
+                ctx = _build_scope_context(user, db)
+                scope_clause = _scope_single(ctx, events_table, event_id)
+
+                existing = db.execute(
+                    select(events_table).where(scope_clause)
+                ).mappings().first()
+                if existing is None:
+                    return None
+
+                # Phase 4 F4: allowlist mutable fields to prevent injection of
+                # attribution columns (org_id, owner_id, etc.) via the payload.
+                updates = {
+                    key: value for key, value in payload.items()
+                    if key in {"title", "date", "tone"}
+                }
+                if updates:
+                    db.execute(
+                        update(events_table)
+                        .where(scope_clause)
+                        .values(**updates),
+                    )
+                    db.commit()
+
+                row = db.execute(select(events_table).where(scope_clause)).mappings().first()
                 return self._event_from_row(row) if row else None
 
-    def delete_event(self, event_id: int) -> bool:
+    def delete_event(self, event_id: int, user: dict[str, Any] | None = None) -> bool:
         with self._lock:
             with self._session() as db:
-                result = db.execute(delete(events_table).where(events_table.c.id == event_id))
+                ctx = _build_scope_context(user, db)
+                scope_clause = _scope_single(ctx, events_table, event_id)
+
+                result = db.execute(delete(events_table).where(scope_clause))
                 db.commit()
                 return result.rowcount > 0
+
+    # ═════════════════════════════════════════════════════════════
+    # Embed URLs
+    # ═════════════════════════════════════════════════════════════
 
     def update_embed_urls(self, payload: dict[str, Any]) -> dict[str, str]:
         with self._lock:
@@ -381,10 +652,19 @@ class PortalStore:
                 db.commit()
             return self.embed_urls
 
-    def list_knowledge_spaces(self, search: str = "", filter_: str = "all") -> dict[str, Any]:
+    # ═════════════════════════════════════════════════════════════
+    # Knowledge spaces & mappings
+    # ═════════════════════════════════════════════════════════════
+
+    def list_knowledge_spaces(
+        self,
+        search: str = "",
+        filter_: str = "all",
+        user: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         query = search.strip().lower()
         settings = get_settings()
-        items = self._list_synced_knowledge_spaces()
+        items = self._list_synced_knowledge_spaces(user=user)
         if not items:
             items = configured_knowledge_spaces(
                 dataset_id=settings.FASTGPT_DEFAULT_DATASET_ID,
@@ -392,39 +672,63 @@ class PortalStore:
                 display_name=settings.FASTGPT_DEFAULT_DISPLAY_NAME,
                 mode=settings.FASTGPT_MODE,
             )
+        # filter_: "all" → no filter; "dataset"/"app" → filter by resource_type;
+        # "team"/"org"/"private"/"public" → pass-through for permission_scope values
+        _resource_types = {"dataset", "app"}
         items = [
             item for item in items
-            if (filter_ == "all" or item["type"] == filter_)
+            if (filter_ == "all" or filter_ in _resource_types and item["type"] == filter_
+                or filter_ not in _resource_types)  # pass-through for permission_scope values
             and (not query or query in f"{item['title']}{item['owner']}{item['desc']}{item.get('fastgpt_dataset_id') or ''}{item.get('fastgpt_app_id') or ''}".lower())
         ]
         return list_response(items)
 
-    def _list_synced_knowledge_spaces(self) -> list[dict[str, Any]]:
+    def _list_synced_knowledge_spaces(
+        self,
+        user: dict[str, Any] | None = None,
+    ) -> list[dict[str, Any]]:
         with self._session() as db:
-            rows = db.execute(
+            ctx = _build_scope_context(user, db)
+            stmt = (
                 select(knowledge_mappings_table)
                 .where(knowledge_mappings_table.c.enabled.is_(True))
-                .order_by(knowledge_mappings_table.c.display_name),
-            ).mappings().all()
+                .where(_scope_filter(ctx, knowledge_mappings_table))
+                .order_by(knowledge_mappings_table.c.display_name)
+            )
+            rows = db.execute(stmt).mappings().all()
             return [knowledge_space_from_mapping(row) for row in rows]
 
-    def list_knowledge_mappings(self) -> dict[str, Any]:
+    def list_knowledge_mappings(
+        self,
+        user: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         with self._session() as db:
-            rows = db.execute(
+            ctx = _build_scope_context(user, db)
+            stmt = (
                 select(knowledge_mappings_table)
-                .order_by(knowledge_mappings_table.c.resource_type.desc(), knowledge_mappings_table.c.display_name),
-            ).mappings().all()
+                .where(_scope_filter(ctx, knowledge_mappings_table))
+                .order_by(knowledge_mappings_table.c.resource_type.desc(), knowledge_mappings_table.c.display_name)
+            )
+            rows = db.execute(stmt).mappings().all()
             return list_response([knowledge_mapping_from_row(row) for row in rows])
 
-    def update_knowledge_mapping(self, mapping_id: str, payload: dict[str, Any]) -> dict[str, Any] | None:
+    def update_knowledge_mapping(
+        self,
+        mapping_id: str,
+        payload: dict[str, Any],
+        user: dict[str, Any] | None = None,
+    ) -> dict[str, Any] | None:
         with self._lock:
             with self._session() as db:
+                ctx = _build_scope_context(user, db)
+                scope_clause = _scope_single(ctx, knowledge_mappings_table, mapping_id)
+
                 row = db.execute(
-                    select(knowledge_mappings_table)
-                    .where(knowledge_mappings_table.c.id == mapping_id),
+                    select(knowledge_mappings_table).where(scope_clause)
                 ).mappings().first()
                 if row is None:
                     return None
+
                 updates: dict[str, Any] = {"updated_at": datetime.now(timezone.utc).isoformat()}
                 for key in ["display_name", "enabled", "permission_scope"]:
                     if key in payload and payload[key] is not None:
@@ -432,35 +736,49 @@ class PortalStore:
                 if payload.get("is_default_import_target") is True:
                     if row["resource_type"] != "dataset":
                         return None
+                    # Phase 4 F2: scope the clear to the user's visible datasets
+                    # so an org_admin in one org cannot affect another org's mappings.
                     db.execute(
                         update(knowledge_mappings_table)
                         .where(knowledge_mappings_table.c.resource_type == "dataset")
+                        .where(_scope_filter(ctx, knowledge_mappings_table))
                         .values(is_default_import_target=False),
                     )
                     updates["is_default_import_target"] = True
                 elif payload.get("is_default_import_target") is False:
                     updates["is_default_import_target"] = False
+
                 db.execute(
                     update(knowledge_mappings_table)
-                    .where(knowledge_mappings_table.c.id == mapping_id)
+                    .where(scope_clause)
                     .values(**updates),
                 )
                 db.commit()
-                next_row = db.execute(
-                    select(knowledge_mappings_table)
-                    .where(knowledge_mappings_table.c.id == mapping_id),
-                ).mappings().one()
-                return knowledge_mapping_from_row(next_row)
 
-    def delete_knowledge_mapping(self, mapping_id: str) -> bool:
+                next_row = db.execute(
+                    select(knowledge_mappings_table).where(scope_clause)
+                ).mappings().first()
+                return knowledge_mapping_from_row(next_row) if next_row else None
+
+    def delete_knowledge_mapping(
+        self,
+        mapping_id: str,
+        user: dict[str, Any] | None = None,
+    ) -> bool:
         with self._lock:
             with self._session() as db:
+                ctx = _build_scope_context(user, db)
+                scope_clause = _scope_single(ctx, knowledge_mappings_table, mapping_id)
+
                 result = db.execute(
-                    delete(knowledge_mappings_table)
-                    .where(knowledge_mappings_table.c.id == mapping_id),
+                    delete(knowledge_mappings_table).where(scope_clause),
                 )
                 db.commit()
                 return bool(result.rowcount)
+
+    # ═════════════════════════════════════════════════════════════
+    # Knowledge sync & import records
+    # ═════════════════════════════════════════════════════════════
 
     def sync_knowledge_mappings(self, resources: list[dict[str, Any]]) -> dict[str, Any]:
         created = 0
@@ -487,6 +805,12 @@ class PortalStore:
                         "last_synced_at": now,
                         "stale": False,
                         "updated_at": now,
+                        # Phase 4: default attribution for synced resources
+                        "org_id": "default",
+                        "department_id": "HQ",
+                        "owner_id": 1,
+                        "visibility": "dept",
+                        "sensitivity": "internal",
                     }
                     existing = db.scalar(
                         select(knowledge_mappings_table.c.id)
@@ -562,12 +886,50 @@ class PortalStore:
                 ).mappings().one()
                 return dict(row)
 
-    def list_knowledge_imports(self) -> dict[str, Any]:
+    def list_knowledge_imports(self, user: dict[str, Any] | None = None) -> dict[str, Any]:
+        """List knowledge import records scoped to the user's visible mappings.
+
+        Joins against knowledge_dataset_mappings so a user can only see import
+        records that belong to datasets within their data scope (Phase 4 F3).
+        When *user* is None the old full-list behaviour is preserved for
+        internal / seed paths.
+        """
         with self._session() as db:
-            rows = db.execute(
-                select(knowledge_import_records_table)
-                .order_by(knowledge_import_records_table.c.id.desc()),
-            ).mappings().all()
+            if user is not None:
+                ctx = _build_scope_context(user, db)
+                # Join import records ↔ mappings and apply the visibility filter
+                # on the mappings side so we only return imports for datasets the
+                # user is authorised to see.
+                stmt = (
+                    select(knowledge_import_records_table)
+                    .select_from(
+                        knowledge_import_records_table.join(
+                            knowledge_mappings_table,
+                            knowledge_import_records_table.c.mapping_id == knowledge_mappings_table.c.id,
+                            isouter=True,
+                        )
+                    )
+                    .where(
+                        or_(
+                            # Import records linked to a visible mapping
+                            _scope_filter(ctx, knowledge_mappings_table),
+                            # Import records with no mapping (mapping_id IS NULL)
+                            # still need to be visible — only super_admin / internal
+                            # users see unlinked records.
+                            and_(
+                                knowledge_import_records_table.c.mapping_id.is_(None),
+                                ctx.is_super_admin,
+                            ),
+                        )
+                    )
+                    .order_by(knowledge_import_records_table.c.id.desc())
+                )
+            else:
+                stmt = (
+                    select(knowledge_import_records_table)
+                    .order_by(knowledge_import_records_table.c.id.desc())
+                )
+            rows = db.execute(stmt).mappings().all()
             return list_response([dict(row) for row in rows])
 
     def delete_knowledge_import_by_collection(self, collection_id: str) -> None:
@@ -580,15 +942,119 @@ class PortalStore:
                 )
                 db.commit()
 
-    def search(self, query: str) -> dict[str, Any]:
+    # ═════════════════════════════════════════════════════════════
+    # Search  (Phase 4: scope-filter knowledge results)
+    # ═════════════════════════════════════════════════════════════
+
+    def search(self, query: str, user: dict[str, Any] | None = None) -> dict[str, Any]:
         needle = query.strip().lower()
         sources: list[dict[str, str]] = []
-        sources.extend({"type": "知识库", "title": item["title"], "description": item["desc"]} for item in self.list_knowledge_spaces()["items"])
+
+        # Knowledge results are scope-filtered
+        sources.extend(
+            {"type": "知识库", "title": item["title"], "description": item["desc"]}
+            for item in self.list_knowledge_spaces(user=user)["items"]
+        )
+        # Public reference data — visible to all authenticated users
         sources.extend({"type": "文档", "title": item["name"], "description": item["location"]} for item in DEFAULT_DOCUMENTS)
         sources.extend({"type": "公告", "title": item["title"], "description": item["source"]} for item in DEFAULT_NOTICES)
         sources.extend({"type": "服务", "title": name, "description": "服务分类"} for name in DEFAULT_SERVICES)
         items = [item for item in sources if not needle or needle in f"{item['title']}{item['description']}{item['type']}".lower()]
         return list_response(items[:20])
+
+    # ═════════════════════════════════════════════════════════════
+    # Chat persistence  (no scope changes — chat is session-scoped)
+    # ═════════════════════════════════════════════════════════════
+
+    def save_chat_message(
+        self,
+        session_id: str,
+        role: str,
+        content: str,
+        *,
+        action: str | None = None,
+        title: str | None = None,
+        created_at: str | None = None,
+    ) -> None:
+        """保存一条聊天消息，同时 upsert 会话。"""
+        now = created_at or datetime.now(timezone.utc).isoformat()
+        with self._lock:
+            with self._session() as db:
+                # Upsert session
+                existing = db.scalar(
+                    select(chat_sessions_table.c.id).where(chat_sessions_table.c.id == session_id)
+                )
+                if existing is None:
+                    db.execute(
+                        insert(chat_sessions_table).values(
+                            id=session_id,
+                            title=title or "",
+                            created_at=now,
+                            updated_at=now,
+                        )
+                    )
+                else:
+                    values: dict[str, Any] = {"updated_at": now}
+                    if title:
+                        values["title"] = title
+                    db.execute(
+                        update(chat_sessions_table)
+                        .where(chat_sessions_table.c.id == session_id)
+                        .values(**values)
+                    )
+                # Insert message
+                db.execute(
+                    insert(chat_messages_table).values(
+                        session_id=session_id,
+                        role=role,
+                        content=content,
+                        action=action,
+                        created_at=now,
+                    )
+                )
+                db.commit()
+
+    def list_chat_sessions(self) -> dict[str, Any]:
+        """列出所有聊天会话，按更新时间倒序。"""
+        with self._session() as db:
+            rows = db.execute(
+                select(chat_sessions_table).order_by(chat_sessions_table.c.updated_at.desc())
+            ).mappings().all()
+            return list_response([dict(row) for row in rows])
+
+    def get_chat_messages(self, session_id: str, limit: int = 0) -> dict[str, Any]:
+        """获取指定会话的消息。limit=0 表示不限制，limit>0 返回最近 N 条。"""
+        with self._session() as db:
+            stmt = (
+                select(chat_messages_table)
+                .where(chat_messages_table.c.session_id == session_id)
+                .order_by(chat_messages_table.c.id.desc())
+            )
+            if limit > 0:
+                stmt = stmt.limit(limit)
+            rows = db.execute(stmt).mappings().all()
+            # 按 id 升序返回（时间顺序），因为我们用 desc 查询
+            result = [dict(row) for row in rows]
+            result.reverse()
+            return list_response(result)
+
+    def delete_chat_session(self, session_id: str) -> bool:
+        """删除会话及其所有消息。"""
+        with self._lock:
+            with self._session() as db:
+                db.execute(
+                    delete(chat_messages_table).where(chat_messages_table.c.session_id == session_id)
+                )
+                result = db.execute(
+                    delete(chat_sessions_table).where(chat_sessions_table.c.id == session_id)
+                )
+                db.commit()
+                return result.rowcount > 0
+
+
+# ═════════════════════════════════════════════════════════════════════
+# Module-level helpers (unchanged signatures)
+# ═════════════════════════════════════════════════════════════════════
 
 
 def configured_knowledge_spaces(

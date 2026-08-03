@@ -1,0 +1,92 @@
+[
+  {
+    "file": "backend/knowledge.py",
+    "line": 228,
+    "summary": "Score extraction crashes on bare float from FastGPT API — TypeError in list comprehension",
+    "failure_scenario": "FastGPT searchTest API returns `\"score\": 0.85` (bare float, confirmed in complex_qa_result.json). Expression `(c.get(\"score\") or [{}])[0]` indexes into float → TypeError. No try/except wraps _rag_pipeline() call → 500 response to user. All RAG requests hitting FastGPT fail."
+  },
+  {
+    "file": "backend/knowledge.py",
+    "line": 257,
+    "summary": "Bare `except Exception` in _load_chat_history silently swallows all errors including programming bugs",
+    "failure_scenario": "A KeyError from a malformed message dict (line 250: `content = m[\"content\"]` with no .get() guard) silently returns `[]`. No logging, no traceback. History silently lost, user sees amnesiac AI with zero indication of failure. Same pattern on line 268: `except Exception: pass` hides DB write failures with no logging at all."
+  },
+  {
+    "file": "backend/knowledge.py",
+    "line": 290,
+    "summary": "No circuit breaker — 3 sequential Hermes calls each pay full timeout (60s) when gateway is down",
+    "failure_scenario": "Hermes gateway down for 5 minutes. Every incoming request makes 3 sequential calls (classify_command → _classify_intent → actual answer), each waiting full 60s timeout → 180s worst-case per request. Under load, 3 × rps × 60s of in-flight connections accumulate. No shared failure state between calls — each retries independently. When gateway recovers, no gradual ramp-up."
+  },
+  {
+    "file": "backend/knowledge.py",
+    "line": 400,
+    "summary": "FastGPT file upload orphaned when local DB write fails after successful upload",
+    "failure_scenario": "import_file_to_fastgpt succeeds (file in FastGPT permanently). store.record_knowledge_import() fails (transient DB error). No try/except → 500 to client. Retry creates duplicate file in FastGPT because no local import record exists to deduplicate against. Orphaned file has no owner trace in Replica."
+  },
+  {
+    "file": "backend/knowledge.py",
+    "line": 239,
+    "summary": "_load_chat_history loads ALL messages from SQLite then discards all but last 12",
+    "failure_scenario": "Session accumulates 1000+ messages over ~500 turns. Every /chat request: `SELECT * FROM chat_messages WHERE session_id = ? ORDER BY id` loads all 1000 rows into Python heap, then `messages[-12:]` discards 988 of them. Memory and latency waste grows linearly with session activity. Also affects GET /api/v1/chat/sessions/{id}/messages endpoint which returns all messages unconditionally."
+  },
+  {
+    "file": "backend/hermes.py",
+    "line": 61,
+    "summary": "Every HTTP call creates a new httpx.AsyncClient — no connection pooling",
+    "failure_scenario": "Single RAG request makes up to ~18 HTTP calls (query split + 3×5 FastGPT searches + final LLM). Each opens new TCP connection + TLS handshake instead of reusing pooled connections. Against remote Hermes endpoint with 50ms RTT, ~18 × 50ms = 900ms wasted on connection setup alone. No shared client in main.py lifespan, config.py, or any module."
+  },
+  {
+    "file": "backend/knowledge.py",
+    "line": 292,
+    "summary": "Two independent LLM classifiers (classify_command + _classify_intent) called sequentially",
+    "failure_scenario": "User sends '你好' with command_mode=true + mode=auto. classify_command() calls Hermes → returns 'chat'. _classify_intent() calls Hermes AGAIN → returns 'chat'. Third Hermes call for actual answer. 3 sequential LLM calls for one simple greeting. Classifications are independent — could merge into single structured output saving 1/3 of latency and cost per request."
+  },
+  {
+    "file": "backend/commands.py",
+    "line": 249,
+    "summary": "Identical 3-strategy task search logic duplicated between _handle_update_task and _handle_delete_task",
+    "failure_scenario": "Both handlers independently implement: numeric ID match → exact title match → substring match → 'not found' error with task list. ~35 lines of identical code. Any improvement (fuzzy matching, priority tuning, error format change) must be applied twice. Inevitable drift between the two copies causes inconsistent update-vs-delete behavior."
+  },
+  {
+    "file": "backend/knowledge.py",
+    "line": 293,
+    "summary": "Case-sensitive 'chat' check — 'Chat' or 'CHAT' from LLM would route to execute_command as unknown action",
+    "failure_scenario": "LLM returns `{\"action\": \"Chat\"}` (capitalized). Guard `cmd.get(\"action\") not in (\"chat\", None, \"\")` passes it through. execute_command() also checks `action == \"chat\"` (line 176, case-sensitive), falls to 'unknown action' error reply. User sees error instead of chat response. classify_command() performs zero case normalization on parsed JSON."
+  },
+  {
+    "file": "backend/commands.py",
+    "line": 286,
+    "summary": "due_time not normalized in _handle_update_task unlike _handle_create_task",
+    "failure_scenario": "If Hermes emits `\"due_time\": \"\"` for an update (currently prevented by prompt but code path exists), create handler normalizes to None; update handler passes empty string directly to store.update_task() → stored as empty VARCHAR instead of NULL. Currently dormant but triggers if prompt changes or handler reused."
+  },
+  {
+    "file": "backend/commands.py",
+    "line": 251,
+    "summary": "Two consecutive `if` blocks (not `elif`) in ID matching — second unconditionally overwrites first",
+    "failure_scenario": "LLM emits `{\"title\": \"42\", \"id\": 99}` (violating prompt convention of putting same number in both). First `if title_keyword.isdigit()` matches task 42. Second `if task_id_str.isdigit()` overwrites matched with task 99. User's reference to '42' silently ignored, wrong task updated/deleted. No warning logged."
+  },
+  {
+    "file": "backend/knowledge.py",
+    "line": 299,
+    "summary": "_save_chat_turn called identically in all 3 branches of knowledge_chat with only action string varying",
+    "failure_scenario": "Adding post-turn side effect (metrics, notification, webhook) requires editing all 3 call sites (lines 299, 342, 348). One missed edit → behavior diverges across command/chat/rag modes. Natural refactor: extract dispatch to single save-after-branch call."
+  },
+  {
+    "file": "backend/knowledge.py",
+    "line": 74,
+    "summary": "_build_search_queries returns [\"\"] for empty question — defensive gap below Pydantic layer",
+    "failure_scenario": "Currently guarded by Pydantic Field(min_length=1). But if _build_search_queries is called from code that strips whitespace to empty, it returns [\"\"] → FastGPT receives empty search query → wasted API call + noisy results. Defense-in-depth missing at internal function boundary."
+  },
+  {
+    "file": "backend/commands.py",
+    "line": 367,
+    "summary": "_handle_create_event passes LLM output directly to DB without length/format validation",
+    "failure_scenario": "LLM hallucinates `\"date\": \"next Thursday\"` or a 5000-char title. store.create_event writes it directly to SQLite (VARCHAR(10) for date → truncated silently; VARCHAR(255) for title → truncated). No validation error, silently corrupted data in DB. Tone field accepts any string up to VARCHAR(16) despite only blue/green/orange being valid."
+  },
+  {
+    "file": "backend/knowledge.py",
+    "line": 291,
+    "summary": "200-char code guard (len<=200) and 100-char prompt rule (超过100字) are inconsistent thresholds",
+    "failure_scenario": "A 150-character analytical question passes the code guard, reaches the LLM with a prompt rule saying 'over 100 chars = chat'. The LLM must reconcile conflicting signals: the system prompt's 100-char heuristic vs the fact that it WAS sent for classification (implying the code thinks it might be a command). Future maintainer adjusting one threshold without the other introduces inconsistent behavior. The real defect (LLM misclassifying long text) is masked rather than measured."
+  }
+]

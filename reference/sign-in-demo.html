@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sign In - Dot Matrix Animation</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.22.20/babel.min.js"></script>
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box}
+    html,body,#root{width:100%;height:100%}
+    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;background:#000}
+    input[type="text"]::-webkit-inner-spin-button,
+    input[type="text"]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+    input[type="text"]{-moz-appearance:textfield}
+    @keyframes slideInLeft{from{opacity:0;transform:translateX(-100px)}to{opacity:1;transform:translateX(0)}}
+    @keyframes slideInRight{from{opacity:0;transform:translateX(100px)}to{opacity:1;transform:translateX(0)}}
+    @keyframes fadeInUp{from{opacity:0;transform:translateY(50px)}to{opacity:1;transform:translateY(0)}}
+    @keyframes scaleIn{from{opacity:0;transform:scale(.8)}to{opacity:1;transform:scale(1)}}
+    @keyframes fadeIn{from{opacity:0}to{opacity:1}}
+    .anim-slide-l{animation:slideInLeft .4s ease-out forwards}
+    .anim-slide-r{animation:slideInRight .4s ease-out forwards}
+    .anim-fade-up{animation:fadeInUp .4s ease-out forwards}
+    .anim-scale-in{animation:scaleIn .5s ease-out forwards;opacity:0;animation-fill-mode:forwards}
+    .anim-fade-in{animation:fadeIn .5s ease-out forwards;opacity:0;animation-fill-mode:forwards}
+    .anim-delay-300{animation-delay:.3s}
+    .anim-delay-500{animation-delay:.5s}
+    .anim-delay-1000{animation-delay:1s}
+  </style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel">
+const { useState, useMemo, useRef, useEffect, createContext, useContext, Fragment } = React;
+
+// ============================
+// Utility
+// ============================
+function cn(...args) { return args.filter(Boolean).join(' '); }
+
+// ============================
+// React-Three bridge (imperative)
+// ============================
+const BridgeCtx = createContext(null);
+
+// R3FCanvas: sets up a Three.js scene + renderer in a div,
+//            runs the animation loop, provides context to children.
+function R3FCanvas({ children, className }) {
+  const containerRef = useRef(null);
+  const [bridge, setBridge] = useState(null);
+  const bridgeRef = useRef(null);
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+
+    const scene = new THREE.Scene();
+    const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 10);
+    camera.position.z = 1;
+
+    const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setSize(el.clientWidth, el.clientHeight);
+    el.appendChild(renderer.domElement);
+
+    const clock = new THREE.Clock();
+    const frameCbs = [];
+
+    let rid;
+    function loop() {
+      rid = requestAnimationFrame(loop);
+      const width = el.clientWidth;
+      const height = el.clientHeight;
+      if (renderer.getSize(new THREE.Vector2()).x !== width ||
+          renderer.getSize(new THREE.Vector2()).y !== height) {
+        renderer.setSize(width, height);
+      }
+      const state = { clock, size: { width, height }, camera, scene, gl: renderer };
+      frameCbs.forEach(fn => fn(state));
+      renderer.render(scene, camera);
+    }
+    loop();
+
+    const onResize = () => {
+      renderer.setSize(el.clientWidth, el.clientHeight);
+    };
+    window.addEventListener('resize', onResize);
+
+    const b = {
+      scene, camera, renderer,
+      get size() { return { width: el.clientWidth, height: el.clientHeight }; },
+      addFrame(fn) { frameCbs.push(fn); return () => { const i=frameCbs.indexOf(fn); if(i>=0)frameCbs.splice(i,1); }; },
+    };
+    bridgeRef.current = b;
+    setBridge(b);
+
+    return () => {
+      cancelAnimationFrame(rid);
+      window.removeEventListener('resize', onResize);
+      renderer.dispose();
+      if (el.contains(renderer.domElement)) el.removeChild(renderer.domElement);
+    };
+  }, []);
+
+  return (
+    <div ref={containerRef} className={className || ''} style={{ position: 'absolute', inset: 0, overflow: 'hidden' }}>
+      {bridge && (
+        <BridgeCtx.Provider value={bridge}>
+          {children}
+        </BridgeCtx.Provider>
+      )}
+    </div>
+  );
+}
+
+function useFrame(fn) {
+  const ctx = useContext(BridgeCtx);
+  const fnRef = useRef(fn);
+  fnRef.current = fn;
+  useEffect(() => {
+    if (!ctx) return;
+    const wrapped = (s) => fnRef.current(s);
+    return ctx.addFrame(wrapped);
+  }, [ctx]);
+}
+
+function useThree() {
+  const ctx = useContext(BridgeCtx);
+  if (!ctx) throw new Error('useThree() must be inside R3FCanvas');
+  return ctx;
+}
+
+// ============================
+// ShaderMaterial (imperative — adds mesh directly to Three.js scene)
+// ============================
+function ShaderMaterial({ source, uniforms, maxFps }) {
+  const { scene, size } = useThree();
+  const meshRef = useRef(null);
+  const matRef = useRef(null);
+
+  // Create mesh + shader material, add to scene
+  useEffect(() => {
+    function buildUniforms() {
+      const out = {};
+      for (const name in uniforms) {
+        const u = uniforms[name];
+        switch (u.type) {
+          case 'uniform1f':  out[name] = { value: u.value }; break;
+          case 'uniform1i':  out[name] = { value: u.value }; break;
+          case 'uniform3f':  out[name] = { value: new THREE.Vector3().fromArray(u.value) }; break;
+          case 'uniform1fv': out[name] = { value: u.value }; break;
+          case 'uniform3fv': out[name] = { value: u.value.map(v => new THREE.Vector3().fromArray(v)) }; break;
+          case 'uniform2f':  out[name] = { value: new THREE.Vector2().fromArray(u.value) }; break;
+        }
+      }
+      out['u_time'] = { value: 0 };
+      out['u_resolution'] = { value: new THREE.Vector2(size.width * 2, size.height * 2) };
+      return out;
+    }
+
+    const vertShader = `#version 300 es
+precision mediump float;
+in vec2 coordinates;
+uniform vec2 u_resolution;
+out vec2 fragCoord;
+void main(){
+  float x = position.x;
+  float y = position.y;
+  gl_Position = vec4(x, y, 0.0, 1.0);
+  fragCoord = (position.xy + vec2(1.0)) * 0.5 * u_resolution;
+  fragCoord.y = u_resolution.y - fragCoord.y;
+}`;
+
+    const mat = new THREE.ShaderMaterial({
+      vertexShader: vertShader,
+      fragmentShader: `#version 300 es\n${source}`,
+      uniforms: buildUniforms(),
+      blending: THREE.CustomBlending,
+      blendSrc: THREE.SrcAlphaFactor,
+      blendDst: THREE.OneFactor,
+      depthTest: false,
+      depthWrite: false,
+      glslVersion: THREE.GLSL3,
+    });
+
+    const geo = new THREE.PlaneGeometry(2, 2);
+    const mesh = new THREE.Mesh(geo, mat);
+    scene.add(mesh);
+    meshRef.current = mesh;
+    matRef.current = mat;
+
+    return () => {
+      scene.remove(mesh);
+      geo.dispose();
+      mat.dispose();
+    };
+  }, [scene, source, size.width, size.height]);
+
+  // Update u_time + u_resolution each frame
+  useFrame(({ clock, size: sz }) => {
+    const mat = matRef.current;
+    if (mat && mat.uniforms) {
+      mat.uniforms.u_time.value = clock.getElapsedTime();
+      mat.uniforms.u_resolution.value.set(sz.width * 2, sz.height * 2);
+    }
+  });
+
+  return null; // no DOM element — everything lives in the Three.js scene
+}
+
+// ============================
+// Shader wrapper (provides R3FCanvas context)
+// ============================
+function Shader({ source, uniforms, maxFps = 60 }) {
+  return (
+    <R3FCanvas className="absolute inset-0 h-full w-full">
+      <ShaderMaterial source={source} uniforms={uniforms} maxFps={maxFps} />
+    </R3FCanvas>
+  );
+}
+
+// ============================
+// DotMatrix
+// ============================
+function DotMatrix({
+  colors = [[0, 0, 0]],
+  opacities = [0.04,0.04,0.04,0.04,0.04,0.08,0.08,0.08,0.08,0.14],
+  totalSize = 20,
+  dotSize = 2,
+  shader = '',
+  center = ['x', 'y'],
+}) {
+  const uniforms = useMemo(() => {
+    let ca = [colors[0],colors[0],colors[0],colors[0],colors[0],colors[0]];
+    if (colors.length === 2) ca = [colors[0],colors[0],colors[0],colors[1],colors[1],colors[1]];
+    else if (colors.length === 3) ca = [colors[0],colors[0],colors[1],colors[1],colors[2],colors[2]];
+    return {
+      u_colors:    { value: ca.map(c => [c[0]/255, c[1]/255, c[2]/255]), type: 'uniform3fv' },
+      u_opacities: { value: opacities, type: 'uniform1fv' },
+      u_total_size:{ value: totalSize, type: 'uniform1f' },
+      u_dot_size:  { value: dotSize,   type: 'uniform1f' },
+      u_reverse:   { value: shader.includes('u_reverse_active') ? 1 : 0, type: 'uniform1i' },
+    };
+  }, [colors, opacities, totalSize, dotSize, shader]);
+
+  const fragSrc = `
+precision mediump float;
+in vec2 fragCoord;
+
+uniform float u_time;
+uniform float u_opacities[10];
+uniform vec3 u_colors[6];
+uniform float u_total_size;
+uniform float u_dot_size;
+uniform vec2 u_resolution;
+uniform int u_reverse;
+
+out vec4 fragColor;
+
+float PHI = 1.61803398874989484820459;
+float random(vec2 xy) {
+    return fract(tan(distance(xy * PHI, xy) * 0.5) * xy.x);
+}
+
+void main() {
+    vec2 st = fragCoord.xy;
+    ${center.includes('x') ? 'st.x -= abs(floor((mod(u_resolution.x, u_total_size) - u_dot_size) * 0.5));' : ''}
+    ${center.includes('y') ? 'st.y -= abs(floor((mod(u_resolution.y, u_total_size) - u_dot_size) * 0.5));' : ''}
+
+    float opacity = step(0.0, st.x);
+    opacity *= step(0.0, st.y);
+
+    vec2 st2 = vec2(int(st.x / u_total_size), int(st.y / u_total_size));
+
+    float frequency = 5.0;
+    float show_offset = random(st2);
+    float rand = random(st2 * floor((u_time / frequency) + show_offset + frequency));
+    opacity *= u_opacities[int(rand * 10.0)];
+    opacity *= 1.0 - step(u_dot_size / u_total_size, fract(st.x / u_total_size));
+    opacity *= 1.0 - step(u_dot_size / u_total_size, fract(st.y / u_total_size));
+
+    vec3 color = u_colors[int(show_offset * 6.0)];
+
+    float animation_speed_factor = 0.5;
+    vec2 center_grid = u_resolution / 2.0 / u_total_size;
+    float dist_from_center = distance(center_grid, st2);
+
+    float timing_offset_intro = dist_from_center * 0.01 + (random(st2) * 0.15);
+    float max_grid_dist = distance(center_grid, vec2(0.0, 0.0));
+    float timing_offset_outro = (max_grid_dist - dist_from_center) * 0.02 + (random(st2 + 42.0) * 0.2);
+
+    float current_timing_offset;
+    if (u_reverse == 1) {
+        current_timing_offset = timing_offset_outro;
+        opacity *= 1.0 - step(current_timing_offset, u_time * animation_speed_factor);
+        opacity *= clamp((step(current_timing_offset + 0.1, u_time * animation_speed_factor)) * 1.25, 1.0, 1.25);
+    } else {
+        current_timing_offset = timing_offset_intro;
+        opacity *= step(current_timing_offset, u_time * animation_speed_factor);
+        opacity *= clamp((1.0 - step(current_timing_offset + 0.1, u_time * animation_speed_factor)) * 1.25, 1.0, 1.25);
+    }
+
+    fragColor = vec4(color, opacity);
+    fragColor.rgb *= fragColor.a;
+}`;
+
+  return <Shader source={fragSrc} uniforms={uniforms} maxFps={60} />;
+}
+
+// ============================
+// CanvasRevealEffect
+// ============================
+function CanvasRevealEffect({
+  animationSpeed = 10,
+  opacities = [0.3,0.3,0.3,0.5,0.5,0.5,0.8,0.8,0.8,1],
+  colors = [[0,255,255]],
+  containerClassName,
+  dotSize,
+  showGradient = true,
+  reverse = false,
+}) {
+  const c  = colors    || [[0,255,255]];
+  const o  = opacities || [0.3,0.3,0.3,0.5,0.5,0.5,0.8,0.8,0.8,1];
+  const d  = dotSize != null ? dotSize : 3;
+  const s  = `${reverse?'u_reverse_active':'false'};\nanimation_speed_factor_${animationSpeed.toFixed(1)};`;
+
+  return (
+    <div className={cn('h-full relative w-full', containerClassName)}>
+      <div className="h-full w-full">
+        <DotMatrix colors={c} dotSize={d} opacities={o} shader={s} center={['x','y']} />
+      </div>
+      {showGradient && <div className="absolute inset-0 bg-gradient-to-t from-black to-transparent" />}
+    </div>
+  );
+}
+
+// ============================
+// AnimatedNavLink
+// ============================
+function AnimatedNavLink({ href, children }) {
+  return (
+    <a href={href} className="group relative inline-block overflow-hidden h-5 flex items-center text-sm">
+      <div className="flex flex-col transition-transform duration-[400ms] ease-out transform group-hover:-translate-y-1/2">
+        <span className="text-gray-300">{children}</span>
+        <span className="text-white">{children}</span>
+      </div>
+    </a>
+  );
+}
+
+// ============================
+// MiniNavbar
+// ============================
+function MiniNavbar() {
+  const [isOpen, setIsOpen] = useState(false);
+  const [shape, setShape] = useState('rounded-full');
+  const timerRef = useRef(null);
+
+  const toggle = () => setIsOpen(v => !v);
+
+  useEffect(() => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    if (isOpen) { setShape('rounded-xl'); }
+    else { timerRef.current = setTimeout(() => setShape('rounded-full'), 300); }
+    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
+  }, [isOpen]);
+
+  const logo = (
+    <div className="relative w-5 h-5 flex items-center justify-center">
+      <span className="absolute w-1.5 h-1.5 rounded-full bg-gray-200 top-0 left-1/2 -translate-x-1/2 opacity-80" />
+      <span className="absolute w-1.5 h-1.5 rounded-full bg-gray-200 left-0 top-1/2 -translate-y-1/2 opacity-80" />
+      <span className="absolute w-1.5 h-1.5 rounded-full bg-gray-200 right-0 top-1/2 -translate-y-1/2 opacity-80" />
+      <span className="absolute w-1.5 h-1.5 rounded-full bg-gray-200 bottom-0 left-1/2 -translate-x-1/2 opacity-80" />
+    </div>
+  );
+
+  const links = [{ l:'Manifesto', h:'#1' },{ l:'Careers', h:'#2' },{ l:'Discover', h:'#3' }];
+
+  const loginBtn = (
+    <button className="px-4 py-2 sm:px-3 text-xs sm:text-sm border border-[#333] bg-[rgba(31,31,31,0.62)] text-gray-300 rounded-full hover:border-white/50 hover:text-white transition-colors duration-200 w-full sm:w-auto">
+      LogIn
+    </button>
+  );
+
+  const signupBtn = (
+    <div className="relative group w-full sm:w-auto">
+      <div className="absolute inset-0 -m-2 rounded-full hidden sm:block bg-gray-100 opacity-40 blur-lg pointer-events-none transition-all duration-300 ease-out group-hover:opacity-60 group-hover:blur-xl group-hover:-m-3" />
+      <button className="relative z-10 px-4 py-2 sm:px-3 text-xs sm:text-sm font-semibold text-black bg-gradient-to-br from-gray-100 to-gray-300 rounded-full hover:from-gray-200 hover:to-gray-400 transition-all duration-200 w-full sm:w-auto">
+        Signup
+      </button>
+    </div>
+  );
+
+  return (
+    <header className={`fixed top-6 left-1/2 -translate-x-1/2 z-20 flex flex-col items-center pl-6 pr-6 py-3 backdrop-blur-sm ${shape} border border-[#333] bg-[#1f1f1f57] w-[calc(100%-2rem)] sm:w-auto transition-[border-radius] duration-0 ease-in-out`}>
+      <div className="flex items-center justify-between w-full gap-x-6 sm:gap-x-8">
+        <div className="flex items-center">{logo}</div>
+        <nav className="hidden sm:flex items-center space-x-4 sm:space-x-6 text-sm">
+          {links.map(l => <AnimatedNavLink key={l.h} href={l.h}>{l.l}</AnimatedNavLink>)}
+        </nav>
+        <div className="hidden sm:flex items-center gap-2 sm:gap-3">{loginBtn}{signupBtn}</div>
+        <button className="sm:hidden flex items-center justify-center w-8 h-8 text-gray-300 focus:outline-none" onClick={toggle} aria-label={isOpen?'Close':'Open'}>
+          {isOpen
+            ? <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            : <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+          }
+        </button>
+      </div>
+      <div className={`sm:hidden flex flex-col items-center w-full transition-all ease-in-out duration-300 overflow-hidden ${isOpen?'max-h-[1000px] opacity-100 pt-4':'max-h-0 opacity-0 pt-0 pointer-events-none'}`}>
+        <nav className="flex flex-col items-center space-y-4 text-base w-full">
+          {links.map(l => <a key={l.h} href={l.h} className="text-gray-300 hover:text-white transition-colors w-full text-center">{l.l}</a>)}
+        </nav>
+        <div className="flex flex-col items-center space-y-4 mt-4 w-full">{loginBtn}{signupBtn}</div>
+      </div>
+    </header>
+  );
+}
+
+// ============================
+// Motion helpers (simple CSS-based)
+// ============================
+function MotionButton({ whileHover, whileTap, transition, style, className, children, ...props }) {
+  const [hovered, setHovered] = useState(false);
+  const [tapped, setTapped] = useState(false);
+  const dur = (transition && transition.duration) ? transition.duration : 0.2;
+
+  const s = {
+    ...style,
+    ...(hovered ? whileHover : {}),
+    ...(tapped  ? whileTap   : {}),
+    transition: `all ${dur}s ease-out`,
+  };
+  return (
+    <button
+      className={className} style={s}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => { setHovered(false); setTapped(false); }}
+      onMouseDown={() => setTapped(true)}
+      onMouseUp={() => setTapped(false)}
+      {...props}
+    >{children}</button>
+  );
+}
+
+function MotionP({ whileHover, transition, className, children, ...props }) {
+  const [hovered, setHovered] = useState(false);
+  const dur = (transition && transition.duration) ? transition.duration : 0.2;
+  const s = {
+    ...(hovered ? whileHover : {}),
+    transition: `all ${dur}s ease-out`,
+  };
+  return (
+    <p className={className} style={s} onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)} {...props}>
+      {children}
+    </p>
+  );
+}
+
+// ============================
+// SignInPage
+// ============================
+function SignInPage({ className }) {
+  const [email, setEmail] = useState('');
+  const [step, setStep] = useState('email');
+  const [code, setCode] = useState(['','','','','','']);
+  const refs  = useRef([]);
+  const [showInitial, setShowInitial] = useState(true);
+  const [showReverse, setShowReverse] = useState(false);
+  const [animKey, setAnimKey] = useState(0);
+
+  const submitEmail = (e) => {
+    e.preventDefault();
+    if (email) { setAnimKey(k=>k+1); setStep('code'); }
+  };
+
+  useEffect(() => {
+    if (step === 'code') setTimeout(() => refs.current[0]?.focus(), 500);
+  }, [step]);
+
+  const onChange = (i, v) => {
+    if (v.length <= 1) {
+      const next = [...code]; next[i] = v; setCode(next);
+      if (v && i < 5) refs.current[i+1]?.focus();
+      if (i === 5 && v && next.every(d=>d.length===1)) {
+        setShowReverse(true);
+        setTimeout(() => setShowInitial(false), 50);
+        setTimeout(() => { setAnimKey(k=>k+1); setStep('success'); }, 2000);
+      }
+    }
+  };
+
+  const onKeyDown = (i, e) => {
+    if (e.key === 'Backspace' && !code[i] && i > 0) refs.current[i-1]?.focus();
+  };
+
+  const goBack = () => {
+    setAnimKey(k=>k+1); setStep('email'); setCode(['','','','','','']);
+    setShowReverse(false); setShowInitial(true);
+  };
+
+  const done = code.every(d=>d!=='');
+
+  // Step views
+  const stepEmail = (
+    <div key={`e-${animKey}`} className="anim-slide-l space-y-6 text-center">
+      <div className="space-y-1">
+        <h1 className="text-[2.5rem] font-bold leading-[1.1] tracking-tight text-white">Welcome Developer</h1>
+        <p className="text-[1.8rem] text-white/70 font-light">Your sign in component</p>
+      </div>
+      <div className="space-y-4">
+        <button className="backdrop-blur-[2px] w-full flex items-center justify-center gap-2 bg-white/5 hover:bg-white/10 text-white border border-white/10 rounded-full py-3 px-4 transition-colors">
+          <span className="text-lg">G</span><span>Sign in with Google</span>
+        </button>
+        <div className="flex items-center gap-4">
+          <div className="h-px bg-white/10 flex-1" /><span className="text-white/40 text-sm">or</span><div className="h-px bg-white/10 flex-1" />
+        </div>
+        <form onSubmit={submitEmail}>
+          <div className="relative">
+            <input type="email" placeholder="info@gmail.com" value={email}
+              onChange={e=>setEmail(e.target.value)}
+              className="w-full backdrop-blur-[1px] text-white border border-white/10 rounded-full py-3 px-4 focus:outline-none focus:border-white/30 text-center bg-transparent" required />
+            <button type="submit" className="absolute right-1.5 top-1.5 text-white w-9 h-9 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 transition-colors group overflow-hidden">
+              <span className="relative w-full h-full block overflow-hidden">
+                <span className="absolute inset-0 flex items-center justify-center transition-transform duration-300 group-hover:translate-x-full">→</span>
+                <span className="absolute inset-0 flex items-center justify-center transition-transform duration-300 -translate-x-full group-hover:translate-x-0">→</span>
+              </span>
+            </button>
+          </div>
+        </form>
+      </div>
+      <p className="text-xs text-white/40 pt-10">
+        By signing up, you agree to the <a href="#" className="underline text-white/40 hover:text-white/60 transition-colors">MSA</a>, <a href="#" className="underline text-white/40 hover:text-white/60 transition-colors">Product Terms</a>, <a href="#" className="underline text-white/40 hover:text-white/60 transition-colors">Policies</a>, <a href="#" className="underline text-white/40 hover:text-white/60 transition-colors">Privacy Notice</a>, and <a href="#" className="underline text-white/40 hover:text-white/60 transition-colors">Cookie Notice</a>.
+      </p>
+    </div>
+  );
+
+  const stepCode = (
+    <div key={`c-${animKey}`} className="anim-slide-r space-y-6 text-center">
+      <div className="space-y-1">
+        <h1 className="text-[2.5rem] font-bold leading-[1.1] tracking-tight text-white">We sent you a code</h1>
+        <p className="text-[1.25rem] text-white/50 font-light">Please enter it</p>
+      </div>
+      <div className="w-full">
+        <div className="relative rounded-full py-4 px-5 border border-white/10 bg-transparent">
+          <div className="flex items-center justify-center">
+            {code.map((digit, i) => (
+              <Fragment key={i}>
+                <div className="flex items-center">
+                  <div className="relative">
+                    <input
+                      ref={el=>{refs.current[i]=el}}
+                      type="text" inputMode="numeric" pattern="[0-9]*" maxLength={1}
+                      value={digit}
+                      onChange={e=>onChange(i, e.target.value)}
+                      onKeyDown={e=>onKeyDown(i, e)}
+                      className="w-8 text-center text-xl bg-transparent text-white border-none focus:outline-none focus:ring-0 appearance-none"
+                      style={{caretColor:'transparent'}}
+                    />
+                    {!digit && <div className="absolute top-0 left-0 w-full h-full flex items-center justify-center pointer-events-none"><span className="text-xl text-white">0</span></div>}
+                  </div>
+                  {i < 5 && <span className="text-white/20 text-xl">|</span>}
+                </div>
+              </Fragment>
+            ))}
+          </div>
+        </div>
+      </div>
+      <MotionP className="text-white/50 hover:text-white/70 transition-colors cursor-pointer text-sm" whileHover={{scale:1.02}} transition={{duration:0.2}}>
+        Resend code
+      </MotionP>
+      <div className="flex w-full gap-3">
+        <MotionButton onClick={goBack} className="rounded-full bg-white text-black font-medium px-8 py-3 hover:bg-white/90 transition-colors w-[30%]" whileHover={{scale:1.02}} whileTap={{scale:0.98}} transition={{duration:0.2}}>
+          Back
+        </MotionButton>
+        <MotionButton
+          className={`flex-1 rounded-full font-medium py-3 border transition-all duration-300 ${done?'bg-white text-black border-transparent hover:bg-white/90 cursor-pointer':'bg-[#111] text-white/50 border-white/10 cursor-not-allowed'}`}
+          disabled={!done}
+        >
+          Continue
+        </MotionButton>
+      </div>
+      <div className="pt-16">
+        <p className="text-xs text-white/40">
+          By signing up, you agree to the <a href="#" className="underline text-white/40 hover:text-white/60 transition-colors">MSA</a>, <a href="#" className="underline text-white/40 hover:text-white/60 transition-colors">Product Terms</a>, <a href="#" className="underline text-white/40 hover:text-white/60 transition-colors">Policies</a>, <a href="#" className="underline text-white/40 hover:text-white/60 transition-colors">Privacy Notice</a>, and <a href="#" className="underline text-white/40 hover:text-white/60 transition-colors">Cookie Notice</a>.
+        </p>
+      </div>
+    </div>
+  );
+
+  const stepSuccess = (
+    <div key={`s-${animKey}`} className="anim-fade-up space-y-6 text-center">
+      <div className="space-y-1">
+        <h1 className="text-[2.5rem] font-bold leading-[1.1] tracking-tight text-white">You're in!</h1>
+        <p className="text-[1.25rem] text-white/50 font-light">Welcome</p>
+      </div>
+      <div className="anim-scale-in anim-delay-500 py-10">
+        <div className="mx-auto w-16 h-16 rounded-full bg-gradient-to-br from-white to-white/70 flex items-center justify-center">
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-black" viewBox="0 0 20 20" fill="currentColor">
+            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"/>
+          </svg>
+        </div>
+      </div>
+      <button className="anim-fade-in anim-delay-1000 w-full rounded-full bg-white text-black font-medium py-3 hover:bg-white/90 transition-colors">
+        Continue to Dashboard
+      </button>
+    </div>
+  );
+
+  return (
+    <div className={cn('flex w-[100%] flex-col min-h-screen bg-black relative', className)}>
+      {/* Background */}
+      <div className="absolute inset-0 z-0">
+        {showInitial && (
+          <div className="absolute inset-0">
+            <CanvasRevealEffect animationSpeed={3} containerClassName="bg-black" colors={[[255,255,255],[255,255,255]]} dotSize={6} reverse={false} />
+          </div>
+        )}
+        {showReverse && (
+          <div className="absolute inset-0">
+            <CanvasRevealEffect animationSpeed={4} containerClassName="bg-black" colors={[[255,255,255],[255,255,255]]} dotSize={6} reverse={true} />
+          </div>
+        )}
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_rgba(0,0,0,1)_0%,_transparent_100%)]" />
+        <div className="absolute top-0 left-0 right-0 h-1/3 bg-gradient-to-b from-black to-transparent" />
+      </div>
+
+      {/* Content */}
+      <div className="relative z-10 flex flex-col flex-1">
+        <MiniNavbar />
+        <div className="flex flex-1 flex-col lg:flex-row">
+          <div className="flex-1 flex flex-col justify-center items-center">
+            <div className="w-full mt-[150px] max-w-sm">
+              {step === 'email' ? stepEmail : step === 'code' ? stepCode : stepSuccess}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============================
+// Render
+// ============================
+function App() {
+  return (
+    <div className="flex w-full h-screen justify-center items-center">
+      <SignInPage />
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>
