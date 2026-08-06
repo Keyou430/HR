@@ -1,0 +1,55 @@
+# HR Platform — Base Compose (shared service definitions)
+# Used as base for compose.dev.yml (development) and compose.yml (production)
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-hr_platform}
+      POSTGRES_USER: ${POSTGRES_USER:-hr_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-hr_password}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-hr_user} -d ${POSTGRES_DB:-hr_platform}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - hr-net
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+
+  api:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER:-hr_user}:${POSTGRES_PASSWORD:-hr_password}@postgres:5432/${POSTGRES_DB:-hr_platform}
+      ENVIRONMENT: ${ENVIRONMENT:-production}
+      DEBUG: "${DEBUG:-false}"
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:?JWT_SECRET_KEY must be set}
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-}
+      BACKUP_RETENTION_DAYS: "${BACKUP_RETENTION_DAYS:-14}"
+      JSON_LOGS: "${JSON_LOGS:-true}"
+    volumes:
+      - backups:/backups
+    networks:
+      - hr-net
+
+volumes:
+  pgdata:
+  backups:
+
+networks:
+  hr-net:
+    driver: bridge

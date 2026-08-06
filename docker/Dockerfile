@@ -1,3 +1,7 @@
+# HR Platform — Production Dockerfile (multi-stage)
+# Build:  docker build -t hr-platform -f docker/Dockerfile .
+# Run:    docker compose -f docker/compose.yml up -d
+
 # Stage 1: Build frontend
 FROM node:22-alpine AS frontend-builder
 WORKDIR /frontend
@@ -11,7 +15,7 @@ FROM python:3.12-slim
 WORKDIR /app
 
 # Create non-root user
-RUN groupadd -r replica && useradd -r -g replica replica
+RUN groupadd -r hr && useradd -r -g hr hr
 
 # Install system dependencies (curl for health check)
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -29,13 +33,13 @@ COPY backend/ .
 COPY --from=frontend-builder /frontend/dist /app/static
 
 # Copy utility scripts
-COPY scripts/ /app/scripts/
+COPY docker/scripts/ /app/scripts/
 RUN chmod +x /app/scripts/*.sh
 
 # Create data directory for backups
-RUN mkdir -p /app/data/backups && chown -R replica:replica /app
+RUN mkdir -p /app/data/backups && chown -R hr:hr /app
 
-USER replica
+USER hr
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
     CMD curl -f http://localhost:8000/health || exit 1

@@ -1,0 +1,21 @@
+# HR Platform — Development Dockerfile
+# Used by docker/compose.dev.yml for hot-reload development
+
+FROM python:3.12-slim
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Python dependencies (runtime + dev)
+COPY backend/requirements.txt backend/requirements-dev.txt ./
+RUN pip install --no-cache-dir -r requirements.txt -r requirements-dev.txt
+
+# Copy utility scripts
+COPY docker/scripts/ /app/scripts/
+RUN chmod +x /app/scripts/*.sh
+
+EXPOSE 8000
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]

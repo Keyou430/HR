@@ -1,0 +1,37 @@
+# HR Platform — Development Compose override
+# Usage: docker compose -f docker/compose.base.yml -f docker/compose.dev.yml up -d
+#        or: make dev
+
+services:
+  postgres:
+    # Dev: expose on host for direct DB tool access
+    ports:
+      - "5432:5432"
+
+  api:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.dev
+    # Dev: auto-reload via uvicorn --reload
+    environment:
+      ENVIRONMENT: development
+      DEBUG: "true"
+      JSON_LOGS: "false"
+    # Dev: mount source code for hot-reload
+    volumes:
+      - ../backend:/app
+      - backups:/backups
+    # Dev: entrypoint with migration + seed + reload
+    entrypoint: ["/bin/bash", "-c"]
+    command:
+      - |
+        echo "Cleaning __pycache__ (cross-platform compat)..."
+        find /app -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
+        echo "Running Alembic migrations..."
+        alembic upgrade head
+        echo "Seeding dev data..."
+        python /app/scripts/seed_dev.py
+        echo "Starting API with hot-reload..."
+        exec uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+    ports:
+      - "8000:8000"

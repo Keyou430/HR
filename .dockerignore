@@ -36,11 +36,8 @@ tmp-*
 # ── Docs ─────────────────────────────────────────────────────────
 docs/
 
-# ── Docker ───────────────────────────────────────────────────────
-Dockerfile
+# ── Docker (build-time files, not needed in image) ──────────────
 .dockerignore
-docker-compose.yml
-docker-compose.*.yml
 
 # ── Environment (use docker-compose / env vars at runtime) ───────
 .env
