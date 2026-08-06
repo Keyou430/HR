@@ -1344,7 +1344,76 @@ class PortalStore(
                     }
                     for item in DEFAULT_OA_FLOWS
                 ])
+            self._seed_dev_users(db, now)
             db.commit()
+
+    def _seed_dev_users(self, db: Any, now: str) -> None:
+        """Idempotent: create dev/test users matching Docker seed_dev.py."""
+        try:
+            from auth.password import hash_password
+
+            DEV_USERS = [
+                {"username": "admin", "password": "admin123", "display_name": "Administrator",
+                 "email": "admin@hr.example.com", "role": "super_admin"},
+                {"username": "org_admin", "password": "Admin123!", "display_name": "Organization Admin",
+                 "email": "org_admin@hr.example.com", "role": "org_admin"},
+                {"username": "leader", "password": "Admin123!", "display_name": "Department Leader",
+                 "email": "leader@hr.example.com", "role": "dept_leader"},
+                {"username": "staff", "password": "Admin123!", "display_name": "Department Staff",
+                 "email": "staff@hr.example.com", "role": "dept_staff"},
+                {"username": "external", "password": "Admin123!", "display_name": "External User",
+                 "email": "external@hr.example.com", "role": "external"},
+            ]
+
+            role_ids: dict[str, int] = {}
+            rows = db.execute(
+                text("SELECT id, code FROM roles")
+            ).fetchall()
+            for row in rows:
+                role_ids[row[1]] = row[0]
+
+            if not role_ids:
+                return
+
+            for user_def in DEV_USERS:
+                existing = db.execute(
+                    text("SELECT id FROM users WHERE username = :un"),
+                    {"un": user_def["username"]},
+                ).fetchone()
+                if existing is not None:
+                    continue
+
+                pwd_hash = hash_password(user_def["password"])
+                result = db.execute(
+                    text(
+                        "INSERT INTO users (username, password_hash, display_name, email, "
+                        "is_active, token_version, must_change_password, created_at, updated_at) "
+                        "VALUES (:un, :pw, :dn, :em, 1, 1, 0, :ts, :ts)"
+                    ),
+                    {"un": user_def["username"], "pw": pwd_hash,
+                     "dn": user_def["display_name"], "em": user_def["email"], "ts": now},
+                )
+                user_id = result.lastrowid
+
+                db.execute(
+                    text("INSERT INTO user_org_memberships (user_id, org_id, is_default, created_at) "
+                         "VALUES (:uid, 'default', 1, :ts)"),
+                    {"uid": user_id, "ts": now},
+                )
+                db.execute(
+                    text("INSERT INTO user_department_memberships (user_id, org_id, department_id, "
+                         "is_primary, created_at) VALUES (:uid, 'default', 'HQ', 1, :ts)"),
+                    {"uid": user_id, "ts": now},
+                )
+                role_id = role_ids.get(user_def["role"])
+                if role_id:
+                    db.execute(
+                        text("INSERT INTO user_role_bindings (user_id, role_id, org_id, created_at) "
+                             "VALUES (:uid, :rid, 'default', :ts)"),
+                        {"uid": user_id, "rid": role_id, "ts": now},
+                    )
+        except Exception:
+            pass  # Non-critical
 
     def _ensure_sqlite_columns(self, engine: Any) -> None:
         if not str(engine.url).startswith("sqlite"):
