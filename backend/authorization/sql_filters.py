@@ -33,30 +33,25 @@ from authorization.scope import (
 # ═════════════════════════════════════════════════════════════════════
 
 
+def _owner_only_visibility_filter(ctx: AccessContext, table) -> ClauseElement:
+    """WHERE clause that restricts rows to those owned by the current user.
+
+    Super-admins bypass the filter (see everything).  All other roles see
+    only rows where ``owner_id`` matches the authenticated user.
+    """
+    if ctx.is_super_admin:
+        return True
+    return table.c.owner_id == ctx.user_id
+
+
 def task_visibility_filter(ctx: AccessContext, table) -> ClauseElement:
-    """WHERE clause for ``portal_tasks`` queries."""
-    return _build_filter(
-        ctx,
-        table,
-        org_col=table.c.org_id,
-        dept_col=table.c.department_id,
-        owner_col=table.c.owner_id,
-        vis_col=table.c.visibility,
-        sens_col=table.c.sensitivity,
-    )
+    """WHERE clause for ``portal_tasks`` queries — owner-only isolation."""
+    return _owner_only_visibility_filter(ctx, table)
 
 
 def calendar_visibility_filter(ctx: AccessContext, table) -> ClauseElement:
-    """WHERE clause for ``portal_calendar_events`` queries."""
-    return _build_filter(
-        ctx,
-        table,
-        org_col=table.c.org_id,
-        dept_col=table.c.department_id,
-        owner_col=table.c.owner_id,
-        vis_col=table.c.visibility,
-        sens_col=table.c.sensitivity,
-    )
+    """WHERE clause for ``portal_calendar_events`` queries — owner-only isolation."""
+    return _owner_only_visibility_filter(ctx, table)
 
 
 def knowledge_visibility_filter(ctx: AccessContext, table) -> ClauseElement:

@@ -601,38 +601,9 @@ DEFAULT_EMBED_URLS = {
 }
 
 # Phase 4: DEFAULT_TASKS now include RBAC attribution columns.
-# All default tasks are seeded as org-scoped, normal sensitivity,
-# owned by system_seed (user 1) so they are visible to all org members.
-_DEFAULT_TASK_BASE = {
-    "org_id": "default",
-    "department_id": "HQ",
-    "owner_id": 1,
-    "visibility": "org",
-    "sensitivity": "normal",
-}
+DEFAULT_TASKS: list[dict[str, Any]] = []  # No hardcoded seed tasks
 
-DEFAULT_TASKS = [
-    {**_DEFAULT_TASK_BASE, "id": 1, "title": "完成季度工作复盘表", "tag": "今天", "due_time": "10:00", "done": False},
-    {**_DEFAULT_TASK_BASE, "id": 2, "title": "确认信息安全培训名单", "tag": "今天", "due_time": "15:00", "done": False},
-    {**_DEFAULT_TASK_BASE, "id": 3, "title": "整理部门知识库目录", "tag": "本周", "due_time": None, "done": False},
-    {**_DEFAULT_TASK_BASE, "id": 4, "title": "回复项目推进反馈", "tag": "本周", "due_time": None, "done": False},
-    {**_DEFAULT_TASK_BASE, "id": 5, "title": "更新服务目录", "tag": "已完成", "due_time": None, "done": True},
-]
-
-_DEFAULT_EVENT_BASE = {
-    "org_id": "default",
-    "department_id": "HQ",
-    "owner_id": 1,
-    "visibility": "org",
-    "sensitivity": "normal",
-}
-
-DEFAULT_EVENTS = [
-    {**_DEFAULT_EVENT_BASE, "id": 1, "date": "2026-07-02", "title": "项目周会", "tone": "blue"},
-    {**_DEFAULT_EVENT_BASE, "id": 2, "date": "2026-07-06", "title": "信息安全培训", "tone": "green"},
-    {**_DEFAULT_EVENT_BASE, "id": 3, "date": "2026-07-10", "title": "季度复盘", "tone": "orange"},
-    {**_DEFAULT_EVENT_BASE, "id": 4, "date": "2026-07-27", "title": "部门周例会", "tone": "blue"},
-]
+DEFAULT_EVENTS: list[dict[str, Any]] = []  # No hardcoded seed events
 
 DEFAULT_SHORTCUTS = [
     ["公告", "通知中心", "app-orange"],
@@ -665,83 +636,19 @@ DEFAULT_SYSTEMS = [
     "报修管理系统",
 ]
 
-DEFAULT_SERVICES = [
-    "教职工考勤",
-    "教职工请假",
-    "教职工信息变更管理",
-    "离退休人员管理",
-    "教职工进校",
-    "教职工招聘",
-    "在职教职工工资查询与统计",
-    "在职证明",
-    "因公外出报备申请",
-]
+DEFAULT_SERVICES: list[dict[str, Any]] = []  # No hardcoded seed services
 
 DEFAULT_KNOWLEDGE: list[dict[str, Any]] = []
 
-DEFAULT_NOTICES = [
-    {"title": "关于 2026 年暑假安排的通知", "source": "党政办公室", "category": "公告", "time": "07/05 17:09"},
-    {"title": "关于举办办公区人员、信息员培训会的通知", "source": "党政办公室", "category": "培训", "time": "07/03 12:11"},
-]
+DEFAULT_NOTICES: list[dict[str, Any]] = []  # No hardcoded seed notices
 
-DEFAULT_DOCUMENTS = [
-    {"name": "2024 版课程教学大纲模板", "location": "我的云文档", "owner": "郝锐", "updated_at": "07/16", "file_type": "W"},
-    {"name": "部门季度工作复盘表", "location": "团队文档", "owner": "教务办公室", "updated_at": "07/14", "file_type": "X"},
-    {"name": "会议纪要模板", "location": "我的云文档", "owner": "行政中心", "updated_at": "07/12", "file_type": "P"},
-]
+DEFAULT_DOCUMENTS: list[dict[str, Any]] = []  # No hardcoded seed documents
 
-DEFAULT_REPAIR_TICKETS = [
-    {
-        "title": "办公区空调报修",
-        "location": "A 栋 203",
-        "description": "空调无法启动，需要后勤现场检查。",
-        "priority": "normal",
-        "status": "processing",
-        "assignee": "后勤服务中心",
-    },
-    {
-        "title": "会议室投影设备检查",
-        "location": "B 栋 101",
-        "description": "投影画面异常，等待设备维护。",
-        "priority": "low",
-        "status": "submitted",
-        "assignee": None,
-    },
-]
+DEFAULT_REPAIR_TICKETS: list[dict[str, Any]] = []  # No hardcoded seed repair tickets
 
-DEFAULT_ASSET_ITEMS = [
-    {
-        "asset_code": "ASSET-2026-0001",
-        "name": "会议室投影设备",
-        "category": "办公设备",
-        "location": "B 栋 101",
-        "status": "available",
-        "custodian": "行政中心",
-    },
-    {
-        "asset_code": "ASSET-2026-0002",
-        "name": "移动工作站",
-        "category": "信息设备",
-        "location": "设备库",
-        "status": "borrowed",
-        "custodian": "信息中心",
-    },
-]
+DEFAULT_ASSET_ITEMS: list[dict[str, Any]] = []  # No hardcoded seed asset items
 
-DEFAULT_OA_FLOWS = [
-    {
-        "title": "部门用印申请",
-        "flow_type": "用印申请",
-        "status": "pending",
-        "current_handler": "部门负责人",
-    },
-    {
-        "title": "季度采购申请",
-        "flow_type": "采购申请",
-        "status": "processing",
-        "current_handler": "财务处",
-    },
-]
+DEFAULT_OA_FLOWS: list[dict[str, Any]] = []  # No hardcoded seed OA flows
 
 _PORTAL_BASE = {
     "org_id": "default",
@@ -1017,12 +924,7 @@ SHELL_SUBSYSTEM_ENTRY = {
     "estate":           ("internal", None),
 }
 
-DEFAULT_NEWS = [
-    {"title": "组织数字化服务升级，统一门户上线新入口", "source": "企业资讯", "category": "门户建设", "published_at": "2026-07-24"},
-    {"title": "2026 年第二季度运营回顾与重点工作安排", "source": "运营中心", "category": "运营动态", "published_at": "2026-07-22"},
-    {"title": "知识资产沉淀计划启动，支持部门知识库共建", "source": "知识中心", "category": "知识管理", "published_at": "2026-07-18"},
-    {"title": "信息安全与数据合规培训报名通知", "source": "安全办公室", "category": "培训通知", "published_at": "2026-07-16"},
-]
+DEFAULT_NEWS: list[dict[str, Any]] = []  # No hardcoded seed news
 
 
 # ═════════════════════════════════════════════════════════════════════
@@ -1153,7 +1055,7 @@ class PortalStore(
             tasks_seeded = db.scalar(
                 select(settings_table.c.value_json).where(settings_table.c.key == "tasks_seeded"),
             )
-            if tasks_seeded is None and db.scalar(select(func.count()).select_from(tasks_table)) == 0:
+            if DEFAULT_TASKS and tasks_seeded is None and db.scalar(select(func.count()).select_from(tasks_table)) == 0:
                 db.execute(insert(tasks_table), DEFAULT_TASKS)
                 db.execute(
                     insert(settings_table).values(
@@ -1164,7 +1066,7 @@ class PortalStore(
             events_seeded = db.scalar(
                 select(settings_table.c.value_json).where(settings_table.c.key == "events_seeded"),
             )
-            if events_seeded is None and db.scalar(select(func.count()).select_from(events_table)) == 0:
+            if DEFAULT_EVENTS and events_seeded is None and db.scalar(select(func.count()).select_from(events_table)) == 0:
                 db.execute(insert(events_table), DEFAULT_EVENTS)
                 db.execute(
                     insert(settings_table).values(
@@ -1280,7 +1182,7 @@ class PortalStore(
                         )
             except Exception:
                 pass  # entry_url column missing — migration 005 not yet applied
-            if db.scalar(select(func.count()).select_from(portal_notices_table)) == 0:
+            if DEFAULT_NOTICES and db.scalar(select(func.count()).select_from(portal_notices_table)) == 0:
                 db.execute(insert(portal_notices_table), [
                     {
                         **_PORTAL_BASE,
@@ -1296,7 +1198,7 @@ class PortalStore(
                     }
                     for index, item in enumerate(DEFAULT_NOTICES)
                 ])
-            if db.scalar(select(func.count()).select_from(portal_documents_table)) == 0:
+            if DEFAULT_DOCUMENTS and db.scalar(select(func.count()).select_from(portal_documents_table)) == 0:
                 db.execute(insert(portal_documents_table), [
                     {
                         **_PORTAL_BASE,
@@ -1312,30 +1214,7 @@ class PortalStore(
                     }
                     for item in DEFAULT_DOCUMENTS
                 ])
-            if db.scalar(select(func.count()).select_from(portal_resources_table)) == 0:
-                resources = [
-                    ("policy-handbook", "制度手册", "制度规范", "组织制度与办事指南", "汇总组织制度、流程规范和常见问题。", "党政办公室", "app-red", True),
-                    ("data-portal", "数据门户", "数据运营", "经营与运营数据", "提供组织运营指标和专题数据看板。", "信息中心", "app-blue", True),
-                    ("training-library", "培训资料库", "培训学习", "课程与培训材料", "沉淀信息安全、业务流程和工具培训资料。", "人事处", "app-orange", False),
-                    ("service-catalog", "服务目录", "统一服务", "常用服务与申请入口", "展示组织内部服务事项和办理说明。", "综合服务台", "app-green", True),
-                ]
-                db.execute(insert(portal_resources_table), [
-                    {
-                        **_PORTAL_BASE,
-                        "code": code,
-                        "title": title,
-                        "category": category,
-                        "description": description,
-                        "body": body,
-                        "owner": owner,
-                        "icon_tone": tone,
-                        "pinned": pinned,
-                        "updated_at": now,
-                        "created_at": now,
-                    }
-                    for code, title, category, description, body, owner, tone, pinned in resources
-                ])
-            if db.scalar(select(func.count()).select_from(portal_services_table)) == 0:
+            if DEFAULT_SERVICES and db.scalar(select(func.count()).select_from(portal_services_table)) == 0:
                 db.execute(insert(portal_services_table), [
                     {
                         **_PORTAL_BASE,
@@ -1353,7 +1232,7 @@ class PortalStore(
                     }
                     for index, title in enumerate(DEFAULT_SERVICES, start=1)
                 ])
-            if db.scalar(select(func.count()).select_from(portal_news_table)) == 0:
+            if DEFAULT_NEWS and db.scalar(select(func.count()).select_from(portal_news_table)) == 0:
                 db.execute(insert(portal_news_table), [
                     {
                         **_PORTAL_BASE,
@@ -1368,7 +1247,7 @@ class PortalStore(
                     }
                     for index, item in enumerate(DEFAULT_NEWS)
                 ])
-            if db.scalar(select(func.count()).select_from(enterprise_repair_tickets_table)) == 0:
+            if DEFAULT_REPAIR_TICKETS and db.scalar(select(func.count()).select_from(enterprise_repair_tickets_table)) == 0:
                 db.execute(insert(enterprise_repair_tickets_table), [
                     {
                         **_PORTAL_BASE,
@@ -1379,7 +1258,7 @@ class PortalStore(
                     }
                     for item in DEFAULT_REPAIR_TICKETS
                 ])
-            if db.scalar(select(func.count()).select_from(enterprise_asset_items_table)) == 0:
+            if DEFAULT_ASSET_ITEMS and db.scalar(select(func.count()).select_from(enterprise_asset_items_table)) == 0:
                 db.execute(insert(enterprise_asset_items_table), [
                     {
                         **_PORTAL_BASE,
@@ -1390,7 +1269,7 @@ class PortalStore(
                     }
                     for item in DEFAULT_ASSET_ITEMS
                 ])
-            if db.scalar(select(func.count()).select_from(enterprise_oa_flows_table)) == 0:
+            if DEFAULT_OA_FLOWS and db.scalar(select(func.count()).select_from(enterprise_oa_flows_table)) == 0:
                 db.execute(insert(enterprise_oa_flows_table), [
                     {
                         **_PORTAL_BASE,

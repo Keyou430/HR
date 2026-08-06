@@ -49,14 +49,7 @@
     ];
     const allNewsSourcesById = Object.fromEntries(allNewsSources.map(s => [s.id, s.label]));
     const portalNewsItems = [
-      { title: "组织数字化服务升级，统一门户上线新入口", source: "enterprise", tags: ["门户"], date: "07/24" },
-      { title: "2026 年第二季度运营回顾与重点工作安排", source: "operations", tags: ["经营"], date: "07/22" },
-      { title: "知识资产沉淀计划启动，支持部门知识库共建", source: "knowledge", tags: ["共建"], date: "07/18" },
-      { title: "信息安全与数据合规培训报名通知", source: "security", tags: ["培训"], date: "07/16" },
-      { title: "微博热搜：今日话题热度排行", source: "weibo", tags: ["热搜"], date: "07/15" },
-      { title: "人民日报评论：高质量发展新格局", source: "people-daily", tags: ["要闻"], date: "07/14" },
-      { title: "新华社：科技创新驱动产业升级", source: "xinhua", tags: ["科技"], date: "07/13" },
-      { title: "央视新闻报道：全国文化市场观察", source: "cctv", tags: ["观察"], date: "07/12" }
+      { title: "欢迎使用协同门户 — 点击订阅管理配置资讯源", source: "enterprise", tags: ["入门"], date: "" },
     ];
     // ── Auth state (Phase 2) ─────────────────────────────────────
     let _authToken = null;
@@ -516,19 +509,8 @@
     // the stale data before merging server results.
     var _pageLoadUserId = null;
     try { _pageLoadUserId = window.localStorage.getItem(lastUserIdKey); } catch (e) {}
-    const defaultTasks = [
-      { id: 1, title: "完成季度工作复盘表", tag: "今天", dueTime: "10:00", done: false },
-      { id: 2, title: "确认信息安全培训名单", tag: "今天", dueTime: "15:00", done: false },
-      { id: 3, title: "整理部门知识库目录", tag: "本周", dueTime: null, done: false },
-      { id: 4, title: "回复项目推进反馈", tag: "本周", dueTime: null, done: false },
-      { id: 5, title: "更新服务目录", tag: "已完成", done: true },
-    ];
-    const defaultEvents = [
-      { date: "2026-07-02", title: "项目周会", tone: "blue" },
-      { date: "2026-07-06", title: "信息安全培训", tone: "green" },
-      { date: "2026-07-10", title: "季度复盘", tone: "orange" },
-      { date: "2026-07-27", title: "部门周例会", tone: "blue" },
-    ];
+    const defaultTasks = [];
+    const defaultEvents = [];
     function getInitialTasks() {
       try {
         // Prefer user-scoped key (defence-in-depth against cross-user leaks)
@@ -1699,160 +1681,97 @@
       default: {
         title: "业务事项",
         columns: ["事项", "状态", "负责人", "更新时间"],
-        records: [
-          { title: "系统概览", status: "可访问", owner: "归属部门", updated: "今日", detail: "展示系统说明、常用功能、关联资料和支持入口。" },
-          { title: "关联资料", status: "已同步", owner: "综合服务台", updated: "本周", detail: "汇总公告、文档、资源和服务，作为未深度开发系统的内部业务壳。" },
-        ],
+        records: [],
         related: ["关联公告", "关联文档", "关联资源", "关联服务"],
       },
       supervision: {
         title: "督办事项",
         columns: ["事项", "状态", "责任人", "截止时间"],
-        records: [
-          { title: "重点工作推进", status: "进行中", owner: "党政办公室", updated: "08/09", detail: "跟踪责任部门、办理进度、节点反馈和逾期风险。" },
-          { title: "材料报送提醒", status: "待反馈", owner: "综合服务台", updated: "08/06", detail: "记录报送对象、反馈要求和催办记录。" },
-          { title: "办结事项归档", status: "已完成", owner: "党政办公室", updated: "08/02", detail: "办结后沉淀办理过程、附件和验收意见。" },
-        ],
+        records: [],
         related: ["办理规范", "督办公告", "责任清单"],
       },
       "teaching-cloud": {
         title: "教学运行",
         columns: ["事项", "状态", "负责单位", "更新时间"],
-        records: [
-          { title: "课程运行检查", status: "进行中", owner: "教务办公室", updated: "08/04", detail: "汇总课程、教师、教室和教学计划执行情况。" },
-          { title: "调停课记录", status: "待审核", owner: "教学服务台", updated: "08/03", detail: "集中管理调课、停课、补课申请和审批结果。" },
-          { title: "教学通知发布", status: "已发布", owner: "教务办公室", updated: "08/01", detail: "同步教学安排、考试安排和运行提醒。" },
-        ],
+        records: [],
         related: ["教学通知", "课程文档", "教学服务"],
       },
       oa: {
         title: "待办流程",
         columns: ["流程", "状态", "处理人", "更新时间"],
-        records: [
-          { title: "待我审批", status: "待处理", owner: "当前用户", updated: "今日", detail: "聚合请示、用印、会议、文件流转等待办流程。" },
-          { title: "我发起的", status: "流转中", owner: "当前用户", updated: "今日", detail: "查看本人发起流程的当前节点、处理人和流转日志。" },
-          { title: "文件流转", status: "待阅", owner: "OA 支持", updated: "08/03", detail: "承载内部文件传阅、收文处理和归档状态。" },
-        ],
+        records: [],
         related: ["办公通知", "流程制度", "常用表单"],
       },
       website: {
         title: "站点发布",
         columns: ["站点事项", "状态", "负责人", "更新时间"],
-        records: [
-          { title: "栏目内容更新", status: "待审核", owner: "宣传办公室", updated: "今日", detail: "管理栏目稿件、审核状态、发布时间和发布人。" },
-          { title: "站点运行检查", status: "正常", owner: "网站支持", updated: "08/04", detail: "检查站点可访问性、异常链接和发布服务状态。" },
-          { title: "专题页面维护", status: "进行中", owner: "宣传办公室", updated: "08/01", detail: "维护专题页面内容、责任单位和上线状态。" },
-        ],
+        records: [],
         related: ["发布规范", "网站公告", "素材资源"],
       },
       party: {
         title: "党建台账",
         columns: ["事项", "状态", "责任组织", "更新时间"],
-        records: [
-          { title: "组织生活记录", status: "待完善", owner: "组织办公室", updated: "08/04", detail: "沉淀会议、活动、学习记录和附件材料。" },
-          { title: "学习资料维护", status: "已更新", owner: "党建支持", updated: "08/02", detail: "维护理论学习资料、专题课程和阅读记录。" },
-          { title: "党员发展事项", status: "进行中", owner: "组织办公室", updated: "07/30", detail: "记录发展流程、节点材料和组织意见。" },
-        ],
+        records: [],
         related: ["学习资料", "活动公告", "工作手册"],
       },
       alumni: {
         title: "校友关系",
         columns: ["事项", "状态", "负责人", "更新时间"],
-        records: [
-          { title: "校友名录维护", status: "进行中", owner: "校友办公室", updated: "08/04", detail: "按届别、地区、行业维护校友基础信息和联络状态。" },
-          { title: "返校活动管理", status: "筹备中", owner: "校友服务台", updated: "08/01", detail: "管理活动报名、接待安排和后续联络记录。" },
-          { title: "合作线索跟进", status: "待跟进", owner: "校友办公室", updated: "07/29", detail: "记录校友合作需求、跟进负责人和阶段进展。" },
-        ],
+        records: [],
         related: ["活动公告", "联络模板", "服务资源"],
       },
       hr: {
         title: "人员服务",
         columns: ["服务事项", "状态", "经办人", "更新时间"],
-        records: [
-          { title: "证明申请", status: "待办理", owner: "人事服务台", updated: "今日", detail: "支持在职证明、收入证明等常用人事证明的办理跟踪。" },
-          { title: "请假考勤", status: "待确认", owner: "人事处", updated: "今日", detail: "聚合请假申请、考勤异常和销假确认。" },
-          { title: "人员信息维护", status: "已同步", owner: "人事处", updated: "08/02", detail: "维护基础人员信息、部门归属和岗位状态。" },
-        ],
+        records: [],
         related: ["人事制度", "证明模板", "考勤说明"],
       },
       student: {
         title: "学生事务",
         columns: ["事务", "状态", "负责单位", "更新时间"],
-        records: [
-          { title: "学生请假", status: "待审核", owner: "学生工作部", updated: "今日", detail: "集中处理学生请假、销假和异常提醒。" },
-          { title: "奖助事项", status: "进行中", owner: "学生服务台", updated: "08/03", detail: "管理奖学金、助学金、困难认定等服务事项。" },
-          { title: "学生服务工单", status: "待分派", owner: "学生工作部", updated: "08/01", detail: "接收学生事务咨询、办理请求和反馈评价。" },
-        ],
+        records: [],
         related: ["学生公告", "办事指南", "心理服务"],
       },
       employment: {
         title: "就业服务",
         columns: ["事项", "状态", "负责人", "更新时间"],
-        records: [
-          { title: "招聘信息审核", status: "待发布", owner: "就业中心", updated: "今日", detail: "管理单位招聘信息、岗位标签和发布状态。" },
-          { title: "宣讲会安排", status: "已安排", owner: "就业服务台", updated: "08/03", detail: "维护宣讲会时间、地点、报名和签到情况。" },
-          { title: "就业状态确认", status: "待确认", owner: "就业中心", updated: "08/01", detail: "跟踪学生就业去向、协议状态和重点帮扶记录。" },
-        ],
+        records: [],
         related: ["招聘公告", "就业指导", "数据看板"],
       },
       "mental-health": {
         title: "心理服务",
         columns: ["事项", "状态", "负责单位", "更新时间"],
-        records: [
-          { title: "咨询预约", status: "待确认", owner: "心理中心", updated: "今日", detail: "管理咨询预约、时间安排和服务确认。" },
-          { title: "测评记录", status: "已完成", owner: "心理服务台", updated: "08/02", detail: "在权限范围内查看测评完成状态和后续关怀建议。" },
-          { title: "关怀任务", status: "进行中", owner: "心理中心", updated: "07/31", detail: "记录关怀对象、负责老师和跟进节点。" },
-        ],
+        records: [],
         related: ["心理资源", "预约说明", "关怀制度"],
       },
       finance: {
         title: "报销单",
         columns: ["财务事项", "状态", "经办人", "更新时间"],
-        records: [
-          { title: "报销单处理", status: "待审核", owner: "财务服务台", updated: "今日", detail: "展示报销事项、当前节点、经办人和材料完整性。" },
-          { title: "预算项目", status: "执行中", owner: "财务处", updated: "08/03", detail: "查看预算项目余额、使用范围和审批要求。" },
-          { title: "工资查询服务", status: "可办理", owner: "财务处", updated: "08/01", detail: "提供工资查询入口、说明文档和问题反馈。" },
-        ],
+        records: [],
         related: ["财务制度", "报销指南", "预算说明"],
       },
       estate: {
         title: "房间台账",
         columns: ["空间事项", "状态", "管理单位", "更新时间"],
-        records: [
-          { title: "用房信息维护", status: "进行中", owner: "资产与后勤处", updated: "08/04", detail: "维护楼宇、房间、面积、用途和使用部门。" },
-          { title: "用房申请", status: "待审核", owner: "房产服务台", updated: "08/02", detail: "跟踪用房申请、审批意见和分配结果。" },
-          { title: "维修关联", status: "已关联", owner: "后勤服务中心", updated: "07/31", detail: "关联房间维修记录、处理状态和责任人。" },
-        ],
+        records: [],
         related: ["用房制度", "报修服务", "空间资料"],
       },
       assets: {
         title: "资产台账",
         columns: ["资产事项", "状态", "负责人", "更新时间"],
-        records: [
-          { title: "资产目录", status: "已同步", owner: "资产与后勤处", updated: "今日", detail: "维护资产编号、使用人、存放位置和资产状态。" },
-          { title: "借用申请", status: "待审批", owner: "资产服务台", updated: "08/03", detail: "处理资产借用、归还、续借和审批记录。" },
-          { title: "维修记录", status: "处理中", owner: "后勤服务中心", updated: "08/01", detail: "关联报修单、维修进度、费用和满意度反馈。" },
-        ],
+        records: [],
         related: ["资产制度", "报修工单", "盘点资料"],
       },
       "data-portal": {
         title: "指标看板",
         columns: ["数据主题", "状态", "归属部门", "更新时间"],
-        records: [
-          { title: "门户运营指标", status: "已更新", owner: "信息中心", updated: "今日", detail: "展示子系统、公告、服务、文档和访问趋势。" },
-          { title: "专题数据", status: "建设中", owner: "数据服务台", updated: "08/03", detail: "沉淀教学、人事、财务、资产等专题数据入口。" },
-          { title: "数据资源目录", status: "已发布", owner: "信息中心", updated: "08/01", detail: "维护数据资源说明、负责人、更新时间和使用范围。" },
-        ],
+        records: [],
         related: ["经营看板", "数据资源", "指标口径"],
       },
       repair: {
         title: "报修工单",
         columns: ["工单", "状态", "处理人", "更新时间"],
-        records: [
-          { title: "新建报修", status: "可提交", owner: "当前用户", updated: "今日", detail: "填写故障位置、问题描述、联系方式和关联资产。" },
-          { title: "工单列表", status: "处理中", owner: "报修服务台", updated: "今日", detail: "查看待派单、处理中、已完成和待评价工单。" },
-          { title: "服务评价", status: "待评价", owner: "后勤服务中心", updated: "08/02", detail: "对已完成工单进行满意度反馈，形成服务质量统计。" },
-        ],
+        records: [],
         related: ["报修指南", "资产目录", "服务评价"],
       },
     };

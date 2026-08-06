@@ -55,7 +55,7 @@
       <time class="platform-clock" id="platformClock" aria-label="平台当前时间"></time>
       <button class="top-icon" id="globalSearchButton" aria-label="搜索"><svg class="icon"><use href="#i-search"/></svg></button>
       <button class="top-icon" id="notificationButton" aria-label="通知"><svg class="icon"><use href="#i-bell"/></svg><span class="bell-badge" id="notificationBadge" hidden>0</span></button>
-      <button class="user-trigger" id="userButton" aria-label="个人入口"><span class="avatar">郝</span><span>郝锐</span><svg class="icon" style="width:14px;height:14px"><use href="#i-chevron-down"/></svg></button>
+      <button class="user-trigger" id="userButton" aria-label="个人入口"><span class="avatar">?</span><span>未登录</span><svg class="icon" style="width:14px;height:14px"><use href="#i-chevron-down"/></svg></button>
     </div>
   </header>
 
@@ -74,12 +74,12 @@
           <button class="side-link"><svg class="icon"><use href="#i-star"/></svg><span>快捷入口</span></button>
           <button class="side-link"><svg class="icon"><use href="#i-file"/></svg><span>我的文档</span></button>
           <div class="side-section">工作空间</div>
-          <button class="side-link"><svg class="icon"><use href="#i-message"/></svg><span>消息中心</span><small>3</small></button>
-          <button class="side-link"><svg class="icon"><use href="#i-check"/></svg><span>待办中心</span><small>4</small></button>
+          <button class="side-link"><svg class="icon"><use href="#i-message"/></svg><span>消息中心</span><small>0</small></button>
+          <button class="side-link"><svg class="icon"><use href="#i-check"/></svg><span>待办中心</span><small>0</small></button>
         </div>
         <div class="sidebar-foot" id="sidebarFoot">
-          <span class="sidebar-avatar" id="sidebarAvatar">郝</span>
-          <span class="sidebar-name" id="sidebarName">郝锐</span>
+          <span class="sidebar-avatar" id="sidebarAvatar">?</span>
+          <span class="sidebar-name" id="sidebarName">未登录</span>
         </div>
       </aside>
       <div class="sidebar-resizer" id="sidebarResizer" role="separator" aria-label="调整模块侧边栏宽度" aria-orientation="vertical" tabindex="0"></div>
@@ -94,7 +94,7 @@
             <article class="card task-card" id="workspace-tasks">
               <div class="card-header"><div class="card-title">待办任务区</div><button class="card-link" id="clearDoneTasks" type="button">清理已完成</button></div>
               <form class="task-composer" id="taskForm">
-                <input id="taskTitle" autocomplete="off" placeholder="添加任务，例如：整理部门知识库目录" />
+                <input id="taskTitle" autocomplete="off" placeholder="添加新任务…" />
                 <select id="taskTag" aria-label="任务标签">
                   <option value="今天">今天</option>
                   <option value="明天">明天</option>
@@ -104,7 +104,7 @@
                 <input type="time" id="taskTime" aria-label="截止时间" />
                 <button class="btn primary" type="submit"><svg class="icon"><use href="#i-plus"/></svg>添加</button>
               </form>
-              <div class="tabs"><button class="tab active" data-task-filter="todo">未完成 <span id="todoCount">4</span></button><button class="tab" data-task-filter="done">已完成</button><button class="tab" data-task-filter="all">全部</button></div>
+              <div class="tabs"><button class="tab active" data-task-filter="todo">未完成 <span id="todoCount">0</span></button><button class="tab" data-task-filter="done">已完成</button><button class="tab" data-task-filter="all">全部</button></div>
               <div class="task-list" id="taskList"></div>
             </article>
             <article class="card overview-card" id="workspace-today">
@@ -112,9 +112,9 @@
               <div class="card-body">
                 <div class="overview-stats">
                   <div class="overview-stat"><strong id="overviewTodaySchedule">0</strong><span>今日日程</span></div>
-                  <div class="overview-stat"><strong id="overviewTodoCount">4</strong><span>未完成待办</span></div>
-                  <div class="overview-stat"><strong id="overviewDoneCount">1</strong><span>已完成任务</span></div>
-                  <div class="overview-stat"><strong id="overviewTaskCount">5</strong><span>全部任务</span></div>
+                  <div class="overview-stat"><strong id="overviewTodoCount">0</strong><span>未完成待办</span></div>
+                  <div class="overview-stat"><strong id="overviewDoneCount">0</strong><span>已完成任务</span></div>
+                  <div class="overview-stat"><strong id="overviewTaskCount">0</strong><span>全部任务</span></div>
                 </div>
               </div>
             </article>
@@ -158,10 +158,10 @@
               <div class="card-header"><div class="card-title">经营看板</div><button class="card-link" data-view-link="portal-dashboard">详情</button></div>
               <div class="card-body">
                 <div class="workspace-metrics" id="dashboard-overview">
-                  <div class="workspace-metric"><strong>72%</strong><span>年度目标完成</span></div>
-                  <div class="workspace-metric"><strong>05 : 11</strong><span>半年倒计时</span></div>
-                  <div class="workspace-metric"><strong id="dashboardTodoCount">4 项</strong><span>今日待办</span></div>
-                  <div class="workspace-metric"><strong>6 条</strong><span>待处理提醒</span></div>
+                  <div class="workspace-metric"><strong>—</strong><span>年度目标完成</span></div>
+                  <div class="workspace-metric"><strong>—</strong><span>半年倒计时</span></div>
+                  <div class="workspace-metric"><strong id="dashboardTodoCount">0 项</strong><span>今日待办</span></div>
+                  <div class="workspace-metric"><strong>— 条</strong><span>待处理提醒</span></div>
                 </div>
                 <div class="dashboard-shortcuts" id="dashboard-shortcuts">
                   <button class="dash-shortcut" data-open-asset-center="notices"><span class="app-icon app-orange">公</span>公告中心</button>
@@ -178,7 +178,7 @@
           <div class="page-heading"><div><h1>企业门户</h1><p>组织信息总览、服务入口和个人数据集中展示</p></div><div class="heading-actions"><button class="btn" id="portalSettingsBtn"><svg class="icon"><use href="#i-settings"/></svg>门户设置</button></div></div>
           <article class="portal-hero" id="portal-overview"><div><h2>协同门户</h2><p>信息统一入口 · 工作服务中心 · 组织运营总览</p></div></article>
           <div class="portal-main-grid" id="portal-personal">
-            <article class="card"><div class="card-header"><div class="card-title">个人数据</div><button class="card-link">编辑</button></div><div class="card-body"><div class="profile-box"><div class="profile-photo">郝</div><div><strong>郝锐，上午好</strong><p>组织机构：应用物理与材料学院<br />上次登录：2026-07-16 10:56</p></div></div><div class="stat-stack"><div class="stat-tile"><small>我管理的资产</small><strong>13 项</strong></div><div class="stat-tile"><small>待处理任务</small><strong>4 项</strong></div><div class="stat-tile"><small>我的邮箱</small><strong>已绑定</strong></div></div></div></article>
+            <article class="card"><div class="card-header"><div class="card-title">个人数据</div><button class="card-link">编辑</button></div><div class="card-body"><div class="profile-box"><div class="profile-photo">?</div><div><strong>欢迎使用协同门户</strong><p>组织机构：—<br />上次登录：—</p></div></div><div class="stat-stack"><div class="stat-tile"><small>我管理的资产</small><strong>13 项</strong></div><div class="stat-tile"><small>待处理任务</small><strong>4 项</strong></div><div class="stat-tile"><small>我的邮箱</small><strong>已绑定</strong></div></div></div></article>
             <article class="card"><div class="card-header"><div class="card-title">新闻资讯</div><button class="card-link">订阅管理</button></div><div class="feed-list news-list"></div></article>
           </div>
           <div class="portal-section" id="portal-systems"><h2 class="section-title">信息系统</h2><div class="system-matrix" id="systemMatrix"></div></div>
@@ -228,7 +228,7 @@
         <section class="view" id="calendar">
           <div class="page-heading"><div><h1>日历</h1><p>管理会议、日程与团队时间安排</p></div><div class="heading-actions"><button class="btn" data-toast="快速会议已准备"><svg class="icon"><use href="#i-video"/></svg>快速会议</button><button class="btn primary" data-open-modal><svg class="icon"><use href="#i-plus"/></svg>添加日程</button></div></div>
           <div class="calendar-layout" id="calendar-overview">
-            <aside class="card calendar-sidebar"><h3>我的日历</h3><button class="btn primary full-btn" data-open-modal><svg class="icon"><use href="#i-plus"/></svg>添加日程</button><div class="side-mini-head"><span id="sideMonthTitle">2026 年 7 月</span><span><button id="sidePrev" aria-label="上个月"><svg class="icon" style="width:14px;height:14px"><use href="#i-chevron-left"/></svg></button><button id="sideNext" aria-label="下个月"><svg class="icon" style="width:14px;height:14px"><use href="#i-chevron-right"/></svg></button></span></div><div class="week-labels"><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span></div><div class="month-grid" id="sideMonth"></div><div class="calendar-search" style="margin-top:18px"><svg class="icon"><use href="#i-search"/></svg><input placeholder="搜索联系人/会议室" /></div><div class="check-list"><label class="check-line"><input type="checkbox" checked />郝锐</label><label class="check-line"><input type="checkbox" checked style="accent-color:var(--orange)" />待办</label><label class="check-line"><input type="checkbox" checked style="accent-color:var(--green)" />团队日历</label></div></aside>
+            <aside class="card calendar-sidebar"><h3>我的日历</h3><button class="btn primary full-btn" data-open-modal><svg class="icon"><use href="#i-plus"/></svg>添加日程</button><div class="side-mini-head"><span id="sideMonthTitle">2026 年 7 月</span><span><button id="sidePrev" aria-label="上个月"><svg class="icon" style="width:14px;height:14px"><use href="#i-chevron-left"/></svg></button><button id="sideNext" aria-label="下个月"><svg class="icon" style="width:14px;height:14px"><use href="#i-chevron-right"/></svg></button></span></div><div class="week-labels"><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span></div><div class="month-grid" id="sideMonth"></div><div class="calendar-search" style="margin-top:18px"><svg class="icon"><use href="#i-search"/></svg><input placeholder="搜索联系人/会议室" /></div><div class="check-list"><label class="check-line"><input type="checkbox" checked />我的日程</label><label class="check-line"><input type="checkbox" checked style="accent-color:var(--orange)" />待办</label><label class="check-line"><input type="checkbox" checked style="accent-color:var(--green)" />团队日历</label></div></aside>
             <div class="card calendar-main"><div class="calendar-toolbar"><div class="toolbar-left"><button class="btn" id="todayButton">今天</button><button class="btn icon-only" id="calendarPrev" aria-label="上个月"><svg class="icon"><use href="#i-chevron-left"/></svg></button><button class="btn icon-only" id="calendarNext" aria-label="下个月"><svg class="icon"><use href="#i-chevron-right"/></svg></button><h2 id="calendarMonthTitle">2026 年 7 月</h2></div><div class="toolbar-right"><div class="segmented" id="calendarMode"><button class="active" data-calendar-mode="month">月</button><button data-calendar-mode="week">周</button><button data-calendar-mode="day">日</button></div><button class="btn" data-toast="会议室列表已打开">会议室</button><button class="btn icon-only" aria-label="搜索会议室"><svg class="icon"><use href="#i-search"/></svg></button><button class="btn icon-only" aria-label="更多操作"><svg class="icon"><use href="#i-more"/></svg></button></div></div><div id="calendarCanvas"></div></div>
           </div>
         </section>
@@ -454,7 +454,7 @@
   </div>
 
   <div class=”notification-dropdown” id=”notificationDropdown”></div>
-  <div class="popover" id="userPopover"><h3 id="popoverName">郝锐</h3><div class="popover-item" id="popoverDept">应用物理与材料学院<small>个人信息与账号设置</small></div><div class="popover-item" id="popoverPrefs">偏好设置<small>通知、主题与快捷入口</small></div><button class="btn" style="width:100%;margin-top:10px" id="logoutButton">退出登录</button></div>
+  <div class="popover" id="userPopover"><h3 id="popoverName">未登录</h3><div class="popover-item" id="popoverDept">—<small>个人信息与账号设置</small></div><div class="popover-item" id="popoverPrefs">偏好设置<small>通知、主题与快捷入口</small></div><button class="btn" style="width:100%;margin-top:10px" id="logoutButton">退出登录</button></div>
   <div class="modal-backdrop" id="eventModal"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="eventModalTitle"><div class="modal-header"><h2 id="eventModalTitle">添加日程</h2><button class="btn icon-only" data-close-modal aria-label="关闭"><svg class="icon"><use href="#i-close"/></svg></button></div><form id="eventForm"><div class="form-grid"><div class="field"><label for="eventName">日程主题</label><input id="eventName" required placeholder="例如：部门周例会" /></div><div class="field"><label for="eventDate">日期</label><input id="eventDate" type="date" required /></div><div class="field"><label id="eventToneLabel">日程颜色</label><div class="tone-options" id="eventTone" role="radiogroup" aria-labelledby="eventToneLabel"><label class="tone-option blue"><input type="radio" name="eventTone" value="blue" checked /><span class="tone-dot"></span><span>蓝色</span></label><label class="tone-option green"><input type="radio" name="eventTone" value="green" /><span class="tone-dot"></span><span>绿色</span></label><label class="tone-option orange"><input type="radio" name="eventTone" value="orange" /><span class="tone-dot"></span><span>橙色</span></label></div></div><div class="field"><label for="eventNote">备注</label><textarea id="eventNote" placeholder="补充会议地点、参与人或事项说明"></textarea></div></div><div class="modal-actions"><button type="button" class="btn danger" id="eventDeleteButton" hidden>删除日程</button><button type="button" class="btn" data-close-modal>取消</button><button class="btn primary" type="submit">保存日程</button></div></form></div></div>
   <div class="modal-backdrop" id="searchModal"><div class="modal search-modal" role="dialog" aria-modal="true" aria-labelledby="searchModalTitle"><div class="modal-header"><h2 id="searchModalTitle">全局搜索</h2><button class="btn icon-only" data-close-search aria-label="关闭"><svg class="icon"><use href="#i-close"/></svg></button></div><div class="knowledge-search"><svg class="icon"><use href="#i-search"/></svg><input id="globalSearchInput" autofocus placeholder="搜索公告、文档、日程和知识库" /></div><div class="search-results" id="searchResults"><div class="search-result"><strong>输入关键词开始搜索</strong><p>支持搜索子系统、公告、文档、报修、资产、OA 流程等</p></div></div></div></div>
   <div class="modal-backdrop" id="kbFilesModal"><div class="modal" style="max-width:680px" role="dialog" aria-modal="true" aria-labelledby="kbFilesModalTitle"><div class="modal-header"><h2 id="kbFilesModalTitle">文件管理</h2><button class="btn icon-only" data-close-kb-files aria-label="关闭"><svg class="icon"><use href="#i-close"/></svg></button></div><div class="kb-files-toolbar"><span class="kb-files-kb-name" id="kbFilesKbName"></span><button class="btn" id="kbFilesRefresh"><svg class="icon"><use href="#i-refresh"/></svg>刷新</button></div><div class="kb-files-list" id="kbFilesList"></div><div class="kb-files-empty" id="kbFilesEmpty" hidden>该知识库暂无文件。通过下方导入功能上传文件。</div></div></div>

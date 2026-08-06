@@ -111,9 +111,18 @@ class BaseStore:
         """Build WHERE clause for single-resource access (update/delete).
 
         Returns a clause that yields 0 rows if the user lacks access.
+
+        Tasks and calendar events use owner-only isolation: only the
+        creator (or super_admin) can modify or delete them.
         """
         if ctx is None:
             return table.c.id == resource_id
+        table_name = str(table.name)
+        if table_name in {"portal_tasks", "portal_calendar_events"}:
+            if ctx.is_super_admin:
+                return table.c.id == resource_id
+            from sqlalchemy import and_
+            return and_(table.c.id == resource_id, table.c.owner_id == ctx.user_id)
         from authorization.sql_filters import resource_owner_filter
         return resource_owner_filter(ctx, table, resource_id)
 

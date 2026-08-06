@@ -1,48 +1,21 @@
-﻿@echo off
+@echo off
 chcp 65001 >nul
-title Replica Backend - FastAPI (Port 8000)
-
-echo ============================================
-echo   Replica Backend - FastAPI Server
-echo ============================================
-echo.
+title Replica Backend
 
 cd /d "%~dp0backend"
 
-echo [1/2] Checking Python...
 python --version >nul 2>&1
 if %errorlevel% neq 0 (
-    echo [ERROR] Python not found! Please install Python 3.10+ and add it to PATH.
-    pause
-    exit /b 1
-)
-echo        Python found:
-python --version
-
-echo [2/2] Installing dependencies...
-pip install -r requirements.txt -q
-if %errorlevel% neq 0 (
-    echo [WARN] Some dependencies may have failed to install.
+  echo Python not found
+  pause
+  exit /b 1
 )
 
-echo.
-echo Starting FastAPI server on http://0.0.0.0:8000
-echo API docs: http://localhost:8000/docs
-echo.
-echo ============================================
-echo   Press Ctrl+C to stop
-echo ============================================
-echo.
+pip install -r requirements.txt -q 2>nul
 
+echo.
+echo Starting Replica Backend - http://localhost:8000
+echo.
 set DEBUG=false
 python main.py
-
-echo.
-if %errorlevel% neq 0 (
-    echo [ERROR] Backend exited with code %errorlevel%.
-    echo If the error says "address already in use",
-    echo another instance is still running on port 8000.
-)
-echo.
-echo Press any key to close this window...
 pause >nul
