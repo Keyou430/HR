@@ -1,0 +1,196 @@
+name: CI/CD Pipeline
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+    tags: ["v*"]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  # ═══════════════════════════════════════════════════════════════
+  # PR Stage: Fast feedback (lint + test + security)
+  # ═══════════════════════════════════════════════════════════════
+  lint-backend:
+    name: Lint Backend (ruff)
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v3
+        with: { python-version: "3.12" }
+      - run: pip install ruff
+      - run: cd backend && ruff check .
+
+  lint-frontend:
+    name: Lint Frontend (biome)
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: "22" }
+      - run: cd frontend && npm ci
+      - run: cd frontend && npx biome check .
+
+  test:
+    name: Test (Python 3.12)
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_DB: hr_test
+          POSTGRES_USER: hr_user
+          POSTGRES_PASSWORD: hr_password
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready --health-interval 10s
+          --health-timeout 5s --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v3
+        with: { python-version: "3.12" }
+      - name: Install dependencies
+        run: cd backend && pip install -r requirements.txt -r requirements-dev.txt
+      - name: Run Alembic migrations
+        env:
+          DATABASE_URL: postgresql+psycopg2://hr_user:hr_password@localhost:5432/hr_test
+        run: cd backend && alembic upgrade head
+      - name: Run tests
+        env:
+          REPLICA_TEST_DATABASE_URL: postgresql+psycopg2://hr_user:hr_password@localhost:5432/hr_test
+          JWT_SECRET_KEY: ci-test-secret-at-least-32-chars-long
+        run: cd backend && pytest -v --tb=short
+      - name: Coverage report
+        run: cd backend && pytest --cov --cov-report=term --cov-report=html || true
+
+  security:
+    name: Security Scan (bandit)
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v3
+        with: { python-version: "3.12" }
+      - run: pip install bandit
+      - run: cd backend && bandit -r . -c pyproject.toml
+
+  # ═══════════════════════════════════════════════════════════════
+  # Main Branch: Build, Push, Smoke, Scan
+  # ═══════════════════════════════════════════════════════════════
+  build-push:
+    name: Build & Push Image
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions: { contents: read, packages: write }
+    outputs:
+      image_tag: ${{ steps.meta.outputs.tags }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=sha,format=short
+            type=raw,value=latest
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+
+  smoke-test:
+    name: Smoke Test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    needs: build-push
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_DB: hr_platform
+          POSTGRES_USER: hr_user
+          POSTGRES_PASSWORD: hr_password
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready --health-interval 10s
+          --health-timeout 5s --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Start services
+        env:
+          POSTGRES_DB: hr_platform
+          POSTGRES_USER: hr_user
+          POSTGRES_PASSWORD: hr_password
+          JWT_SECRET_KEY: smoke-test-secret-at-least-32-chars
+          ADMIN_USERNAME: admin
+          ADMIN_PASSWORD: admin123
+          ENVIRONMENT: ci
+        run: |
+          docker compose -f docker/compose.yml up -d
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:8000/health; then break; fi
+            sleep 2
+          done
+      - name: Smoke — Health & Login
+        run: |
+          curl -sf http://localhost:8000/health
+          TOKEN=$(curl -sf -X POST http://localhost:8000/api/v1/auth/login \
+            -H "Content-Type: application/json" \
+            -d '{"username":"admin","password":"admin123"}' | jq -r '.access_token')
+          test -n "$TOKEN" && test "$TOKEN" != "null"
+          echo "Smoke test passed"
+      - name: Cleanup
+        if: always()
+        run: docker compose -f docker/compose.yml down -v
+
+  trivy:
+    name: Trivy Image Scan
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    needs: build-push
+    permissions: { contents: read, packages: read, security-events: write }
+    steps:
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          format: sarif
+          output: trivy-results.sarif
+          severity: HIGH,CRITICAL
+          exit-code: 0
+      - uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy-results.sarif
+
+  # ═══════════════════════════════════════════════════════════════
+  # Tag Push: GitHub Release with auto-generated notes
+  # ═══════════════════════════════════════════════════════════════
+  release:
+    name: GitHub Release
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions: { contents: write }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
