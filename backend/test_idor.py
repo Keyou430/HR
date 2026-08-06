@@ -68,7 +68,7 @@ def idor_db(tmp_path, monkeypatch):
     db_url = f"sqlite:///{db_path.as_posix()}"
 
     monkeypatch.setenv("DATABASE_URL", db_url)
-    monkeypatch.setenv("JWT_SECRET_KEY", "test-idor-secret-key-32chars!!!")
+    monkeypatch.setenv("JWT_SECRET_KEY", "test-idor-secret-key-min-32charsok")
     monkeypatch.setenv("FASTGPT_MODE", "mock")
     monkeypatch.setenv("HERMES_MODE", "mock")
     from config import get_settings
@@ -701,4 +701,289 @@ def test_other_dept_user_cannot_mutate_dept_scoped_task(client, tokens, idor_db)
     )
     assert resp.status_code == 404, (
         f"Charlie (Engineering) should NOT update HQ dept task. Got {resp.status_code}"
+    )
+
+
+# ═══════════════════════════════════════════════════════════════════
+# 8. Defence-in-depth: extra JSON fields cannot override attribution
+# ═══════════════════════════════════════════════════════════════════
+
+
+def test_create_task_ignores_injected_attribution(client, tokens, idor_db):
+    """Extra JSON fields (org_id, department_id, owner_id) in create request
+    are ignored — attribution always comes from the server-side context."""
+    # Alice tries to create a task claiming she belongs to org2
+    resp = client.post(
+        "/api/v1/tasks",
+        json={
+            "title": "Injected attribution task",
+            "tag": "今天",
+            "org_id": "org2",          # Attempted injection
+            "department_id": "Org2HQ",  # Attempted injection
+            "owner_id": 999,            # Attempted injection
+            "visibility": "public",     # Attempted injection
+            "sensitivity": "sensitive", # Attempted injection
+        },
+        headers={"Authorization": f"Bearer {tokens['alice']}"},
+    )
+    assert resp.status_code == 201, f"Alice got {resp.status_code}, expected 201"
+
+    # Alice should see her own task (she owns it)
+    resp = client.get("/api/v1/tasks", headers={"Authorization": f"Bearer {tokens['alice']}"})
+    titles = [t["title"] for t in resp.json()["items"]]
+    assert "Injected attribution task" in titles
+
+    # Dave (org2 org_admin) should NOT see Alice's task (it belongs to default org, not org2)
+    resp = client.get("/api/v1/tasks", headers={"Authorization": f"Bearer {tokens['dave']}"})
+    titles = [t["title"] for t in resp.json()["items"]]
+    assert "Injected attribution task" not in titles, (
+        "DEFENCE-IN-DEPTH FAILURE: Alice's task leaked to org2! "
+        "Injected org_id was not ignored."
+    )
+
+    # Bob (same org/dept) should NOT see Alice's task (it defaults to private visibility)
+    resp = client.get("/api/v1/tasks", headers={"Authorization": f"Bearer {tokens['bob']}"})
+    titles = [t["title"] for t in resp.json()["items"]]
+    assert "Injected attribution task" not in titles, (
+        "DEFENCE-IN-DEPTH FAILURE: Alice's private task is visible to Bob! "
+        "Injected visibility='public' was not ignored."
+    )
+
+
+def test_create_event_ignores_injected_attribution(client, tokens, idor_db):
+    """Extra JSON fields in calendar event create are ignored."""
+    resp = client.post(
+        "/api/v1/calendar/events",
+        json={
+            "title": "Injected attribution event",
+            "date": "2026-09-01",
+            "tone": "blue",
+            "org_id": "org2",
+            "department_id": "Org2HQ",
+            "owner_id": 999,
+            "visibility": "org",
+            "sensitivity": "internal",
+        },
+        headers={"Authorization": f"Bearer {tokens['alice']}"},
+    )
+    assert resp.status_code == 201
+
+    # Alice sees her event
+    resp = client.get("/api/v1/calendar/events", headers={"Authorization": f"Bearer {tokens['alice']}"})
+    titles = [e["title"] for e in resp.json()["items"]]
+    assert "Injected attribution event" in titles
+
+    # Dave (org2) does NOT see it
+    resp = client.get("/api/v1/calendar/events", headers={"Authorization": f"Bearer {tokens['dave']}"})
+    titles = [e["title"] for e in resp.json()["items"]]
+    assert "Injected attribution event" not in titles, (
+        "DEFENCE-IN-DEPTH FAILURE: Event leaked to org2!"
+    )
+
+    # Bob (same org, but private visibility) does NOT see it
+    resp = client.get("/api/v1/calendar/events", headers={"Authorization": f"Bearer {tokens['bob']}"})
+    titles = [e["title"] for e in resp.json()["items"]]
+    assert "Injected attribution event" not in titles, (
+        "DEFENCE-IN-DEPTH FAILURE: Private event visible to Bob!"
+    )
+
+
+def test_update_task_cannot_change_attribution(client, tokens, idor_db):
+    """PATCH with extra attribution fields does not change org_id/department_id/owner_id/visibility."""
+    # Alice creates a private task
+    resp = client.post(
+        "/api/v1/tasks",
+        json={"title": "Target for attribution injection", "tag": "今天"},
+        headers={"Authorization": f"Bearer {tokens['alice']}"},
+    )
+    assert resp.status_code == 201
+    task_id = resp.json()["id"]
+
+    # Alice patches it with injection attempt
+    resp = client.patch(
+        f"/api/v1/tasks/{task_id}",
+        json={
+            "title": "Still Alice's task",
+            "org_id": "org2",
+            "department_id": "Org2HQ",
+            "owner_id": 999,
+            "visibility": "org",
+            "sensitivity": "internal",
+        },
+        headers={"Authorization": f"Bearer {tokens['alice']}"},
+    )
+    assert resp.status_code == 200
+
+    # Bob still cannot see it (visibility was NOT changed to org)
+    resp = client.get("/api/v1/tasks", headers={"Authorization": f"Bearer {tokens['bob']}"})
+    titles = [t["title"] for t in resp.json()["items"]]
+    assert "Still Alice's task" not in titles, (
+        "DEFENCE-IN-DEPTH FAILURE: attribution was changed via PATCH — "
+        "Bob can now see Alice's private task!"
+    )
+
+    # Dave (org2) still cannot see it
+    resp = client.get("/api/v1/tasks", headers={"Authorization": f"Bearer {tokens['dave']}"})
+    titles = [t["title"] for t in resp.json()["items"]]
+    assert "Still Alice's task" not in titles
+
+
+# ═══════════════════════════════════════════════════════════════════
+# 9. Chat session isolation (Phase 4 P1-1 fix)
+# ═══════════════════════════════════════════════════════════════════
+
+
+def test_chat_session_isolated_to_owner(client, tokens, idor_db):
+    """Alice creates a chat session; Bob cannot see or access it."""
+    # Alice creates a chat session
+    resp = client.post(
+        "/api/v1/chat/messages",
+        json={"session_id": "alice-chat-001", "role": "user", "content": "Alice's secret chat"},
+        headers={"Authorization": f"Bearer {tokens['alice']}"},
+    )
+    assert resp.status_code == 200
+
+    # Alice can see her session
+    resp = client.get(
+        "/api/v1/chat/sessions",
+        headers={"Authorization": f"Bearer {tokens['alice']}"},
+    )
+    session_ids = [s["id"] for s in resp.json()["items"]]
+    assert "alice-chat-001" in session_ids
+
+    # Bob cannot see Alice's session
+    resp = client.get(
+        "/api/v1/chat/sessions",
+        headers={"Authorization": f"Bearer {tokens['bob']}"},
+    )
+    session_ids = [s["id"] for s in resp.json()["items"]]
+    assert "alice-chat-001" not in session_ids, (
+        "P1-1 FAILURE: Bob can see Alice's chat session in list"
+    )
+
+    # Bob cannot read Alice's messages
+    resp = client.get(
+        "/api/v1/chat/sessions/alice-chat-001/messages",
+        headers={"Authorization": f"Bearer {tokens['bob']}"},
+    )
+    items = resp.json()["items"]
+    assert len(items) == 0, (
+        f"P1-1 FAILURE: Bob can read Alice's chat messages! Got {len(items)} messages"
+    )
+
+    # Bob cannot delete Alice's session
+    resp = client.delete(
+        "/api/v1/chat/sessions/alice-chat-001",
+        headers={"Authorization": f"Bearer {tokens['bob']}"},
+    )
+    assert resp.status_code == 404, (
+        f"P1-1 FAILURE: Bob got {resp.status_code} when deleting Alice's session, expected 404"
+    )
+
+    # Verify Alice's session still exists (Bob's delete didn't work)
+    resp = client.get(
+        "/api/v1/chat/sessions",
+        headers={"Authorization": f"Bearer {tokens['alice']}"},
+    )
+    session_ids = [s["id"] for s in resp.json()["items"]]
+    assert "alice-chat-001" in session_ids, (
+        "P1-1 FAILURE: Bob deleted Alice's chat session!"
+    )
+
+
+def test_chat_session_delete_own_only(client, tokens, idor_db):
+    """Alice can delete her own session; Bob cannot delete nonexistent sessions."""
+    # Create session as Alice
+    resp = client.post(
+        "/api/v1/chat/messages",
+        json={"session_id": "alice-chat-del-001", "role": "user", "content": "Delete me"},
+        headers={"Authorization": f"Bearer {tokens['alice']}"},
+    )
+    assert resp.status_code == 200
+
+    # Alice can delete her own session
+    resp = client.delete(
+        "/api/v1/chat/sessions/alice-chat-del-001",
+        headers={"Authorization": f"Bearer {tokens['alice']}"},
+    )
+    assert resp.status_code == 200
+    assert resp.json()["ok"] is True
+
+    # Verify it's gone
+    resp = client.get(
+        "/api/v1/chat/sessions",
+        headers={"Authorization": f"Bearer {tokens['alice']}"},
+    )
+    session_ids = [s["id"] for s in resp.json()["items"]]
+    assert "alice-chat-del-001" not in session_ids
+
+
+def test_chat_message_write_rejected_for_foreign_session(client, tokens, idor_db):
+    """Bob cannot inject messages into Alice's existing chat session."""
+    # Alice creates a session
+    resp = client.post(
+        "/api/v1/chat/messages",
+        json={"session_id": "alice-chat-write-test", "role": "user", "content": "Hello"},
+        headers={"Authorization": f"Bearer {tokens['alice']}"},
+    )
+    assert resp.status_code == 200
+
+    # Bob tries to write to Alice's session
+    resp = client.post(
+        "/api/v1/chat/messages",
+        json={"session_id": "alice-chat-write-test", "role": "user", "content": "Injected by Bob!"},
+        headers={"Authorization": f"Bearer {tokens['bob']}"},
+    )
+    # Request returns 200 (silently dropped — does not reveal session existence)
+    assert resp.status_code == 200
+
+    # Alice reads messages — should NOT contain Bob's injection
+    resp = client.get(
+        "/api/v1/chat/sessions/alice-chat-write-test/messages",
+        headers={"Authorization": f"Bearer {tokens['alice']}"},
+    )
+    messages = [m["content"] for m in resp.json()["items"]]
+    assert "Injected by Bob!" not in messages, (
+        "P1-1 FAILURE: Bob injected a message into Alice's chat session!"
+    )
+    assert "Hello" in messages, "Alice's original message should still be there"
+
+
+def test_chat_session_ownership_claimed_on_first_use(client, tokens, idor_db):
+    """The first user to write to a new session becomes its owner."""
+    # Alice writes first
+    resp = client.post(
+        "/api/v1/chat/messages",
+        json={"session_id": "shared-session-name", "role": "user", "content": "Alice was first"},
+        headers={"Authorization": f"Bearer {tokens['alice']}"},
+    )
+    assert resp.status_code == 200
+
+    # Bob tries to write to the same session name
+    resp = client.post(
+        "/api/v1/chat/messages",
+        json={"session_id": "shared-session-name", "role": "user", "content": "Bob's attempt"},
+        headers={"Authorization": f"Bearer {tokens['bob']}"},
+    )
+    assert resp.status_code == 200  # silently dropped
+
+    # Alice should NOT see Bob's message
+    resp = client.get(
+        "/api/v1/chat/sessions/shared-session-name/messages",
+        headers={"Authorization": f"Bearer {tokens['alice']}"},
+    )
+    messages = [m["content"] for m in resp.json()["items"]]
+    assert "Alice was first" in messages
+    assert "Bob's attempt" not in messages, (
+        "P1-1 FAILURE: Bob wrote to Alice's session!"
+    )
+
+    # Bob should NOT see Alice's session
+    resp = client.get(
+        "/api/v1/chat/sessions",
+        headers={"Authorization": f"Bearer {tokens['bob']}"},
+    )
+    session_ids = [s["id"] for s in resp.json()["items"]]
+    assert "shared-session-name" not in session_ids, (
+        "P1-1 FAILURE: Bob sees Alice's session in his list!"
     )

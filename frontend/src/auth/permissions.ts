@@ -61,6 +61,44 @@ export const PERM = {
   NOTICE_CREATE: "notice:create",
   NOTICE_UPDATE: "notice:update",
   NOTICE_DELETE: "notice:delete",
+
+  // Repair (报修)
+  REPAIR_VIEW: "repair:view",
+  REPAIR_CREATE: "repair:create",
+  REPAIR_ASSIGN: "repair:assign",
+  REPAIR_UPDATE: "repair:update",
+  REPAIR_CLOSE: "repair:close",
+
+  // Asset (资产)
+  ASSET_VIEW: "asset:view",
+  ASSET_CREATE: "asset:create",
+  ASSET_UPDATE: "asset:update",
+  ASSET_BORROW: "asset:borrow",
+
+  // OA (OA 审批)
+  OA_VIEW: "oa:view",
+  OA_CREATE: "oa:create",
+  OA_UPDATE: "oa:update",
+
+  // HR (人事)
+  HR_VIEW: "hr:view",
+  HR_CREATE: "hr:create",
+  HR_UPDATE: "hr:update",
+
+  // Finance (财务)
+  FINANCE_VIEW: "finance:view",
+  FINANCE_CREATE: "finance:create",
+  FINANCE_APPROVE: "finance:approve",
+
+  // Subsystem (子系统管理)
+  SUBSYSTEM_VIEW: "subsystem:view",
+  SUBSYSTEM_MANAGE: "subsystem:manage",
+
+  // Dashboard (仪表板)
+  DASHBOARD_VIEW: "dashboard:view",
+
+  // Enterprise records (企业记录)
+  ENTERPRISE_RECORDS_VIEW: "enterprise:records:view",
 } as const;
 
 export type PermissionCode = (typeof PERM)[keyof typeof PERM];

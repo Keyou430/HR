@@ -4,12 +4,15 @@ from typing import Any
 
 import httpx
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
+from sqlalchemy.orm import Session
 
+from ai_security.firewall import ai_security_pipeline
 from auth.dependencies import get_current_user, require_permission
 from commands import classify_command, execute_command
 from config import Settings, get_settings
 from hermes import HermesGatewayError, hermes_chat
 from schemas import KnowledgeChatRequest, KnowledgeMappingUpdate
+from session import get_db
 from store import store
 
 logger = logging.getLogger("replica.knowledge")
@@ -116,140 +119,6 @@ async def _build_search_queries(settings: Settings, question: str) -> list[str]:
     return [question]
 
 
-async def _classify_intent(settings: Settings, question: str) -> str:
-    """调用 Hermes 判断问题是否需要检索知识库。返回 'retrieve' 或 'chat'。"""
-    try:
-        answer = await hermes_chat(
-            settings=settings,
-            messages=[
-                {
-                    "role": "system",
-                    "content": (
-                        "判断用户问题类型，只回复一个词：\n"
-                        "- retrieve：需要检索专业知识库（学术概念、制度分析、文献内容、理论推理等）\n"
-                        "- chat：日常问题、操作指南、生活常识、闲聊问候等通用对话\n\n"
-                        "只回复 retrieve 或 chat，不要任何其他文字。"
-                    ),
-                },
-                {"role": "user", "content": question},
-            ],
-        )
-        result = answer.strip().lower()
-        if "retrieve" in result:
-            return "retrieve"
-        return "chat"
-    except HermesGatewayError:
-        logger.warning("Intent classification failed, defaulting to retrieve")
-        return "retrieve"
-
-
-async def _rag_pipeline(
-    settings: Settings,
-    question: str,
-    enabled_spaces: list[dict[str, Any]],
-    kb_names: str,
-    history: list[dict[str, str]] | None = None,
-) -> dict[str, Any]:
-    """执行完整的 RAG 检索+生成管线，返回 answer 和 sources。"""
-    # Step 0: 查询拆分
-    search_queries = await _build_search_queries(settings, question)
-    logger.info("RAG step0 split — %d queries: %s", len(search_queries), search_queries)
-
-    # Step 1: 多查询检索 + 去重
-    seen_ids: set[str] = set()
-    context_chunks: list[dict[str, Any]] = []
-    for query in search_queries:
-        for space in enabled_spaces:
-            dataset_id = space.get("fastgpt_dataset_id")
-            if not dataset_id:
-                continue
-            try:
-                chunks = await search_fastgpt_dataset(
-                    settings=settings,
-                    dataset_id=dataset_id,
-                    query=query,
-                    top_k=10,
-                    similarity=0.2,
-                )
-                new_count = 0
-                for chunk in chunks:
-                    chunk["_kb_title"] = space.get("title", dataset_id)
-                    cid = chunk.get("id", chunk.get("q", "")[:32])
-                    if cid not in seen_ids:
-                        seen_ids.add(cid)
-                        context_chunks.append(chunk)
-                        new_count += 1
-                logger.info(
-                    "RAG step1 search — kb=%r query=%r hits=%d new=%d",
-                    space.get("title"), query[:40], len(chunks), new_count,
-                )
-            except KnowledgeGatewayError:
-                logger.warning("RAG step1 search FAILED — kb=%r", space.get("title"), exc_info=True)
-
-    logger.info("RAG step1 done — total_chunks=%d", len(context_chunks))
-
-    # Step 2: 构建上下文
-    if context_chunks:
-        context_blocks: list[str] = []
-        for i, c in enumerate(context_chunks[:20], 1):
-            source = c.get("sourceName", "未知文档")
-            kb = c.get("_kb_title", "未知")
-            text = c.get("q", "")
-            context_blocks.append(
-                f"### 片段 {i} [{kb} · {source}]\n{text}\n"
-            )
-        context_text = "\n".join(context_blocks)
-        system_prompt = (
-            f"你是知识库助手。请**仅基于**以下检索到的文档片段回答用户问题。\n\n"
-            f"## 检索结果\n\n{context_text}\n\n"
-            f"## 严格回答格式（必须遵守）\n\n"
-            f"1. **引用文段**：从上述片段中挑选与问题直接相关的段落原文，逐条列出。每条标注「来源文档」。"
-            f"不要概括、不要改写——必须引用片段中的原句。\n"
-            f"2. **结论**：基于引用的文段，用1-2段给出你的分析结论。\n"
-            f"3. **禁止**：不要写「缺少信息」「无法回答」「建议补充」等内容。"
-            f"即使片段不完美匹配，也要基于现有内容给出最佳分析。"
-        )
-    else:
-        system_prompt = (
-            f"你是 Replica 协同门户的知识库助手。"
-            f"当前可用的知识库包括：{kb_names}。"
-            f"本次未检索到与问题直接相关的文档，请基于你的知识回答用户问题。"
-        )
-
-    # Step 3: 调用 LLM（带对话历史上下文）
-    logger.info("RAG step3 llm — model=%s prompt_chars=%d history=%d", settings.HERMES_MODEL, len(system_prompt), len(history or []))
-    try:
-        answer = await hermes_chat(
-            settings=settings,
-            messages=[
-                {"role": "system", "content": system_prompt},
-                *(history or []),
-                {"role": "user", "content": question},
-            ],
-        )
-        logger.info("RAG step3 done — answer_chars=%d", len(answer))
-    except HermesGatewayError:
-        logger.warning("RAG step3 llm FAILED — falling back", exc_info=True)
-        if context_chunks:
-            answer = (
-                f"AI 服务暂时不可用。以下是从知识库检索到的相关内容摘要：\n\n"
-                + "\n".join(
-                    f"- [{c.get('_kb_title', '未知')}] {c.get('q', '')[:200]}..."
-                    for c in context_chunks[:5]
-                )
-            )
-        else:
-            answer = f"已基于{kb_names}检索：{question}。建议先查看服务目录、制度手册和部门复盘材料。"
-
-    return {
-        "answer": answer,
-        "sources": [
-            {"title": c.get("_kb_title", ""), "document": c.get("sourceName", ""), "score": _extract_score(c.get("score"))}
-            for c in context_chunks[:10]
-        ],
-    }
-
-
 def _extract_score(score: Any) -> float:
     """从 FastGPT 返回的 score 字段中安全提取相似度数值。
 
@@ -272,12 +141,20 @@ def _extract_score(score: Any) -> float:
     return 0.0
 
 
-def _load_chat_history(session_id: str | None, max_messages: int = 12) -> list[dict[str, str]]:
-    """加载最近的对话历史，转换为 Hermes API 消息格式。相邻重复消息去重。"""
+def _load_chat_history(
+    session_id: str | None,
+    max_messages: int = 12,
+    user: dict[str, Any] | None = None,
+) -> list[dict[str, str]]:
+    """加载最近的对话历史，转换为 Hermes API 消息格式。相邻重复消息去重。
+
+    When *user* is provided the store enforces session ownership — only the
+    session owner can load the history (Phase 4 security fix).
+    """
     if not session_id:
         return []
     try:
-        data = store.get_chat_messages(session_id, limit=max_messages)
+        data = store.get_chat_messages(session_id, limit=max_messages, user=user)
         messages = data.get("items", [])
         if not messages:
             return []
@@ -300,13 +177,23 @@ def _load_chat_history(session_id: str | None, max_messages: int = 12) -> list[d
         return []
 
 
-def _save_chat_turn(session_id: str | None, question: str, answer: str, action: str | None = None) -> None:
-    """在服务端保存一轮对话（用户问题 + 助手回答）。同步写入，确保下一轮请求能加载到历史。"""
+def _save_chat_turn(
+    session_id: str | None,
+    question: str,
+    answer: str,
+    action: str | None = None,
+    user_id: int | None = None,
+) -> None:
+    """在服务端保存一轮对话（用户问题 + 助手回答）。同步写入，确保下一轮请求能加载到历史。
+
+    When *user_id* is provided the store enforces session ownership — only the
+    session owner can write messages (Phase 4 security fix).
+    """
     if not session_id:
         return
     try:
-        store.save_chat_message(session_id, "user", question, action=action)
-        store.save_chat_message(session_id, "assistant", answer, action=action)
+        store.save_chat_message(session_id, "user", question, action=action, user_id=user_id)
+        store.save_chat_message(session_id, "assistant", answer, action=action, user_id=user_id)
     except Exception:
         logger.warning("Failed to save chat turn for session %s", session_id, exc_info=True)
         # 持久化失败不影响对话功能
@@ -316,13 +203,11 @@ def _save_chat_turn(session_id: str | None, question: str, answer: str, action: 
 async def knowledge_chat(
     payload: KnowledgeChatRequest,
     current_user: dict[str, Any] = Depends(get_current_user),
+    db: Session = Depends(get_db),
 ) -> dict:
     settings = get_settings()
-    spaces = store.list_knowledge_spaces(filter_=payload.scope, user=current_user)["items"]
-    enabled_spaces = [s for s in spaces if s.get("enabled", True)]
-    kb_names = "、".join(item["title"] for item in enabled_spaces[:5]) or "全部知识库"
 
-    # 解析问题：支持 /rag 和 /chat 斜杠命令强制指定模式
+    # ── 解析问题：支持 /rag 和 /chat 斜杠命令强制指定模式 ──
     question = payload.question.strip()
     forced_mode: str | None = None
     for prefix in ("/rag", "/RAG", "/chat", "/CHAT"):
@@ -342,60 +227,50 @@ async def knowledge_chat(
                     cmd.get("action"), cmd.get("params"),
                 )
                 result = execute_command(cmd)
-                _save_chat_turn(payload.session_id, question, result["answer"], result.get("action"))
+                _save_chat_turn(payload.session_id, question, result["answer"], result.get("action"),
+                                user_id=current_user["id"])
                 return result
         else:
             logger.info("knowledge_chat — skipping command classification: question too long (%d chars)", len(question))
 
-    # 加载对话历史上下文
-    history = _load_chat_history(payload.session_id)
+    # ── 加载对话历史上下文（传入 current_user 以强制会话所有权检查）──
+    history = _load_chat_history(payload.session_id, user=current_user)
 
-    # 确定运行模式
+    # ── 确定请求模式 ──
     if forced_mode:
-        run_mode = forced_mode
+        requested_mode = forced_mode
     elif payload.mode in ("rag", "chat"):
-        run_mode = payload.mode
+        requested_mode = payload.mode
     else:
-        # auto: Hermes 智能判断
-        run_mode = await _classify_intent(settings, question)
+        requested_mode = "auto"
 
     logger.info(
-        "knowledge_chat — mode=%s question=%r kb_count=%d",
-        run_mode, question[:120], len(enabled_spaces),
+        "knowledge_chat — mode=%s question=%r",
+        requested_mode, question[:120],
     )
 
-    # 分支：通用对话 / RAG 检索增强
-    response: dict[str, Any]
-    save_action: str
-    if run_mode == "chat":
-        logger.info("CHAT mode — direct LLM call (history=%d)", len(history))
-        try:
-            answer = await hermes_chat(
-                settings=settings,
-                messages=[
-                    {
-                        "role": "system",
-                        "content": (
-                            "你是 Replica 协同门户的智能助手。请用中文回答用户问题，简洁、准确、有帮助。"
-                            "如果是操作指南类问题，请给出分步骤说明。"
-                            "你可以看到完整的对话历史，请基于上下文连贯地回答。"
-                        ),
-                    },
-                    *history,
-                    {"role": "user", "content": question},
-                ],
-            )
-        except HermesGatewayError:
-            answer = "AI 服务暂时不可用，请稍后重试。"
-        response = {"answer": answer, "sources": [], "mode": "chat"}
-        save_action = "chat"
-    else:
-        # RAG 检索增强
-        response = await _rag_pipeline(settings, question, enabled_spaces, kb_names, history)
-        response["mode"] = "rag"
-        save_action = "rag"
+    # ── Phase 5: AI 安全防火墙管线 ──
+    # 处理顺序: 认证 → kb:chat 权限 → 数据范围 → 风险分类 → 授权检索 → LLM 生成 → 输出检查 → 审计
+    fw_result = await ai_security_pipeline(
+        settings=settings,
+        user=current_user,
+        db=db,
+        question=question,
+        mode=requested_mode,
+        scope=payload.scope,
+        session_id=payload.session_id,
+        store=store,
+        history=history,
+    )
 
-    _save_chat_turn(payload.session_id, question, response["answer"], save_action)
+    response: dict[str, Any] = {
+        "answer": fw_result.answer,
+        "sources": fw_result.sources,
+        "mode": fw_result.mode,
+    }
+
+    _save_chat_turn(payload.session_id, question, fw_result.answer, fw_result.mode,
+                    user_id=current_user["id"])
     return response
 
 
@@ -434,6 +309,7 @@ async def search_fastgpt_dataset(
 async def import_knowledge_file(
     dataset_id: str = Form(min_length=1),
     file: UploadFile = File(),
+    current_user: dict[str, Any] = Depends(get_current_user),
 ) -> dict[str, Any]:
     content = await file.read()
     if not content:
@@ -453,6 +329,7 @@ async def import_knowledge_file(
             file_name=result["file_name"],
             status=result["status"],
             collection_id=extract_collection_id(result.get("fastgpt_response")),
+            user=current_user,
         )
         return result
     except KnowledgeGatewayError as exc:
@@ -661,8 +538,21 @@ def dedupe_fastgpt_resources(resources: list[dict[str, Any]]) -> list[dict[str, 
 
 
 @router.get("/datasets/{dataset_id}/files")
-async def list_dataset_files(dataset_id: str) -> dict[str, Any]:
-    """列出 FastGPT 知识库中的文件（collection）。"""
+async def list_dataset_files(
+    dataset_id: str,
+    current_user: dict[str, Any] = Depends(get_current_user),
+) -> dict[str, Any]:
+    """列出 FastGPT 知识库中的文件（collection）。
+
+    Verifies that the user is authorised to access the dataset's knowledge
+    mapping before forwarding the request to FastGPT (Phase 4 security fix).
+    """
+    # ── Authorisation: user must have access to the dataset's mapping ──
+    mappings = store.list_knowledge_mappings(user=current_user)["items"]
+    authorized_ids = {m.get("fastgpt_dataset_id") for m in mappings if m.get("fastgpt_dataset_id")}
+    if dataset_id not in authorized_ids:
+        raise HTTPException(status_code=404, detail="dataset not found")
+
     settings = get_settings()
     if settings.FASTGPT_MODE != "real":
         return {"items": [], "total": 0}
@@ -703,7 +593,10 @@ async def list_dataset_files(dataset_id: str) -> dict[str, Any]:
 
 @router.delete("/datasets/{dataset_id}/files/{file_id}",
                dependencies=[Depends(require_permission("kb:delete"))])
-async def delete_dataset_file(dataset_id: str, file_id: str) -> dict[str, Any]:
+async def delete_dataset_file(
+    dataset_id: str, file_id: str,
+    current_user: dict[str, Any] = Depends(get_current_user),
+) -> dict[str, Any]:
     """删除 FastGPT 知识库中的文件（collection）。"""
     settings = get_settings()
     if settings.FASTGPT_MODE != "real":
@@ -715,7 +608,7 @@ async def delete_dataset_file(dataset_id: str, file_id: str) -> dict[str, Any]:
             path=f"/core/dataset/collection/delete?id={file_id}",
         )
         # Also clean up local import records for this collection
-        store.delete_knowledge_import_by_collection(file_id)
+        store.delete_knowledge_import_by_collection(file_id, user=current_user)
         return {"ok": True, "fastgpt_response": payload}
     except KnowledgeGatewayError as exc:
         raise HTTPException(

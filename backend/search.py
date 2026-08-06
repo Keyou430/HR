@@ -16,6 +16,7 @@ router = APIRouter(
 @router.get("")
 async def global_search(
     q: str = Query(default=""),
+    limit: int = Query(default=20, ge=1, le=50),
     current_user: dict[str, Any] = Depends(require_permission("search:view")),
 ) -> dict:
-    return store.search(q, user=current_user)
+    return store.search(q, user=current_user, limit=limit)

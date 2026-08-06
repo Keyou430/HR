@@ -1,6 +1,6 @@
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Body, Depends, HTTPException
 
 from auth.dependencies import get_current_user
 from config import Settings, get_settings
@@ -90,3 +90,86 @@ async def portal_bootstrap(
         },
         **payload,
     }
+
+
+@router.get("/notices")
+async def list_notices(current_user: dict[str, Any] = Depends(get_current_user)) -> dict:
+    return store.list_portal_assets("notices", user=current_user)
+
+
+@router.get("/notices/{notice_id}")
+async def get_notice(notice_id: int, current_user: dict[str, Any] = Depends(get_current_user)) -> dict:
+    item = store.get_portal_asset("notices", str(notice_id), user=current_user)
+    if item is None:
+        raise HTTPException(status_code=404, detail="notice not found")
+    return item
+
+
+@router.get("/documents")
+async def list_documents(current_user: dict[str, Any] = Depends(get_current_user)) -> dict:
+    return store.list_portal_assets("documents", user=current_user)
+
+
+@router.get("/documents/{document_id}")
+async def get_document(document_id: int, current_user: dict[str, Any] = Depends(get_current_user)) -> dict:
+    item = store.get_portal_asset("documents", str(document_id), user=current_user)
+    if item is None:
+        raise HTTPException(status_code=404, detail="document not found")
+    return item
+
+
+@router.get("/resources")
+async def list_resources(current_user: dict[str, Any] = Depends(get_current_user)) -> dict:
+    return store.list_portal_assets("resources", user=current_user)
+
+
+@router.get("/resources/{code}")
+async def get_resource(code: str, current_user: dict[str, Any] = Depends(get_current_user)) -> dict:
+    item = store.get_portal_asset("resources", code, user=current_user)
+    if item is None:
+        raise HTTPException(status_code=404, detail="resource not found")
+    return item
+
+
+@router.get("/services")
+async def list_services(current_user: dict[str, Any] = Depends(get_current_user)) -> dict:
+    return store.list_portal_assets("services", user=current_user)
+
+
+@router.get("/services/{code}")
+async def get_service(code: str, current_user: dict[str, Any] = Depends(get_current_user)) -> dict:
+    item = store.get_portal_asset("services", code, user=current_user)
+    if item is None:
+        raise HTTPException(status_code=404, detail="service not found")
+    return item
+
+
+@router.get("/news")
+async def list_news(current_user: dict[str, Any] = Depends(get_current_user)) -> dict:
+    return store.list_portal_assets("news", user=current_user)
+
+
+@router.get("/news/{news_id}")
+async def get_news(news_id: int, current_user: dict[str, Any] = Depends(get_current_user)) -> dict:
+    item = store.get_portal_asset("news", str(news_id), user=current_user)
+    if item is None:
+        raise HTTPException(status_code=404, detail="news not found")
+    return item
+
+
+@router.get("/preferences")
+async def get_preferences(current_user: dict[str, Any] = Depends(get_current_user)) -> dict:
+    return store.get_portal_preferences(user=current_user)
+
+
+@router.put("/preferences")
+async def update_preferences(
+    payload: dict[str, Any] = Body(default_factory=dict),
+    current_user: dict[str, Any] = Depends(get_current_user),
+) -> dict:
+    return store.update_portal_preferences(payload, user=current_user)
+
+
+@router.get("/dashboard")
+async def get_portal_dashboard(current_user: dict[str, Any] = Depends(get_current_user)) -> dict:
+    return store.portal_dashboard(user=current_user)

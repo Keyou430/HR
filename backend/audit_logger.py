@@ -2,17 +2,24 @@
 
 Every auth-sensitive operation should call ``audit_log`` so that
 security-relevant events are traceable.
+
+Security invariant: a failure to write an audit record must NOT block the
+business operation.  This function catches all exceptions and emits a
+WARNING-level log line so operators still have visibility of the failure.
 """
 
 from __future__ import annotations
 
 import json
+import logging
 import uuid
 from datetime import datetime, timezone
 from typing import Any
 
 from sqlalchemy import text
 from sqlalchemy.orm import Session
+
+logger = logging.getLogger("replica.audit")
 
 
 def _ts() -> str:
@@ -40,31 +47,39 @@ def audit_log(
     ``action`` should be a short kebab-case identifier (e.g.
     ``"auth.login.success"``).  ``decision`` is ``"allow"`` (default),
     ``"deny"``, or ``"error"``.
+
+    Does **not** commit — the caller owns the transaction boundary.
+    Failures are logged at WARNING and swallowed so that a broken audit
+    table never blocks authentication or business operations.
     """
-    db.execute(
-        text(
-            "INSERT INTO audit_logs "
-            "(request_id, user_id, org_id, department_id, action, "
-            "resource_type, resource_id, decision, reason, "
-            "ip_address, user_agent, detail_json, created_at) "
-            "VALUES (:rid, :uid, :oid, :did, :act, :rtype, :rid2, :dec, :reason, "
-            ":ip, :ua, :detail, :ts)"
-        ),
-        {
-            "rid": uuid.uuid4().hex[:16],
-            "uid": user_id,
-            "oid": org_id,
-            "did": department_id,
-            "act": action[:96],
-            "rtype": resource_type,
-            "rid2": str(resource_id)[:128] if resource_id else None,
-            "dec": decision,
-            "reason": reason[:256] if reason else None,
-            "ip": ip_address[:45] if ip_address else None,
-            "ua": user_agent[:512] if user_agent else None,
-            "detail": json.dumps(detail, ensure_ascii=False) if detail else None,
-            "ts": _ts(),
-        },
-    )
-    # Intentionally NOT committing here — the caller's transaction boundary
-    # is responsible for commit/rollback.
+    try:
+        db.execute(
+            text(
+                "INSERT INTO audit_logs "
+                "(request_id, user_id, org_id, department_id, action, "
+                "resource_type, resource_id, decision, reason, "
+                "ip_address, user_agent, detail_json, created_at) "
+                "VALUES (:rid, :uid, :oid, :did, :act, :rtype, :rid2, :dec, :reason, "
+                ":ip, :ua, :detail, :ts)"
+            ),
+            {
+                "rid": uuid.uuid4().hex[:16],
+                "uid": user_id,
+                "oid": org_id,
+                "did": department_id,
+                "act": action[:96],
+                "rtype": resource_type,
+                "rid2": str(resource_id)[:128] if resource_id else None,
+                "dec": decision,
+                "reason": reason[:256] if reason else None,
+                "ip": ip_address[:45] if ip_address else None,
+                "ua": user_agent[:512] if user_agent else None,
+                "detail": json.dumps(detail, ensure_ascii=False) if detail else None,
+                "ts": _ts(),
+            },
+        )
+    except Exception:
+        logger.warning(
+            "Failed to write audit log — action=%s user_id=%s",
+            action, user_id, exc_info=True,
+        )

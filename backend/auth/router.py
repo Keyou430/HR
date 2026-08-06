@@ -76,34 +76,36 @@ def _record_failed_attempt(key: str) -> None:
 # ──────────────────────────────────────────────────────────────────
 
 REFRESH_COOKIE = "refresh_token"
-REFRESH_COOKIE_PATH = "/api/v1/auth"
+REFRESH_COOKIE_PATH = "/"
 
 
 def _set_refresh_cookie(response: Response, raw_token: str, *, request: Request | None = None) -> None:
     settings = get_settings()
-    # Only enforce secure=true on HTTPS origins; local dev over HTTP needs
-    # the cookie to be sent back so initAuth() can restore the session.
-    use_secure = True
-    if request is not None:
-        use_secure = request.url.scheme == "https"
+    # Production: SameSite=Lax prevents CSRF-based cookie attachment while still
+    # allowing top-level navigations (e.g. after OAuth redirects).
+    # Development: SameSite=None allows cross-origin requests on localhost where
+    # the frontend (e.g. :5173) and backend (:8000) are on different origins.
+    use_samesite: str = "lax" if settings.is_production else "none"
     response.set_cookie(
         key=REFRESH_COOKIE,
         value=raw_token,
         httponly=True,
-        secure=use_secure,
-        samesite="lax",
+        secure=True,
+        samesite=use_samesite,
         path=REFRESH_COOKIE_PATH,
         max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS * 86400,
     )
 
 
-def _clear_refresh_cookie(response: Response) -> None:
+def _clear_refresh_cookie(response: Response, *, request: Request | None = None) -> None:
+    settings = get_settings()
+    use_samesite: str = "lax" if settings.is_production else "none"
     response.set_cookie(
         key=REFRESH_COOKIE,
         value="",
         httponly=True,
         secure=True,
-        samesite="lax",
+        samesite=use_samesite,
         path=REFRESH_COOKIE_PATH,
         max_age=0,
     )
@@ -204,6 +206,7 @@ def login(
             user_agent=request.headers.get("user-agent"),
         )
         db.commit()
+        request.state._audit_recorded = True
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="用户名或密码错误",
@@ -226,6 +229,7 @@ def login(
             user_agent=request.headers.get("user-agent"),
         )
         db.commit()
+        request.state._audit_recorded = True
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="用户名或密码错误",
@@ -242,6 +246,7 @@ def login(
             user_agent=request.headers.get("user-agent"),
         )
         db.commit()
+        request.state._audit_recorded = True
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="用户名或密码错误",
@@ -428,9 +433,10 @@ def refresh(
             detail="缺少 Refresh Token",
         )
 
+    client_ip = request.client.host if request.client else None
+    user_agent = request.headers.get("user-agent")
+
     try:
-        client_ip = request.client.host if request.client else None
-        user_agent = request.headers.get("user-agent")
         result = rotate_session(
             db, refresh_token,
             user_agent=user_agent,
@@ -438,6 +444,14 @@ def refresh(
         )
     except InvalidSessionError as exc:
         logger.info("Refresh failed: %s", exc.reason)
+        # Record structured audit event for replay / expired / disabled attempts
+        audit_log(
+            db, action="auth.refresh.failed",
+            reason=exc.reason, resource_type="auth_session",
+            decision="deny", ip_address=client_ip,
+            user_agent=user_agent,
+        )
+        db.commit()
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=str(exc),
@@ -450,6 +464,14 @@ def refresh(
         result["token_version"],
     )
     _set_refresh_cookie(response, result["new_refresh_token"], request=request)
+
+    audit_log(
+        db, action="auth.refresh.success",
+        user_id=result["user_id"], resource_type="auth_session",
+        ip_address=client_ip,
+        user_agent=user_agent,
+    )
+    db.commit()
 
     return {
         "access_token": access_token,
@@ -466,11 +488,33 @@ def logout(
     db: Session = Depends(get_db),
 ) -> dict[str, str]:
     """Revoke the current refresh token and clear the cookie."""
+    client_ip = request.client.host if request.client else "unknown"
+    user_agent = request.headers.get("user-agent")
+
+    # Resolve user identity from the refresh token for audit purposes.
+    # We look up the session before revoking it so we can record *who* logged out.
+    resolved_user_id: int | None = None
     if refresh_token:
+        from auth.sessions import _hash_token
+        token_hash = _hash_token(refresh_token)
+        session_row = db.execute(
+            text("SELECT user_id FROM auth_sessions WHERE refresh_token_hash = :hash"),
+            {"hash": token_hash},
+        ).fetchone()
+        if session_row:
+            resolved_user_id = session_row[0]
+
         revoke_session(db, refresh_token)
-    _clear_refresh_cookie(response)
-    # Note: current_user is not injected here (logout works without auth),
-    # so we log anonymously unless we resolve the token.
+
+    audit_log(
+        db, action="auth.logout",
+        user_id=resolved_user_id, resource_type="auth_session",
+        ip_address=client_ip,
+        user_agent=user_agent,
+    )
+    db.commit()
+
+    _clear_refresh_cookie(response, request=request)
     return {"message": "已退出登录"}
 
 

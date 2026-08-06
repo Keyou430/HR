@@ -37,6 +37,10 @@ dist/
 *.swp
 *.swo
 
+# Docker volumes
+backups/
+pgdata/
+
 # OS
 .DS_Store
 Thumbs.db

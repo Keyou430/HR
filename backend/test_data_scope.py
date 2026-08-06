@@ -206,7 +206,7 @@ def scope_db(tmp_path, monkeypatch):
     db_url = f"sqlite:///{db_path.as_posix()}"
 
     monkeypatch.setenv("DATABASE_URL", db_url)
-    monkeypatch.setenv("JWT_SECRET_KEY", "test-scope-secret-key-32chars!!")
+    monkeypatch.setenv("JWT_SECRET_KEY", "test-scope-secret-key-min-32charsok")
     monkeypatch.setenv("FASTGPT_MODE", "mock")
     monkeypatch.setenv("HERMES_MODE", "mock")
     from config import get_settings

@@ -2,14 +2,24 @@ from copy import deepcopy
 from contextlib import contextmanager
 from datetime import datetime, timezone
 import json
-from threading import RLock
 from typing import Any, Iterator
 
-from sqlalchemy import Boolean, Column, Integer, MetaData, String, Table, Text, and_, delete, func, insert, or_, select, text, update
+from sqlalchemy import Boolean, Column, Float, Integer, MetaData, String, Table, Text, and_, delete, func, insert, or_, select, text, update
 from sqlalchemy.orm import Session
 
 from config import get_settings
 from session import get_engine, get_session_local
+from stores.base import BaseStore
+from stores.portal import PortalMixin
+from stores.subsystems import SubsystemsMixin
+from stores.search import SearchMixin
+from stores.repair import RepairMixin
+from stores.asset import AssetMixin
+from stores.notifications import NotificationMixin
+from stores.oa import OaMixin
+from stores.hr import HrMixin
+from stores.finance import FinanceMixin
+from stores.portal_subsystems import WebsiteMixin, EstateMixin, EmploymentMixin
 
 
 metadata = MetaData()
@@ -22,12 +32,17 @@ tasks_table = Table(
     Column("tag", String(32), nullable=False),
     Column("due_time", String(8), nullable=True),
     Column("done", Boolean, nullable=False, default=False),
-    # ── Phase 4: RBAC data-attribution columns ──────────────────
+    Column("status", String(32), nullable=True),
+    Column("created_at", String(32), nullable=True),
+    Column("updated_at", String(32), nullable=True),
+    # ── RBAC data-attribution columns ────────────────────────────
     Column("org_id", String(64), nullable=True),
     Column("department_id", String(64), nullable=True),
     Column("owner_id", Integer, nullable=True),
     Column("visibility", String(16), nullable=False, default="private"),
     Column("sensitivity", String(16), nullable=False, default="normal"),
+    Column("created_by", Integer, nullable=True),
+    Column("updated_by", Integer, nullable=True),
 )
 
 events_table = Table(
@@ -37,12 +52,17 @@ events_table = Table(
     Column("date", String(10), nullable=False),
     Column("title", String(255), nullable=False),
     Column("tone", String(16), nullable=False),
-    # ── Phase 4: RBAC data-attribution columns ──────────────────
+    Column("status", String(32), nullable=True),
+    Column("created_at", String(32), nullable=True),
+    Column("updated_at", String(32), nullable=True),
+    # ── RBAC data-attribution columns ────────────────────────────
     Column("org_id", String(64), nullable=True),
     Column("department_id", String(64), nullable=True),
     Column("owner_id", Integer, nullable=True),
     Column("visibility", String(16), nullable=False, default="private"),
     Column("sensitivity", String(16), nullable=False, default="normal"),
+    Column("created_by", Integer, nullable=True),
+    Column("updated_by", Integer, nullable=True),
 )
 
 settings_table = Table(
@@ -64,6 +84,7 @@ knowledge_mappings_table = Table(
     Column("permission_scope", String(16), nullable=False, default="team"),
     Column("enabled", Boolean, nullable=False, default=True),
     Column("is_default_import_target", Boolean, nullable=False, default=False),
+    Column("status", String(32), nullable=True),
     Column("last_synced_at", String(32), nullable=True),
     Column("last_imported_at", String(32), nullable=True),
     Column("stale", Boolean, nullable=False, default=False),
@@ -74,6 +95,8 @@ knowledge_mappings_table = Table(
     Column("owner_id", Integer, nullable=True),
     Column("visibility", String(16), nullable=False, default="dept"),
     Column("sensitivity", String(16), nullable=False, default="internal"),
+    Column("created_by", Integer, nullable=True),
+    Column("updated_by", Integer, nullable=True),
 )
 
 knowledge_import_records_table = Table(
@@ -87,6 +110,8 @@ knowledge_import_records_table = Table(
     Column("collection_id", String(128), nullable=True),
     Column("error_message", Text, nullable=True),
     Column("created_at", String(32), nullable=False),
+    Column("created_by", Integer, nullable=True),
+    Column("updated_by", Integer, nullable=True),
 )
 
 chat_sessions_table = Table(
@@ -94,8 +119,13 @@ chat_sessions_table = Table(
     metadata,
     Column("id", String(64), primary_key=True),
     Column("title", String(255), nullable=False, default=""),
+    # ── Phase 4: user-level data isolation ─────────────────────
+    Column("user_id", Integer, nullable=True),
+    Column("status", String(32), nullable=True),
     Column("created_at", String(32), nullable=False),
     Column("updated_at", String(32), nullable=False),
+    Column("created_by", Integer, nullable=True),
+    Column("updated_by", Integer, nullable=True),
 )
 
 chat_messages_table = Table(
@@ -106,9 +136,464 @@ chat_messages_table = Table(
     Column("role", String(16), nullable=False),
     Column("content", Text, nullable=False),
     Column("action", String(32), nullable=True),
+    Column("status", String(32), nullable=True),
+    Column("created_at", String(32), nullable=False),
+    Column("created_by", Integer, nullable=True),
+    Column("updated_by", Integer, nullable=True),
+)
+
+portal_subsystems_table = Table(
+    "portal_subsystems",
+    metadata,
+    Column("code", String(64), primary_key=True),
+    Column("name", String(255), nullable=False),
+    Column("category", String(64), nullable=False),
+    Column("description", Text, nullable=False),
+    Column("status", String(32), nullable=False, default="active"),
+    Column("entry_type", String(32), nullable=False, default="internal"),
+    Column("owner_department", String(128), nullable=False),
+    Column("owner_name", String(128), nullable=False),
+    Column("support_contact", String(128), nullable=False),
+    Column("icon_tone", String(32), nullable=False, default="app-blue"),
+    Column("sort_order", Integer, nullable=False, default=0),
+    Column("is_featured", Boolean, nullable=False, default=False),
+    Column("common_actions_json", Text, nullable=False),
+    Column("related_resources_json", Text, nullable=False),
+    Column("menu_items_json", Text, nullable=False, default="[]"),
+    Column("entry_url", String(512), nullable=True),
+    Column("created_at", String(32), nullable=False),
+    Column("updated_at", String(32), nullable=False),
+    Column("org_id", String(64), nullable=True),
+    Column("department_id", String(64), nullable=True),
+    Column("owner_id", Integer, nullable=True),
+    Column("visibility", String(16), nullable=False, default="org"),
+    Column("sensitivity", String(16), nullable=False, default="normal"),
+    Column("created_by", Integer, nullable=True),
+    Column("updated_by", Integer, nullable=True),
+)
+
+portal_subsystem_visits_table = Table(
+    "portal_subsystem_visits",
+    metadata,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("subsystem_code", String(64), nullable=False),
+    Column("user_id", Integer, nullable=True),
+    Column("visited_at", String(32), nullable=False),
+    Column("org_id", String(64), nullable=True),
+    Column("department_id", String(64), nullable=True),
+    Column("created_by", Integer, nullable=True),
+    Column("updated_by", Integer, nullable=True),
+)
+
+portal_notices_table = Table(
+    "portal_notices",
+    metadata,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("title", String(255), nullable=False),
+    Column("source", String(128), nullable=False),
+    Column("category", String(64), nullable=False),
+    Column("body", Text, nullable=False),
+    Column("pinned", Boolean, nullable=False, default=False),
+    Column("published_at", String(32), nullable=False),
+    Column("read_count", Integer, nullable=False, default=0),
+    Column("status", String(32), nullable=True),
+    Column("created_at", String(32), nullable=False),
+    Column("updated_at", String(32), nullable=False),
+    Column("org_id", String(64), nullable=True),
+    Column("department_id", String(64), nullable=True),
+    Column("owner_id", Integer, nullable=True),
+    Column("visibility", String(16), nullable=False, default="org"),
+    Column("sensitivity", String(16), nullable=False, default="normal"),
+)
+
+portal_documents_table = Table(
+    "portal_documents",
+    metadata,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("name", String(255), nullable=False),
+    Column("location", String(128), nullable=False),
+    Column("owner", String(128), nullable=False),
+    Column("file_type", String(16), nullable=False),
+    Column("summary", Text, nullable=False),
+    Column("status", String(32), nullable=True),
+    Column("updated_at", String(32), nullable=False),
+    Column("favorite_count", Integer, nullable=False, default=0),
+    Column("visit_count", Integer, nullable=False, default=0),
+    Column("created_at", String(32), nullable=False),
+    Column("org_id", String(64), nullable=True),
+    Column("department_id", String(64), nullable=True),
+    Column("owner_id", Integer, nullable=True),
+    Column("visibility", String(16), nullable=False, default="org"),
+    Column("sensitivity", String(16), nullable=False, default="normal"),
+    Column("created_by", Integer, nullable=True),
+    Column("updated_by", Integer, nullable=True),
+)
+
+portal_resources_table = Table(
+    "portal_resources",
+    metadata,
+    Column("code", String(64), primary_key=True),
+    Column("title", String(255), nullable=False),
+    Column("category", String(64), nullable=False),
+    Column("description", String(255), nullable=False),
+    Column("body", Text, nullable=False),
+    Column("owner", String(128), nullable=False),
+    Column("icon_tone", String(32), nullable=False, default="app-blue"),
+    Column("pinned", Boolean, nullable=False, default=False),
+    Column("status", String(32), nullable=True),
+    Column("updated_at", String(32), nullable=False),
+    Column("created_at", String(32), nullable=False),
+    Column("org_id", String(64), nullable=True),
+    Column("department_id", String(64), nullable=True),
+    Column("owner_id", Integer, nullable=True),
+    Column("visibility", String(16), nullable=False, default="org"),
+    Column("sensitivity", String(16), nullable=False, default="normal"),
+    Column("created_by", Integer, nullable=True),
+    Column("updated_by", Integer, nullable=True),
+)
+
+portal_services_table = Table(
+    "portal_services",
+    metadata,
+    Column("code", String(64), primary_key=True),
+    Column("title", String(255), nullable=False),
+    Column("category", String(64), nullable=False),
+    Column("description", Text, nullable=False),
+    Column("materials", Text, nullable=False),
+    Column("audience", String(128), nullable=False),
+    Column("contact", String(128), nullable=False),
+    Column("status", String(32), nullable=False, default="active"),
+    Column("subscribed_count", Integer, nullable=False, default=0),
+    Column("updated_at", String(32), nullable=False),
+    Column("created_at", String(32), nullable=False),
+    Column("org_id", String(64), nullable=True),
+    Column("department_id", String(64), nullable=True),
+    Column("owner_id", Integer, nullable=True),
+    Column("visibility", String(16), nullable=False, default="org"),
+    Column("sensitivity", String(16), nullable=False, default="normal"),
+    Column("created_by", Integer, nullable=True),
+    Column("updated_by", Integer, nullable=True),
+)
+
+portal_news_table = Table(
+    "portal_news",
+    metadata,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("title", String(255), nullable=False),
+    Column("source", String(128), nullable=False),
+    Column("category", String(64), nullable=False),
+    Column("body", Text, nullable=False),
+    Column("pinned", Boolean, nullable=False, default=False),
+    Column("status", String(32), nullable=True),
+    Column("published_at", String(32), nullable=False),
+    Column("created_at", String(32), nullable=False),
+    Column("updated_at", String(32), nullable=False),
+    Column("org_id", String(64), nullable=True),
+    Column("department_id", String(64), nullable=True),
+    Column("owner_id", Integer, nullable=True),
+    Column("visibility", String(16), nullable=False, default="org"),
+    Column("sensitivity", String(16), nullable=False, default="normal"),
+    Column("created_by", Integer, nullable=True),
+    Column("updated_by", Integer, nullable=True),
+)
+
+portal_user_preferences_table = Table(
+    "portal_user_preferences",
+    metadata,
+    Column("user_id", Integer, primary_key=True),
+    Column("preferences_json", Text, nullable=False),
+    Column("status", String(32), nullable=True),
+    Column("updated_at", String(32), nullable=False),
+    Column("created_by", Integer, nullable=True),
+    Column("updated_by", Integer, nullable=True),
+)
+
+enterprise_repair_tickets_table = Table(
+    "enterprise_repair_tickets",
+    metadata,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("title", String(255), nullable=False),
+    Column("location", String(255), nullable=False),
+    Column("description", Text, nullable=False),
+    Column("priority", String(16), nullable=False, default="normal"),
+    Column("status", String(32), nullable=False, default="submitted"),
+    Column("assignee", String(128), nullable=True),
+    Column("requester_id", Integer, nullable=True),
+    Column("created_at", String(32), nullable=False),
+    Column("updated_at", String(32), nullable=False),
+    Column("org_id", String(64), nullable=True),
+    Column("department_id", String(64), nullable=True),
+    Column("owner_id", Integer, nullable=True),
+    Column("visibility", String(16), nullable=False, default="org"),
+    Column("sensitivity", String(16), nullable=False, default="normal"),
+    Column("created_by", Integer, nullable=True),
+    Column("updated_by", Integer, nullable=True),
+    Column("rating", Integer, nullable=True),
+    Column("completed_at", String(32), nullable=True),
+)
+
+enterprise_asset_items_table = Table(
+    "enterprise_asset_items",
+    metadata,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("asset_code", String(128), nullable=False),
+    Column("name", String(255), nullable=False),
+    Column("category", String(128), nullable=False),
+    Column("location", String(255), nullable=False),
+    Column("status", String(32), nullable=False, default="available"),
+    Column("custodian", String(128), nullable=True),
+    Column("created_at", String(32), nullable=False),
+    Column("updated_at", String(32), nullable=False),
+    Column("org_id", String(64), nullable=True),
+    Column("department_id", String(64), nullable=True),
+    Column("owner_id", Integer, nullable=True),
+    Column("visibility", String(16), nullable=False, default="org"),
+    Column("sensitivity", String(16), nullable=False, default="normal"),
+    Column("created_by", Integer, nullable=True),
+    Column("updated_by", Integer, nullable=True),
+)
+
+enterprise_oa_flows_table = Table(
+    "enterprise_oa_flows",
+    metadata,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("title", String(255), nullable=False),
+    Column("flow_type", String(128), nullable=False),
+    Column("status", String(32), nullable=False, default="pending"),
+    Column("initiator_id", Integer, nullable=True),
+    Column("current_handler", String(128), nullable=True),
+    Column("created_at", String(32), nullable=False),
+    Column("updated_at", String(32), nullable=False),
+    Column("org_id", String(64), nullable=True),
+    Column("department_id", String(64), nullable=True),
+    Column("owner_id", Integer, nullable=True),
+    Column("visibility", String(16), nullable=False, default="org"),
+    Column("sensitivity", String(16), nullable=False, default="normal"),
+    Column("created_by", Integer, nullable=True),
+    Column("updated_by", Integer, nullable=True),
+)
+
+asset_borrow_records_table = Table(
+    "asset_borrow_records",
+    metadata,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("asset_id", Integer, nullable=False),
+    Column("user_id", Integer, nullable=False),
+    Column("borrow_date", String(32), nullable=False),
+    Column("expected_return_date", String(32), nullable=True),
+    Column("actual_return_date", String(32), nullable=True),
+    Column("status", String(32), nullable=False, default="borrowed"),
+    Column("org_id", String(64), nullable=True),
+    Column("department_id", String(64), nullable=True),
+    Column("created_at", String(32), nullable=False),
+    Column("updated_at", String(32), nullable=False),
+)
+
+oa_approval_records_table = Table(
+    "oa_approval_records",
+    metadata,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("flow_id", Integer, nullable=False),
+    Column("approver_id", Integer, nullable=False),
+    Column("step_order", Integer, nullable=False),
+    Column("action", String(32), nullable=True),
+    Column("comment", Text, nullable=True),
     Column("created_at", String(32), nullable=False),
 )
 
+# ── Phase 3: HR & Finance ───────────────────────────────────────────
+
+hr_requests_table = Table(
+    "hr_requests",
+    metadata,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("title", String(255), nullable=False),
+    Column("request_type", String(32), nullable=False),
+    Column("status", String(32), nullable=False, default="pending"),
+    Column("applicant_id", Integer, nullable=True),
+    Column("content_json", Text, nullable=True),
+    Column("approved_by", Integer, nullable=True),
+    Column("approved_at", String(32), nullable=True),
+    Column("org_id", String(64), nullable=True),
+    Column("department_id", String(64), nullable=True),
+    Column("owner_id", Integer, nullable=True),
+    Column("visibility", String(16), nullable=False, default="org"),
+    Column("sensitivity", String(16), nullable=False, default="normal"),
+    Column("created_by", Integer, nullable=True),
+    Column("updated_by", Integer, nullable=True),
+    Column("created_at", String(32), nullable=False),
+    Column("updated_at", String(32), nullable=False),
+)
+
+finance_claims_table = Table(
+    "finance_claims",
+    metadata,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("title", String(255), nullable=False),
+    Column("amount", Float, nullable=True),
+    Column("status", String(32), nullable=False, default="pending"),
+    Column("applicant_id", Integer, nullable=True),
+    Column("budget_id", Integer, nullable=True),
+    Column("current_handler", String(128), nullable=True),
+    Column("description", Text, nullable=True),
+    Column("org_id", String(64), nullable=True),
+    Column("department_id", String(64), nullable=True),
+    Column("owner_id", Integer, nullable=True),
+    Column("visibility", String(16), nullable=False, default="org"),
+    Column("sensitivity", String(16), nullable=False, default="normal"),
+    Column("created_by", Integer, nullable=True),
+    Column("updated_by", Integer, nullable=True),
+    Column("created_at", String(32), nullable=False),
+    Column("updated_at", String(32), nullable=False),
+)
+
+finance_budgets_table = Table(
+    "finance_budgets",
+    metadata,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("name", String(255), nullable=False),
+    Column("category", String(128), nullable=False),
+    Column("amount_total", Float, nullable=False, default=0.0),
+    Column("amount_used", Float, nullable=False, default=0.0),
+    Column("fiscal_year", Integer, nullable=False),
+    Column("description", Text, nullable=True),
+    Column("org_id", String(64), nullable=True),
+    Column("department_id", String(64), nullable=True),
+    Column("owner_id", Integer, nullable=True),
+    Column("visibility", String(16), nullable=False, default="org"),
+    Column("sensitivity", String(16), nullable=False, default="normal"),
+    Column("created_by", Integer, nullable=True),
+    Column("updated_by", Integer, nullable=True),
+    Column("created_at", String(32), nullable=False),
+    Column("updated_at", String(32), nullable=False),
+)
+
+finance_approval_records_table = Table(
+    "finance_approval_records",
+    metadata,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("claim_id", Integer, nullable=False),
+    Column("approver_id", Integer, nullable=False),
+    Column("step_order", Integer, nullable=False),
+    Column("action", String(32), nullable=True),
+    Column("comment", Text, nullable=True),
+    Column("created_at", String(32), nullable=False),
+)
+
+# ── Phase 4 T17: Website, Estate, Employment ───────────────────────────
+
+cms_sites_table = Table(
+    "cms_sites",
+    metadata,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("name", String(255), nullable=False),
+    Column("domain", String(255), nullable=True),
+    Column("category", String(128), nullable=False),
+    Column("status", String(32), nullable=False, default="draft"),
+    Column("owner_dept", String(128), nullable=True),
+    Column("columns_json", Text, nullable=True),
+    Column("description", Text, nullable=True),
+    Column("org_id", String(64), nullable=True),
+    Column("department_id", String(64), nullable=True),
+    Column("owner_id", Integer, nullable=True),
+    Column("visibility", String(16), nullable=False, default="org"),
+    Column("sensitivity", String(16), nullable=False, default="normal"),
+    Column("created_by", Integer, nullable=True),
+    Column("updated_by", Integer, nullable=True),
+    Column("created_at", String(32), nullable=False),
+    Column("updated_at", String(32), nullable=False),
+)
+
+estate_spaces_table = Table(
+    "estate_spaces",
+    metadata,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("name", String(255), nullable=False),
+    Column("code", String(128), nullable=False),
+    Column("category", String(64), nullable=False),
+    Column("building", String(128), nullable=True),
+    Column("floor", String(32), nullable=True),
+    Column("area_sqm", Float, nullable=True),
+    Column("status", String(32), nullable=False, default="vacant"),
+    Column("department_id", String(64), nullable=True),
+    Column("description", Text, nullable=True),
+    Column("contact_person", String(128), nullable=True),
+    Column("org_id", String(64), nullable=True),
+    Column("owner_id", Integer, nullable=True),
+    Column("visibility", String(16), nullable=False, default="org"),
+    Column("sensitivity", String(16), nullable=False, default="normal"),
+    Column("created_by", Integer, nullable=True),
+    Column("updated_by", Integer, nullable=True),
+    Column("created_at", String(32), nullable=False),
+    Column("updated_at", String(32), nullable=False),
+)
+
+job_postings_table = Table(
+    "job_postings",
+    metadata,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("title", String(255), nullable=False),
+    Column("company_name", String(255), nullable=False),
+    Column("position_category", String(64), nullable=False),
+    Column("salary_range", String(128), nullable=True),
+    Column("location", String(255), nullable=True),
+    Column("requirements", Text, nullable=True),
+    Column("status", String(32), nullable=False, default="open"),
+    Column("contact_info", String(255), nullable=True),
+    Column("description", Text, nullable=True),
+    Column("posted_date", String(32), nullable=True),
+    Column("deadline", String(32), nullable=True),
+    Column("org_id", String(64), nullable=True),
+    Column("department_id", String(64), nullable=True),
+    Column("owner_id", Integer, nullable=True),
+    Column("visibility", String(16), nullable=False, default="org"),
+    Column("sensitivity", String(16), nullable=False, default="normal"),
+    Column("created_by", Integer, nullable=True),
+    Column("updated_by", Integer, nullable=True),
+    Column("created_at", String(32), nullable=False),
+    Column("updated_at", String(32), nullable=False),
+)
+
+orgs_table = Table(
+    "orgs",
+    metadata,
+    Column("id", String(64), primary_key=True),
+    Column("name", String(128), nullable=False),
+    Column("is_active", Boolean, nullable=False, default=True),
+    Column("created_at", String(32), nullable=False),
+    Column("updated_at", String(32), nullable=False),
+)
+
+departments_table = Table(
+    "departments",
+    metadata,
+    Column("id", String(64), primary_key=True),
+    Column("org_id", String(64), nullable=False),
+    Column("name", String(128), nullable=False),
+    Column("parent_id", String(64), nullable=True),
+    Column("path", String(512), nullable=False, default=""),
+    Column("level", Integer, nullable=False, default=0),
+    Column("sort_order", Integer, nullable=False, default=0),
+    Column("is_active", Boolean, nullable=False, default=True),
+    Column("created_at", String(32), nullable=False),
+    Column("updated_at", String(32), nullable=False),
+)
+
+notifications_table = Table(
+    "notifications",
+    metadata,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("user_id", Integer, nullable=False),
+    Column("title", String(255), nullable=False),
+    Column("content", Text, nullable=True),
+    Column("type", String(32), nullable=False, default="info"),
+    Column("reference_type", String(64), nullable=True),
+    Column("reference_id", String(128), nullable=True),
+    Column("is_read", Boolean, nullable=False, default=False),
+    Column("org_id", String(64), nullable=True),
+    Column("department_id", String(64), nullable=True),
+    Column("created_at", String(32), nullable=False),
+)
 
 DEFAULT_EMBED_URLS = {
     "feishu": "https://www.feishu.cn/",
@@ -205,6 +690,340 @@ DEFAULT_DOCUMENTS = [
     {"name": "会议纪要模板", "location": "我的云文档", "owner": "行政中心", "updated_at": "07/12", "file_type": "P"},
 ]
 
+DEFAULT_REPAIR_TICKETS = [
+    {
+        "title": "办公区空调报修",
+        "location": "A 栋 203",
+        "description": "空调无法启动，需要后勤现场检查。",
+        "priority": "normal",
+        "status": "processing",
+        "assignee": "后勤服务中心",
+    },
+    {
+        "title": "会议室投影设备检查",
+        "location": "B 栋 101",
+        "description": "投影画面异常，等待设备维护。",
+        "priority": "low",
+        "status": "submitted",
+        "assignee": None,
+    },
+]
+
+DEFAULT_ASSET_ITEMS = [
+    {
+        "asset_code": "ASSET-2026-0001",
+        "name": "会议室投影设备",
+        "category": "办公设备",
+        "location": "B 栋 101",
+        "status": "available",
+        "custodian": "行政中心",
+    },
+    {
+        "asset_code": "ASSET-2026-0002",
+        "name": "移动工作站",
+        "category": "信息设备",
+        "location": "设备库",
+        "status": "borrowed",
+        "custodian": "信息中心",
+    },
+]
+
+DEFAULT_OA_FLOWS = [
+    {
+        "title": "部门用印申请",
+        "flow_type": "用印申请",
+        "status": "pending",
+        "current_handler": "部门负责人",
+    },
+    {
+        "title": "季度采购申请",
+        "flow_type": "采购申请",
+        "status": "processing",
+        "current_handler": "财务处",
+    },
+]
+
+_PORTAL_BASE = {
+    "org_id": "default",
+    "department_id": "HQ",
+    "owner_id": 1,
+    "visibility": "org",
+    "sensitivity": "normal",
+}
+
+DEFAULT_SUBSYSTEMS = [
+    ("supervision", "督办系统", "运营管理", "跟踪重点事项、责任人和办理进度。", "党政办公室", "综合服务台", "app-orange"),
+    ("teaching-cloud", "一体化教学云平台", "教学科研", "课程、教学计划和教学运行数据管理。", "教务办公室", "教学服务台", "app-purple"),
+    ("oa", "OA 系统", "协同办公", "流程、通知、文件流转和组织协同工作入口。", "党政办公室", "OA 支持", "app-blue"),
+    ("website", "网站群", "宣传门户", "站点内容、栏目和发布状态管理。", "宣传办公室", "网站支持", "app-green"),
+    ("party", "党建系统", "组织建设", "组织活动、学习资料和党建工作台账。", "组织办公室", "党建支持", "app-red"),
+    ("alumni", "校友系统", "外联服务", "校友信息、活动和联络服务管理。", "校友办公室", "校友服务台", "app-orange"),
+    ("hr", "人事系统", "人事服务", "人员信息、证明、考勤和请假服务。", "人事处", "人事服务台", "app-green"),
+    ("student", "学工系统", "学生服务", "学生事务、奖助、就业与心理服务入口。", "学生工作部", "学生服务台", "app-blue"),
+    ("employment", "就业系统", "学生服务", "招聘信息、就业数据和就业指导服务。", "就业中心", "就业服务台", "app-purple"),
+    ("mental-health", "心理系统", "学生服务", "心理预约、测评和关怀记录入口。", "心理中心", "心理服务台", "app-green"),
+    ("finance", "财务系统", "财务资产", "预算、报销、工资查询和财务事项入口。", "财务处", "财务服务台", "app-orange"),
+    ("estate", "房产管理系统", "财务资产", "空间、房产和用房信息管理。", "资产与后勤处", "房产服务台", "app-blue"),
+    ("assets", "资产管理系统", "财务资产", "资产目录、借用、盘点和维修入口。", "资产与后勤处", "资产服务台", "app-red"),
+    ("data-portal", "数据门户", "数据运营", "组织指标、经营数据和专题看板。", "信息中心", "数据服务台", "app-cyan"),
+    ("repair", "报修管理系统", "统一服务", "故障报修、派单、处理和满意度反馈。", "后勤服务中心", "报修服务台", "app-green"),
+]
+
+DEFAULT_SUBSYSTEM_ACTIONS = {
+    "supervision": [
+        {"label": "督办事项", "kind": "records"},
+        {"label": "责任清单", "kind": "records"},
+        {"label": "办理进度", "kind": "dashboard"},
+    ],
+    "teaching-cloud": [
+        {"label": "课程运行", "kind": "records"},
+        {"label": "调停课记录", "kind": "records"},
+        {"label": "教学通知", "kind": "notices"},
+    ],
+    "oa": [
+        {"label": "待办流程", "kind": "records"},
+        {"label": "文件流转", "kind": "documents"},
+        {"label": "办公通知", "kind": "notices"},
+    ],
+    "website": [
+        {"label": "站点列表", "kind": "records"},
+        {"label": "待审稿件", "kind": "records"},
+        {"label": "发布统计", "kind": "dashboard"},
+    ],
+    "party": [
+        {"label": "组织活动", "kind": "records"},
+        {"label": "学习资料", "kind": "resources"},
+        {"label": "工作台账", "kind": "documents"},
+    ],
+    "alumni": [
+        {"label": "校友名录", "kind": "records"},
+        {"label": "活动管理", "kind": "records"},
+        {"label": "联络记录", "kind": "records"},
+    ],
+    "hr": [
+        {"label": "证明申请", "kind": "records"},
+        {"label": "请假考勤", "kind": "records"},
+        {"label": "人事资料", "kind": "documents"},
+    ],
+    "student": [
+        {"label": "学生事务", "kind": "records"},
+        {"label": "奖助事项", "kind": "records"},
+        {"label": "学生服务", "kind": "services"},
+    ],
+    "employment": [
+        {"label": "招聘信息", "kind": "records"},
+        {"label": "宣讲会", "kind": "records"},
+        {"label": "就业数据", "kind": "dashboard"},
+    ],
+    "mental-health": [
+        {"label": "咨询预约", "kind": "records"},
+        {"label": "测评记录", "kind": "records"},
+        {"label": "心理资源", "kind": "resources"},
+    ],
+    "finance": [
+        {"label": "报销单", "kind": "records"},
+        {"label": "预算项目", "kind": "records"},
+        {"label": "财务文档", "kind": "documents"},
+    ],
+    "estate": [
+        {"label": "房间台账", "kind": "records"},
+        {"label": "用房申请", "kind": "records"},
+        {"label": "维修关联", "kind": "services"},
+    ],
+    "assets": [
+        {"label": "资产目录", "kind": "records"},
+        {"label": "借用申请", "kind": "records"},
+        {"label": "维修记录", "kind": "services"},
+    ],
+    "data-portal": [
+        {"label": "指标看板", "kind": "dashboard"},
+        {"label": "专题数据", "kind": "records"},
+        {"label": "数据资源", "kind": "resources"},
+    ],
+    "repair": [
+        {"label": "新建报修", "kind": "records"},
+        {"label": "工单列表", "kind": "records"},
+        {"label": "服务评价", "kind": "dashboard"},
+    ],
+}
+
+DEFAULT_MENU_ITEMS = {
+    "supervision": [
+        {"section": "督办事项", "items": [
+            {"code": "items", "label": "全部事项", "icon": "i-list", "href": "#/subsystem/supervision/items"},
+            {"code": "new-item", "label": "新建督办", "icon": "i-plus", "href": "#/subsystem/supervision/items/new"},
+            {"code": "my-items", "label": "我的督办", "icon": "i-user", "href": "#/subsystem/supervision/items/my"},
+        ]},
+        {"section": "责任清单", "items": [
+            {"code": "units", "label": "责任单位", "icon": "i-grid", "href": "#/subsystem/supervision/units"},
+            {"code": "progress", "label": "办理进度", "icon": "i-chart", "href": "#/subsystem/supervision/progress"},
+        ]},
+        {"section": "统计分析", "items": [
+            {"code": "stats", "label": "办结统计", "icon": "i-bar-chart", "href": "#/subsystem/supervision/stats"},
+            {"code": "overdue", "label": "逾期分析", "icon": "i-alert", "href": "#/subsystem/supervision/overdue"},
+        ]},
+    ],
+    "oa": [
+        {"section": "流程中心", "items": [
+            {"code": "todo", "label": "待办流程", "icon": "i-clock", "href": "#/subsystem/oa/flows/todo"},
+            {"code": "done", "label": "已办流程", "icon": "i-check", "href": "#/subsystem/oa/flows/done"},
+            {"code": "my-flows", "label": "我发起的", "icon": "i-user", "href": "#/subsystem/oa/flows/my"},
+        ]},
+        {"section": "文件管理", "items": [
+            {"code": "files", "label": "文件流转", "icon": "i-file", "href": "#/subsystem/oa/files"},
+            {"code": "docs", "label": "公文管理", "icon": "i-doc", "href": "#/subsystem/oa/docs"},
+        ]},
+        {"section": "办公辅助", "items": [
+            {"code": "meetings", "label": "会议管理", "icon": "i-calendar", "href": "#/subsystem/oa/meetings"},
+            {"code": "notices", "label": "通知公告", "icon": "i-bell", "href": "#/subsystem/oa/notices"},
+        ]},
+    ],
+    "hr": [
+        {"section": "证明申请", "items": [
+            {"code": "cert-employment", "label": "在职证明", "icon": "i-file", "href": "#/subsystem/hr/certificates/employment"},
+            {"code": "cert-income", "label": "收入证明", "icon": "i-file", "href": "#/subsystem/hr/certificates/income"},
+            {"code": "cert-other", "label": "其他证明", "icon": "i-file", "href": "#/subsystem/hr/certificates/other"},
+        ]},
+        {"section": "考勤请假", "items": [
+            {"code": "leave", "label": "请假申请", "icon": "i-edit", "href": "#/subsystem/hr/leave"},
+            {"code": "attendance", "label": "考勤记录", "icon": "i-list", "href": "#/subsystem/hr/attendance"},
+            {"code": "overtime", "label": "加班申请", "icon": "i-clock", "href": "#/subsystem/hr/overtime"},
+        ]},
+        {"section": "人员信息", "items": [
+            {"code": "staff", "label": "人员档案", "icon": "i-users", "href": "#/subsystem/hr/staff"},
+            {"code": "dept-info", "label": "部门信息", "icon": "i-grid", "href": "#/subsystem/hr/departments"},
+        ]},
+    ],
+    "finance": [
+        {"section": "报销管理", "items": [
+            {"code": "claims", "label": "报销申请", "icon": "i-edit", "href": "#/subsystem/finance/claims"},
+            {"code": "my-claims", "label": "我的报销", "icon": "i-user", "href": "#/subsystem/finance/claims/my"},
+            {"code": "claim-approve", "label": "报销审批", "icon": "i-check", "href": "#/subsystem/finance/claims/approve"},
+        ]},
+        {"section": "预算管理", "items": [
+            {"code": "budget", "label": "预算项目", "icon": "i-list", "href": "#/subsystem/finance/budgets"},
+            {"code": "budget-exec", "label": "预算执行", "icon": "i-chart", "href": "#/subsystem/finance/budgets/exec"},
+        ]},
+        {"section": "材料清单", "items": [
+            {"code": "materials", "label": "费用材料", "icon": "i-file", "href": "#/subsystem/finance/materials"},
+            {"code": "receipts", "label": "票据管理", "icon": "i-doc", "href": "#/subsystem/finance/receipts"},
+        ]},
+    ],
+    "assets": [
+        {"section": "资产管理", "items": [
+            {"code": "items", "label": "资产台账", "icon": "i-list", "href": "#/subsystem/asset/items"},
+            {"code": "new-item", "label": "资产入库", "icon": "i-plus", "href": "#/subsystem/asset/items/new"},
+        ]},
+        {"section": "借用管理", "items": [
+            {"code": "borrow", "label": "借用申请", "icon": "i-edit", "href": "#/subsystem/asset/borrow"},
+            {"code": "borrow-records", "label": "借用记录", "icon": "i-file", "href": "#/subsystem/asset/borrow/records"},
+            {"code": "return", "label": "归还管理", "icon": "i-check", "href": "#/subsystem/asset/return"},
+        ]},
+        {"section": "盘点维护", "items": [
+            {"code": "inventory", "label": "资产盘点", "icon": "i-search", "href": "#/subsystem/asset/inventory"},
+            {"code": "repair-link", "label": "维修关联", "icon": "i-tool", "href": "#/subsystem/asset/repair"},
+        ]},
+    ],
+    "repair": [
+        {"section": "工单管理", "items": [
+            {"code": "tickets", "label": "全部工单", "icon": "i-list", "href": "#/subsystem/repair/tickets"},
+            {"code": "new-ticket", "label": "新建报修", "icon": "i-plus", "href": "#/subsystem/repair/tickets/new"},
+            {"code": "my-tickets", "label": "我的报修", "icon": "i-user", "href": "#/subsystem/repair/tickets/my"},
+        ]},
+        {"section": "派单处理", "items": [
+            {"code": "assign", "label": "待派工单", "icon": "i-send", "href": "#/subsystem/repair/tickets/assign"},
+            {"code": "processing", "label": "处理中", "icon": "i-clock", "href": "#/subsystem/repair/tickets/processing"},
+        ]},
+        {"section": "统计评价", "items": [
+            {"code": "stats", "label": "工单统计", "icon": "i-chart", "href": "#/subsystem/repair/stats"},
+            {"code": "feedback", "label": "服务评价", "icon": "i-star", "href": "#/subsystem/repair/feedback"},
+        ]},
+    ],
+    "data-portal": [
+        {"section": "数据看板", "items": [
+            {"code": "overview", "label": "数据概览", "icon": "i-chart", "href": "#/subsystem/data-portal/overview"},
+            {"code": "metrics", "label": "指标详情", "icon": "i-list", "href": "#/subsystem/data-portal/metrics"},
+            {"code": "trends", "label": "趋势分析", "icon": "i-bar-chart", "href": "#/subsystem/data-portal/trends"},
+        ]},
+        {"section": "专题数据", "items": [
+            {"code": "tickets-data", "label": "工单数据", "icon": "i-file", "href": "#/subsystem/data-portal/tickets"},
+            {"code": "assets-data", "label": "资产数据", "icon": "i-file", "href": "#/subsystem/data-portal/assets"},
+            {"code": "flows-data", "label": "流程数据", "icon": "i-file", "href": "#/subsystem/data-portal/flows"},
+        ]},
+        {"section": "数据资源", "items": [
+            {"code": "exports", "label": "数据导出", "icon": "i-download", "href": "#/subsystem/data-portal/exports"},
+            {"code": "reports", "label": "报表配置", "icon": "i-settings", "href": "#/subsystem/data-portal/reports"},
+        ]},
+    ],
+    # ── Phase 4 T17: website, estate, employment ────────────────────────
+    "website": [
+        {"section": "站点管理", "items": [
+            {"code": "sites", "label": "全部站点", "icon": "i-list", "href": "#/subsystem/website/sites"},
+            {"code": "new-site", "label": "新建站点", "icon": "i-plus", "href": "#/subsystem/website/sites/new"},
+            {"code": "drafts", "label": "草稿箱", "icon": "i-edit", "href": "#/subsystem/website/sites/drafts"},
+        ]},
+        {"section": "栏目内容", "items": [
+            {"code": "columns", "label": "栏目管理", "icon": "i-grid", "href": "#/subsystem/website/columns"},
+            {"code": "pages", "label": "页面管理", "icon": "i-file", "href": "#/subsystem/website/pages"},
+        ]},
+        {"section": "发布统计", "items": [
+            {"code": "published", "label": "已发布站点", "icon": "i-check", "href": "#/subsystem/website/published"},
+            {"code": "stats", "label": "站点统计", "icon": "i-chart", "href": "#/subsystem/website/stats"},
+        ]},
+    ],
+    "estate": [
+        {"section": "空间管理", "items": [
+            {"code": "spaces", "label": "全部空间", "icon": "i-list", "href": "#/subsystem/estate/spaces"},
+            {"code": "new-space", "label": "新增空间", "icon": "i-plus", "href": "#/subsystem/estate/spaces/new"},
+            {"code": "occupied", "label": "已占用", "icon": "i-check", "href": "#/subsystem/estate/spaces/occupied"},
+        ]},
+        {"section": "用房信息", "items": [
+            {"code": "by-building", "label": "按楼栋", "icon": "i-grid", "href": "#/subsystem/estate/by-building"},
+            {"code": "vacant", "label": "空置空间", "icon": "i-info", "href": "#/subsystem/estate/vacant"},
+        ]},
+        {"section": "统计分析", "items": [
+            {"code": "stats", "label": "用房统计", "icon": "i-chart", "href": "#/subsystem/estate/stats"},
+            {"code": "maintenance", "label": "维护记录", "icon": "i-tool", "href": "#/subsystem/estate/maintenance"},
+        ]},
+    ],
+    "employment": [
+        {"section": "岗位管理", "items": [
+            {"code": "postings", "label": "全部岗位", "icon": "i-list", "href": "#/subsystem/employment/postings"},
+            {"code": "new-posting", "label": "发布岗位", "icon": "i-plus", "href": "#/subsystem/employment/postings/new"},
+            {"code": "openings", "label": "在招岗位", "icon": "i-eye", "href": "#/subsystem/employment/postings/open"},
+        ]},
+        {"section": "招聘企业", "items": [
+            {"code": "companies", "label": "企业信息", "icon": "i-grid", "href": "#/subsystem/employment/companies"},
+            {"code": "positions", "label": "职位分类", "icon": "i-tag", "href": "#/subsystem/employment/positions"},
+        ]},
+        {"section": "就业统计", "items": [
+            {"code": "stats", "label": "招聘统计", "icon": "i-chart", "href": "#/subsystem/employment/stats"},
+            {"code": "closed", "label": "已关闭", "icon": "i-check", "href": "#/subsystem/employment/closed"},
+        ]},
+    ],
+}
+
+# Shell subsystems configured as disabled (Phase 2) or iframe entries.
+# Deep subsystems (oa/hr/finance/assets/repair/supervision) remain entry_type=internal.
+SHELL_SUBSYSTEM_ENTRY = {
+    "teaching-cloud":   ("iframe", ""),
+    # Phase 4 T17: website, estate, employment activated as internal
+    "website":          ("internal", None),
+    "party":            ("disabled", None),
+    "alumni":           ("disabled", None),
+    "student":          ("disabled", None),
+    "employment":       ("internal", None),
+    "mental-health":    ("disabled", None),
+    "estate":           ("internal", None),
+}
+
+DEFAULT_NEWS = [
+    {"title": "组织数字化服务升级，统一门户上线新入口", "source": "企业资讯", "category": "门户建设", "published_at": "2026-07-24"},
+    {"title": "2026 年第二季度运营回顾与重点工作安排", "source": "运营中心", "category": "运营动态", "published_at": "2026-07-22"},
+    {"title": "知识资产沉淀计划启动，支持部门知识库共建", "source": "知识中心", "category": "知识管理", "published_at": "2026-07-18"},
+    {"title": "信息安全与数据合规培训报名通知", "source": "安全办公室", "category": "培训通知", "published_at": "2026-07-16"},
+]
+
 
 # ═════════════════════════════════════════════════════════════════════
 # Helpers
@@ -227,63 +1046,59 @@ def _alembic_has_run(engine: Any) -> bool:
         return False
 
 
-def list_response(items: list[dict[str, Any]] | list[str]) -> dict[str, Any]:
-    return {"items": deepcopy(items), "total": len(items)}
-
-
-def _build_scope_context(user: dict[str, Any] | None, db: Session):
-    """Build an AccessContext from a user dict + DB session.
-
-    Returns None when *user* is None (no scope filtering — internal / seed path).
-    """
-    if user is None:
-        return None
-    from authorization.scope import get_access_context as _get_ctx
-    return _get_ctx(user, db)
-
-
-def _scope_filter(ctx, table):
-    """Return a SQLAlchemy WHERE clause for *table* scoped to *ctx*, or True."""
-    if ctx is None:
-        return True  # No user context — return everything (seed / internal path)
-    from authorization.sql_filters import (
-        calendar_visibility_filter,
-        knowledge_visibility_filter,
-        task_visibility_filter,
-    )
-    table_name = str(table.name)
-    if table_name == "portal_tasks":
-        return task_visibility_filter(ctx, table)
-    elif table_name == "portal_calendar_events":
-        return calendar_visibility_filter(ctx, table)
-    elif table_name == "knowledge_dataset_mappings":
-        return knowledge_visibility_filter(ctx, table)
-    return True
-
-
-def _scope_single(ctx, table, resource_id: int | str) -> Any:
-    """Build WHERE clause for single-resource access (update/delete).
-
-    Returns a clause that yields 0 rows if the user lacks access.
-    """
-    if ctx is None:
-        return table.c.id == resource_id
-    from authorization.sql_filters import resource_owner_filter
-    return resource_owner_filter(ctx, table, resource_id)
-
-
 # ═════════════════════════════════════════════════════════════════════
 # PortalStore
 # ═════════════════════════════════════════════════════════════════════
 
 
-class PortalStore:
+class PortalStore(
+    BaseStore,
+    PortalMixin,
+    SubsystemsMixin,
+    SearchMixin,
+    RepairMixin,
+    AssetMixin,
+    OaMixin,
+    HrMixin,
+    FinanceMixin,
+    WebsiteMixin,
+    EstateMixin,
+    EmploymentMixin,
+    NotificationMixin,
+):
+    """Unified store singleton — Table definitions + metadata live at module level."""
+
     def __init__(self) -> None:
-        self._lock = RLock()
+        super().__init__()  # BaseStore sets self._lock
+        # Expose table refs for mixins (they access via self._*_table)
+        self._portal_subsystems_table = portal_subsystems_table
+        self._portal_subsystem_visits_table = portal_subsystem_visits_table
+        self._portal_notices_table = portal_notices_table
+        self._portal_documents_table = portal_documents_table
+        self._portal_resources_table = portal_resources_table
+        self._portal_services_table = portal_services_table
+        self._portal_news_table = portal_news_table
+        self._portal_user_preferences_table = portal_user_preferences_table
+        self._orgs_table = orgs_table
+        self._departments_table = departments_table
+        self._enterprise_repair_tickets_table = enterprise_repair_tickets_table
+        self._enterprise_asset_items_table = enterprise_asset_items_table
+        self._enterprise_oa_flows_table = enterprise_oa_flows_table
+        self._asset_borrow_records_table = asset_borrow_records_table
+        self._oa_approval_records_table = oa_approval_records_table
+        self._hr_requests_table = hr_requests_table
+        self._finance_claims_table = finance_claims_table
+        self._finance_budgets_table = finance_budgets_table
+        self._finance_approval_records_table = finance_approval_records_table
+        self._cms_sites_table = cms_sites_table
+        self._estate_spaces_table = estate_spaces_table
+        self._job_postings_table = job_postings_table
+        self._notifications_table = notifications_table
         self._ensure_schema()
 
     @contextmanager
     def _session(self) -> Iterator[Session]:
+        """Override BaseStore._session — ensure schema before every session."""
         self._ensure_schema()
         db = get_session_local()()
         try:
@@ -301,7 +1116,35 @@ class PortalStore:
             if not alembic_managed:
                 metadata.create_all(bind=engine)
                 self._ensure_sqlite_columns(engine)
+            else:
+                self._ensure_portal_asset_tables(engine)
             self._seed_defaults(engine)
+
+    def _ensure_portal_asset_tables(self, engine: Any) -> None:
+        portal_tables = [
+            portal_subsystems_table,
+            portal_subsystem_visits_table,
+            portal_notices_table,
+            portal_documents_table,
+            portal_resources_table,
+            portal_services_table,
+            portal_news_table,
+            portal_user_preferences_table,
+            enterprise_repair_tickets_table,
+            enterprise_asset_items_table,
+            enterprise_oa_flows_table,
+            asset_borrow_records_table,
+            oa_approval_records_table,
+            hr_requests_table,
+            finance_claims_table,
+            finance_budgets_table,
+            finance_approval_records_table,
+            cms_sites_table,
+            estate_spaces_table,
+            job_postings_table,
+        ]
+        for table in portal_tables:
+            table.create(bind=engine, checkfirst=True)
 
     def _seed_defaults(self, engine: Any) -> None:
         """Seed default tasks, events, and embed URLs if not already present."""
@@ -340,6 +1183,225 @@ class PortalStore:
                             value_json=json.dumps(value, ensure_ascii=False),
                         ),
                     )
+            now = datetime.now(timezone.utc).isoformat()
+            if db.scalar(select(func.count()).select_from(portal_subsystems_table)) == 0:
+                db.execute(insert(portal_subsystems_table), [
+                    {
+                        **_PORTAL_BASE,
+                        "code": code,
+                        "name": name,
+                        "category": category,
+                        "description": description,
+                        "status": "active",
+                        "entry_type": SHELL_SUBSYSTEM_ENTRY.get(code, ("internal", None))[0],
+                        "entry_url": SHELL_SUBSYSTEM_ENTRY.get(code, ("internal", None))[1],
+                        "owner_department": owner_department,
+                        "owner_name": owner_department,
+                        "support_contact": support_contact,
+                        "icon_tone": tone,
+                        "sort_order": index,
+                        "is_featured": index < 6,
+                        "common_actions_json": json.dumps(
+                            DEFAULT_SUBSYSTEM_ACTIONS.get(code, [{"label": "查看概览", "kind": "overview"}]),
+                            ensure_ascii=False,
+                        ),
+                        "related_resources_json": json.dumps(["制度手册", "服务目录"], ensure_ascii=False),
+                        "menu_items_json": json.dumps(
+                            DEFAULT_MENU_ITEMS.get(code, []), ensure_ascii=False,
+                        ),
+                        "created_at": now,
+                        "updated_at": now,
+                    }
+                    for index, (code, name, category, description, owner_department, support_contact, tone)
+                    in enumerate(DEFAULT_SUBSYSTEMS, start=1)
+                ])
+            generic_action_labels = {"查看概览", "查看关联服务", "查看关联资源"}
+            for code, *_ in DEFAULT_SUBSYSTEMS:
+                desired_actions = DEFAULT_SUBSYSTEM_ACTIONS.get(code)
+                if not desired_actions:
+                    continue
+                current_json = db.scalar(
+                    select(portal_subsystems_table.c.common_actions_json)
+                    .where(portal_subsystems_table.c.code == code)
+                )
+                try:
+                    current_actions = json.loads(current_json or "[]")
+                except json.JSONDecodeError:
+                    current_actions = []
+                current_labels = {str(action.get("label", "")) for action in current_actions if isinstance(action, dict)}
+                desired_labels = {action["label"] for action in desired_actions}
+                if current_labels.issubset(generic_action_labels) or not desired_labels.issubset(current_labels):
+                    db.execute(
+                        update(portal_subsystems_table)
+                        .where(portal_subsystems_table.c.code == code)
+                        .values(
+                            common_actions_json=json.dumps(desired_actions, ensure_ascii=False),
+                            updated_at=now,
+                        )
+                    )
+            # Idempotent: update menu_items_json for deep subsystems on existing DBs.
+            # Wrapped in try/except because columns may not exist yet on dev DBs
+            # that haven't run migration 005 (Alembic adds them later).
+            try:
+                for code in DEFAULT_MENU_ITEMS:
+                    current_menu = db.scalar(
+                        select(portal_subsystems_table.c.menu_items_json)
+                        .where(portal_subsystems_table.c.code == code)
+                    )
+                    try:
+                        parsed = json.loads(current_menu or "[]")
+                    except json.JSONDecodeError:
+                        parsed = []
+                    desired_menu = DEFAULT_MENU_ITEMS[code]
+                    if parsed != desired_menu:
+                        db.execute(
+                            update(portal_subsystems_table)
+                            .where(portal_subsystems_table.c.code == code)
+                            .values(
+                                menu_items_json=json.dumps(desired_menu, ensure_ascii=False),
+                                updated_at=now,
+                            )
+                        )
+            except Exception:
+                pass  # column missing — migration 005 not yet applied
+
+            # Idempotent: update entry_type/entry_url for shell subsystems on existing DBs.
+            try:
+                for code, (entry_type, entry_url) in SHELL_SUBSYSTEM_ENTRY.items():
+                    current = db.execute(
+                        select(portal_subsystems_table.c.entry_type, portal_subsystems_table.c.entry_url)
+                        .where(portal_subsystems_table.c.code == code)
+                    ).first()
+                    if current and (current.entry_type != entry_type or current.entry_url != entry_url):
+                        db.execute(
+                            update(portal_subsystems_table)
+                            .where(portal_subsystems_table.c.code == code)
+                            .values(entry_type=entry_type, entry_url=entry_url, updated_at=now)
+                        )
+            except Exception:
+                pass  # entry_url column missing — migration 005 not yet applied
+            if db.scalar(select(func.count()).select_from(portal_notices_table)) == 0:
+                db.execute(insert(portal_notices_table), [
+                    {
+                        **_PORTAL_BASE,
+                        "title": item["title"],
+                        "source": item["source"],
+                        "category": item["category"],
+                        "body": f"{item['title']}。请相关部门按通知要求完成后续工作，并在统一门户中查看办理进展。",
+                        "pinned": index == 0,
+                        "published_at": f"2026-{item['time'][:2]}-{item['time'][3:5]}T{item['time'][6:]}:00",
+                        "read_count": 0,
+                        "created_at": now,
+                        "updated_at": now,
+                    }
+                    for index, item in enumerate(DEFAULT_NOTICES)
+                ])
+            if db.scalar(select(func.count()).select_from(portal_documents_table)) == 0:
+                db.execute(insert(portal_documents_table), [
+                    {
+                        **_PORTAL_BASE,
+                        "name": item["name"],
+                        "location": item["location"],
+                        "owner": item["owner"],
+                        "file_type": item["file_type"],
+                        "summary": f"{item['name']}用于门户内协作、查阅和知识沉淀。",
+                        "updated_at": f"2026-{item['updated_at'][:2]}-{item['updated_at'][3:]}T09:00:00",
+                        "favorite_count": 0,
+                        "visit_count": 0,
+                        "created_at": now,
+                    }
+                    for item in DEFAULT_DOCUMENTS
+                ])
+            if db.scalar(select(func.count()).select_from(portal_resources_table)) == 0:
+                resources = [
+                    ("policy-handbook", "制度手册", "制度规范", "组织制度与办事指南", "汇总组织制度、流程规范和常见问题。", "党政办公室", "app-red", True),
+                    ("data-portal", "数据门户", "数据运营", "经营与运营数据", "提供组织运营指标和专题数据看板。", "信息中心", "app-blue", True),
+                    ("training-library", "培训资料库", "培训学习", "课程与培训材料", "沉淀信息安全、业务流程和工具培训资料。", "人事处", "app-orange", False),
+                    ("service-catalog", "服务目录", "统一服务", "常用服务与申请入口", "展示组织内部服务事项和办理说明。", "综合服务台", "app-green", True),
+                ]
+                db.execute(insert(portal_resources_table), [
+                    {
+                        **_PORTAL_BASE,
+                        "code": code,
+                        "title": title,
+                        "category": category,
+                        "description": description,
+                        "body": body,
+                        "owner": owner,
+                        "icon_tone": tone,
+                        "pinned": pinned,
+                        "updated_at": now,
+                        "created_at": now,
+                    }
+                    for code, title, category, description, body, owner, tone, pinned in resources
+                ])
+            if db.scalar(select(func.count()).select_from(portal_services_table)) == 0:
+                db.execute(insert(portal_services_table), [
+                    {
+                        **_PORTAL_BASE,
+                        "code": f"service-{index}",
+                        "title": title,
+                        "category": "人事服务" if index <= 9 else "统一服务",
+                        "description": f"{title}的办理说明、材料要求和联系人信息。",
+                        "materials": "身份证明、申请说明、相关附件",
+                        "audience": "组织内部成员",
+                        "contact": "综合服务台",
+                        "status": "active",
+                        "subscribed_count": 0,
+                        "updated_at": now,
+                        "created_at": now,
+                    }
+                    for index, title in enumerate(DEFAULT_SERVICES, start=1)
+                ])
+            if db.scalar(select(func.count()).select_from(portal_news_table)) == 0:
+                db.execute(insert(portal_news_table), [
+                    {
+                        **_PORTAL_BASE,
+                        "title": item["title"],
+                        "source": item["source"],
+                        "category": item["category"],
+                        "body": f"{item['title']}。详情将在资讯中心持续更新。",
+                        "pinned": index == 0,
+                        "published_at": f"{item['published_at']}T09:00:00",
+                        "created_at": now,
+                        "updated_at": now,
+                    }
+                    for index, item in enumerate(DEFAULT_NEWS)
+                ])
+            if db.scalar(select(func.count()).select_from(enterprise_repair_tickets_table)) == 0:
+                db.execute(insert(enterprise_repair_tickets_table), [
+                    {
+                        **_PORTAL_BASE,
+                        **item,
+                        "requester_id": 1,
+                        "created_at": now,
+                        "updated_at": now,
+                    }
+                    for item in DEFAULT_REPAIR_TICKETS
+                ])
+            if db.scalar(select(func.count()).select_from(enterprise_asset_items_table)) == 0:
+                db.execute(insert(enterprise_asset_items_table), [
+                    {
+                        **_PORTAL_BASE,
+                        **item,
+                        "owner_id": 1,
+                        "created_at": now,
+                        "updated_at": now,
+                    }
+                    for item in DEFAULT_ASSET_ITEMS
+                ])
+            if db.scalar(select(func.count()).select_from(enterprise_oa_flows_table)) == 0:
+                db.execute(insert(enterprise_oa_flows_table), [
+                    {
+                        **_PORTAL_BASE,
+                        **item,
+                        "initiator_id": 1,
+                        "owner_id": 1,
+                        "created_at": now,
+                        "updated_at": now,
+                    }
+                    for item in DEFAULT_OA_FLOWS
+                ])
             db.commit()
 
     def _ensure_sqlite_columns(self, engine: Any) -> None:
@@ -375,6 +1437,10 @@ class PortalStore:
                 "visibility": "VARCHAR(16) NOT NULL DEFAULT 'dept'",
                 "sensitivity": "VARCHAR(16) NOT NULL DEFAULT 'internal'",
             },
+            "chat_sessions": {
+                # Phase 4: user-level data isolation
+                "user_id": "INTEGER",
+            },
         }
         with engine.begin() as conn:
             for table_name, columns in expected.items():
@@ -385,6 +1451,20 @@ class PortalStore:
                 for column_name, definition in columns.items():
                     if column_name not in existing:
                         conn.execute(text(f"ALTER TABLE {table_name} ADD COLUMN {column_name} {definition}"))
+
+    # ── Row helpers ───────────────────────────────────────────────
+
+    def _asset_table(self, collection: str) -> Table:
+        tables = {
+            "notices": portal_notices_table,
+            "documents": portal_documents_table,
+            "resources": portal_resources_table,
+            "services": portal_services_table,
+            "news": portal_news_table,
+        }
+        if collection not in tables:
+            raise KeyError(collection)
+        return tables[collection]
 
     @property
     def embed_urls(self) -> dict[str, str]:
@@ -400,33 +1480,93 @@ class PortalStore:
                     data[row["key"]] = value
             return data
 
-    # ── Row helpers ───────────────────────────────────────────────
-
-    def _task_from_row(self, row: Any) -> dict[str, Any]:
-        item = dict(row)
-        item["done"] = bool(item["done"])
-        return item
-
-    def _event_from_row(self, row: Any) -> dict[str, Any]:
-        return dict(row)
-
     # ═════════════════════════════════════════════════════════════
     # Bootstrap
     # ═════════════════════════════════════════════════════════════
+
+    def portal_dashboard(self, user: dict[str, Any] | None = None) -> dict[str, int]:
+        with self._session() as db:
+            visible_subsystems = self.list_subsystems(user=user)["items"]
+            visits_7d = db.scalar(select(func.count()).select_from(portal_subsystem_visits_table)) or 0
+        return {
+            "subsystems_total": len(visible_subsystems),
+            "subsystems_active": sum(1 for item in visible_subsystems if item["status"] == "active"),
+            "subsystems_maintenance": sum(1 for item in visible_subsystems if item["status"] == "maintenance"),
+            "notices_total": self.list_portal_assets("notices", user=user)["total"],
+            "services_total": self.list_portal_assets("services", user=user)["total"],
+            "documents_total": self.list_portal_assets("documents", user=user)["total"],
+            "news_total": self.list_portal_assets("news", user=user)["total"],
+            "today_tasks": self.list_tasks(user=user)["total"],
+            "today_events": self.list_events(user=user)["total"],
+            "visits_7d": int(visits_7d),
+        }
+
+    def enterprise_workbench(self, code: str, user: dict[str, Any] | None = None) -> dict[str, Any] | None:
+        configs = {
+            "repair": {
+                "title": "报修工单",
+                "columns": ["工单", "状态", "处理人", "更新时间"],
+                "collection": self.list_repair_tickets,
+                "map": lambda item: {
+                    "title": item["title"],
+                    "status": item["status"],
+                    "owner": item.get("assignee") or "待分派",
+                    "updated": item["updated_at"][:10],
+                    "detail": item["description"],
+                },
+            },
+            "assets": {
+                "title": "资产台账",
+                "columns": ["资产", "状态", "保管人", "更新时间"],
+                "collection": self.list_asset_items,
+                "map": lambda item: {
+                    "title": item["name"],
+                    "status": item["status"],
+                    "owner": item.get("custodian") or "未指定",
+                    "updated": item["updated_at"][:10],
+                    "detail": f"{item['asset_code']} · {item['category']} · {item['location']}",
+                },
+            },
+            "oa": {
+                "title": "待办流程",
+                "columns": ["流程", "状态", "当前处理人", "更新时间"],
+                "collection": self.list_oa_flows,
+                "map": lambda item: {
+                    "title": item["title"],
+                    "status": item["status"],
+                    "owner": item.get("current_handler") or "待分派",
+                    "updated": item["updated_at"][:10],
+                    "detail": f"{item['flow_type']} · 当前节点：{item.get('current_handler') or '待分派'}",
+                },
+            },
+        }
+        config = configs.get(code)
+        if config is None:
+            return None
+        items = config["collection"](user=user)["items"]
+        records = [config["map"](item) for item in items]
+        pending = sum(1 for item in records if item["status"] in {"submitted", "pending", "processing", "borrowed"})
+        return {
+            "code": code,
+            "title": config["title"],
+            "columns": config["columns"],
+            "records": records,
+            "metrics": {
+                "total": len(records),
+                "pending": pending,
+                "ready": len(records) - pending,
+            },
+        }
 
     def bootstrap_payload(self, user: dict[str, Any] | None = None) -> dict[str, Any]:
         return {
             "workspace": {
                 "tasks": self.list_tasks(user=user),
                 "shortcuts": DEFAULT_SHORTCUTS,
-                "resources": list_response([
-                    {"title": "制度手册", "description": "组织制度与办事指南", "tone": "app-red"},
-                    {"title": "数据门户", "description": "经营与运营数据", "tone": "app-blue"},
-                    {"title": "培训资料库", "description": "课程与培训材料", "tone": "app-orange"},
-                    {"title": "服务目录", "description": "常用服务与申请入口", "tone": "app-green"},
-                ]),
-                "documents": list_response(DEFAULT_DOCUMENTS),
-                "notices": list_response(DEFAULT_NOTICES),
+                "resources": self.list_portal_assets("resources", user=user),
+                "documents": self.list_portal_assets("documents", user=user),
+                "notices": self.list_portal_assets("notices", user=user),
+                "dashboard": self.portal_dashboard(user=user),
             },
             "portal": {
                 "profile": {
@@ -434,14 +1574,11 @@ class PortalStore:
                     "department": user.get("default_dept_id") or "" if user else "应用物理与材料学院",
                     "last_login": user.get("last_login_at") or "" if user else "2026-07-16 10:56",
                 },
-                "systems": list_response(DEFAULT_SYSTEMS),
-                "services": list_response(DEFAULT_SERVICES),
-                "news": list_response([
-                    {"title": "组织数字化服务升级，统一门户上线新入口", "source": "企业资讯", "date": "07/24"},
-                    {"title": "2026 年第二季度运营回顾与重点工作安排", "source": "运营中心", "date": "07/22"},
-                    {"title": "知识资产沉淀计划启动，支持部门知识库共建", "source": "知识中心", "date": "07/18"},
-                    {"title": "信息安全与数据合规培训报名通知", "source": "安全办公室", "date": "07/16"},
-                ]),
+                "systems": self.list_subsystems(user=user),
+                "services": self.list_portal_assets("services", user=user),
+                "news": self.list_portal_assets("news", user=user),
+                "preferences": self.get_portal_preferences(user=user),
+                "dashboard": self.portal_dashboard(user=user),
             },
             "calendar": {"events": self.list_events(user=user)},
             "knowledge": {"spaces": self.list_knowledge_spaces(user=user)},
@@ -453,15 +1590,15 @@ class PortalStore:
 
     def list_tasks(self, user: dict[str, Any] | None = None) -> dict[str, Any]:
         with self._session() as db:
-            ctx = _build_scope_context(user, db)
+            ctx = self._build_scope_context(user, db)
             stmt = (
                 select(tasks_table)
-                .where(_scope_filter(ctx, tasks_table))
+                .where(self._scope_filter(ctx, tasks_table))
                 .order_by(tasks_table.c.id.desc())
             )
             rows = db.execute(stmt).mappings().all()
             items = [self._task_from_row(row) for row in rows]
-            return list_response(items)
+            return self.list_response(items)
 
     def create_task(self, payload: dict[str, Any], user: dict[str, Any] | None = None) -> dict[str, Any]:
         with self._lock:
@@ -472,14 +1609,19 @@ class PortalStore:
                     "due_time": payload.get("due_time") or None,
                     "done": False,
                 }
-                # Phase 4: set attribution from user context
+                # Phase 4: set attribution from user context.
+                # NEVER trust client-supplied org_id / department_id / owner_id /
+                # visibility / sensitivity — always derive from the server-side
+                # AccessContext so a user cannot inject attribution columns via
+                # extra JSON fields (defence-in-depth; the Pydantic schema already
+                # strips unknown fields, but the store layer must not rely on that).
                 if user is not None:
-                    ctx = _build_scope_context(user, db)
-                    values["org_id"] = payload.get("org_id") or (ctx.default_org_id if ctx else "default")
-                    values["department_id"] = payload.get("department_id") or (ctx.default_dept_id if ctx else "HQ")
+                    ctx = self._build_scope_context(user, db)
+                    values["org_id"] = ctx.default_org_id if ctx else "default"
+                    values["department_id"] = ctx.default_dept_id if ctx else "HQ"
                     values["owner_id"] = ctx.user_id if ctx else None
-                    values["visibility"] = payload.get("visibility", "private")
-                    values["sensitivity"] = payload.get("sensitivity", "normal")
+                    values["visibility"] = "private"
+                    values["sensitivity"] = "normal"
                 else:
                     values.setdefault("org_id", "default")
                     values.setdefault("department_id", "HQ")
@@ -491,7 +1633,7 @@ class PortalStore:
                 task_id = int(result.inserted_primary_key[0])
 
                 # Re-read through scope filter so the response is consistent
-                scope_clause = _scope_single(ctx, tasks_table, task_id) if user is not None else (tasks_table.c.id == task_id)
+                scope_clause = self._scope_single(ctx, tasks_table, task_id) if user is not None else (tasks_table.c.id == task_id)
                 row = db.execute(select(tasks_table).where(scope_clause)).mappings().first()
                 if row is None:
                     # Shouldn't happen (just created by this user), but be defensive
@@ -501,8 +1643,8 @@ class PortalStore:
     def update_task(self, task_id: int, payload: dict[str, Any], user: dict[str, Any] | None = None) -> dict[str, Any] | None:
         with self._lock:
             with self._session() as db:
-                ctx = _build_scope_context(user, db)
-                scope_clause = _scope_single(ctx, tasks_table, task_id)
+                ctx = self._build_scope_context(user, db)
+                scope_clause = self._scope_single(ctx, tasks_table, task_id)
 
                 # Verify access before mutating
                 existing = db.execute(
@@ -526,8 +1668,8 @@ class PortalStore:
     def delete_task(self, task_id: int, user: dict[str, Any] | None = None) -> bool:
         with self._lock:
             with self._session() as db:
-                ctx = _build_scope_context(user, db)
-                scope_clause = _scope_single(ctx, tasks_table, task_id)
+                ctx = self._build_scope_context(user, db)
+                scope_clause = self._scope_single(ctx, tasks_table, task_id)
 
                 result = db.execute(delete(tasks_table).where(scope_clause))
                 db.commit()
@@ -536,12 +1678,12 @@ class PortalStore:
     def clear_done_tasks(self, user: dict[str, Any] | None = None) -> int:
         with self._lock:
             with self._session() as db:
-                ctx = _build_scope_context(user, db)
+                ctx = self._build_scope_context(user, db)
                 # Scope the mass-delete to user-visible tasks that are done.
                 result = db.execute(
                     delete(tasks_table)
                     .where(tasks_table.c.done.is_(True))
-                    .where(_scope_filter(ctx, tasks_table)),
+                    .where(self._scope_filter(ctx, tasks_table)),
                 )
                 db.commit()
                 return int(result.rowcount or 0)
@@ -552,28 +1694,37 @@ class PortalStore:
 
     def list_events(self, user: dict[str, Any] | None = None) -> dict[str, Any]:
         with self._session() as db:
-            ctx = _build_scope_context(user, db)
+            ctx = self._build_scope_context(user, db)
             stmt = (
                 select(events_table)
-                .where(_scope_filter(ctx, events_table))
+                .where(self._scope_filter(ctx, events_table))
                 .order_by(events_table.c.date, events_table.c.id)
             )
             rows = db.execute(stmt).mappings().all()
             items = [self._event_from_row(row) for row in rows]
-            return list_response(items)
+            return self.list_response(items)
 
     def create_event(self, payload: dict[str, Any], user: dict[str, Any] | None = None) -> dict[str, Any]:
         with self._lock:
             with self._session() as db:
-                values = dict(payload)
-                # Phase 4: set attribution from user context
+                # Extract only known-safe fields — never copy the full payload
+                # into values because that would allow client-supplied attribution
+                # columns (org_id, owner_id, etc.) to leak through if the Pydantic
+                # schema ever adds them.
+                values = {
+                    "title": payload["title"],
+                    "date": payload["date"],
+                    "tone": payload.get("tone", "blue"),
+                }
+                # Phase 4: set attribution from user context.
+                # Same defence-in-depth rationale as create_task above.
                 if user is not None:
-                    ctx = _build_scope_context(user, db)
-                    values["org_id"] = payload.get("org_id") or (ctx.default_org_id if ctx else "default")
-                    values["department_id"] = payload.get("department_id") or (ctx.default_dept_id if ctx else "HQ")
+                    ctx = self._build_scope_context(user, db)
+                    values["org_id"] = ctx.default_org_id if ctx else "default"
+                    values["department_id"] = ctx.default_dept_id if ctx else "HQ"
                     values["owner_id"] = ctx.user_id if ctx else None
-                    values.setdefault("visibility", "private")
-                    values.setdefault("sensitivity", "normal")
+                    values["visibility"] = "private"
+                    values["sensitivity"] = "normal"
                 else:
                     values.setdefault("org_id", "default")
                     values.setdefault("department_id", "HQ")
@@ -584,7 +1735,7 @@ class PortalStore:
                 db.commit()
                 event_id = int(result.inserted_primary_key[0])
 
-                scope_clause = _scope_single(ctx, events_table, event_id) if user is not None else (events_table.c.id == event_id)
+                scope_clause = self._scope_single(ctx, events_table, event_id) if user is not None else (events_table.c.id == event_id)
                 row = db.execute(select(events_table).where(scope_clause)).mappings().first()
                 if row is None:
                     row = db.execute(select(events_table).where(events_table.c.id == event_id)).mappings().one()
@@ -593,8 +1744,8 @@ class PortalStore:
     def update_event(self, event_id: int, payload: dict[str, Any], user: dict[str, Any] | None = None) -> dict[str, Any] | None:
         with self._lock:
             with self._session() as db:
-                ctx = _build_scope_context(user, db)
-                scope_clause = _scope_single(ctx, events_table, event_id)
+                ctx = self._build_scope_context(user, db)
+                scope_clause = self._scope_single(ctx, events_table, event_id)
 
                 existing = db.execute(
                     select(events_table).where(scope_clause)
@@ -622,8 +1773,8 @@ class PortalStore:
     def delete_event(self, event_id: int, user: dict[str, Any] | None = None) -> bool:
         with self._lock:
             with self._session() as db:
-                ctx = _build_scope_context(user, db)
-                scope_clause = _scope_single(ctx, events_table, event_id)
+                ctx = self._build_scope_context(user, db)
+                scope_clause = self._scope_single(ctx, events_table, event_id)
 
                 result = db.execute(delete(events_table).where(scope_clause))
                 db.commit()
@@ -681,18 +1832,18 @@ class PortalStore:
                 or filter_ not in _resource_types)  # pass-through for permission_scope values
             and (not query or query in f"{item['title']}{item['owner']}{item['desc']}{item.get('fastgpt_dataset_id') or ''}{item.get('fastgpt_app_id') or ''}".lower())
         ]
-        return list_response(items)
+        return self.list_response(items)
 
     def _list_synced_knowledge_spaces(
         self,
         user: dict[str, Any] | None = None,
     ) -> list[dict[str, Any]]:
         with self._session() as db:
-            ctx = _build_scope_context(user, db)
+            ctx = self._build_scope_context(user, db)
             stmt = (
                 select(knowledge_mappings_table)
                 .where(knowledge_mappings_table.c.enabled.is_(True))
-                .where(_scope_filter(ctx, knowledge_mappings_table))
+                .where(self._scope_filter(ctx, knowledge_mappings_table))
                 .order_by(knowledge_mappings_table.c.display_name)
             )
             rows = db.execute(stmt).mappings().all()
@@ -703,14 +1854,14 @@ class PortalStore:
         user: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         with self._session() as db:
-            ctx = _build_scope_context(user, db)
+            ctx = self._build_scope_context(user, db)
             stmt = (
                 select(knowledge_mappings_table)
-                .where(_scope_filter(ctx, knowledge_mappings_table))
+                .where(self._scope_filter(ctx, knowledge_mappings_table))
                 .order_by(knowledge_mappings_table.c.resource_type.desc(), knowledge_mappings_table.c.display_name)
             )
             rows = db.execute(stmt).mappings().all()
-            return list_response([knowledge_mapping_from_row(row) for row in rows])
+            return self.list_response([knowledge_mapping_from_row(row) for row in rows])
 
     def update_knowledge_mapping(
         self,
@@ -720,8 +1871,8 @@ class PortalStore:
     ) -> dict[str, Any] | None:
         with self._lock:
             with self._session() as db:
-                ctx = _build_scope_context(user, db)
-                scope_clause = _scope_single(ctx, knowledge_mappings_table, mapping_id)
+                ctx = self._build_scope_context(user, db)
+                scope_clause = self._scope_single(ctx, knowledge_mappings_table, mapping_id)
 
                 row = db.execute(
                     select(knowledge_mappings_table).where(scope_clause)
@@ -741,7 +1892,7 @@ class PortalStore:
                     db.execute(
                         update(knowledge_mappings_table)
                         .where(knowledge_mappings_table.c.resource_type == "dataset")
-                        .where(_scope_filter(ctx, knowledge_mappings_table))
+                        .where(self._scope_filter(ctx, knowledge_mappings_table))
                         .values(is_default_import_target=False),
                     )
                     updates["is_default_import_target"] = True
@@ -767,8 +1918,8 @@ class PortalStore:
     ) -> bool:
         with self._lock:
             with self._session() as db:
-                ctx = _build_scope_context(user, db)
-                scope_clause = _scope_single(ctx, knowledge_mappings_table, mapping_id)
+                ctx = self._build_scope_context(user, db)
+                scope_clause = self._scope_single(ctx, knowledge_mappings_table, mapping_id)
 
                 result = db.execute(
                     delete(knowledge_mappings_table).where(scope_clause),
@@ -852,14 +2003,26 @@ class PortalStore:
         status: str,
         collection_id: str | None,
         error_message: str | None = None,
+        user: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         now = datetime.now(timezone.utc).isoformat()
         with self._lock:
             with self._session() as db:
-                mapping = db.execute(
-                    select(knowledge_mappings_table)
-                    .where(knowledge_mappings_table.c.fastgpt_dataset_id == dataset_id),
-                ).mappings().first()
+                # Phase 4 P2-1: scope the mapping lookup to datasets the user
+                # can access.  Without this a user with kb:import could create
+                # import records for datasets outside their data scope.
+                if user is not None:
+                    ctx = self._build_scope_context(user, db)
+                    mapping = db.execute(
+                        select(knowledge_mappings_table)
+                        .where(knowledge_mappings_table.c.fastgpt_dataset_id == dataset_id)
+                        .where(self._scope_filter(ctx, knowledge_mappings_table))
+                    ).mappings().first()
+                else:
+                    mapping = db.execute(
+                        select(knowledge_mappings_table)
+                        .where(knowledge_mappings_table.c.fastgpt_dataset_id == dataset_id),
+                    ).mappings().first()
                 mapping_id = mapping["id"] if mapping else None
                 result = db.execute(
                     insert(knowledge_import_records_table).values(
@@ -896,7 +2059,7 @@ class PortalStore:
         """
         with self._session() as db:
             if user is not None:
-                ctx = _build_scope_context(user, db)
+                ctx = self._build_scope_context(user, db)
                 # Join import records ↔ mappings and apply the visibility filter
                 # on the mappings side so we only return imports for datasets the
                 # user is authorised to see.
@@ -912,7 +2075,7 @@ class PortalStore:
                     .where(
                         or_(
                             # Import records linked to a visible mapping
-                            _scope_filter(ctx, knowledge_mappings_table),
+                            self._scope_filter(ctx, knowledge_mappings_table),
                             # Import records with no mapping (mapping_id IS NULL)
                             # still need to be visible — only super_admin / internal
                             # users see unlinked records.
@@ -930,40 +2093,47 @@ class PortalStore:
                     .order_by(knowledge_import_records_table.c.id.desc())
                 )
             rows = db.execute(stmt).mappings().all()
-            return list_response([dict(row) for row in rows])
+            return self.list_response([self._stringify_dt(dict(row)) for row in rows])
 
-    def delete_knowledge_import_by_collection(self, collection_id: str) -> None:
-        """删除指定 collection_id 的导入记录。"""
+    def delete_knowledge_import_by_collection(
+        self, collection_id: str,
+        user: dict[str, Any] | None = None,
+    ) -> None:
+        """删除指定 collection_id 的导入记录。
+
+        Phase 4 P2-2: when *user* is provided only delete import records
+        linked to mappings the user can see.
+        """
         with self._lock:
             with self._session() as db:
-                db.execute(
-                    knowledge_import_records_table.delete()
-                    .where(knowledge_import_records_table.c.collection_id == collection_id),
-                )
+                if user is not None:
+                    ctx = self._build_scope_context(user, db)
+                    # Only delete records whose mapping is in the user's scope
+                    visible_mapping_ids = {
+                        r[0] for r in db.execute(
+                            select(knowledge_mappings_table.c.id)
+                            .where(self._scope_filter(ctx, knowledge_mappings_table))
+                        ).fetchall()
+                    }
+                    db.execute(
+                        knowledge_import_records_table.delete()
+                        .where(knowledge_import_records_table.c.collection_id == collection_id)
+                        .where(
+                            or_(
+                                knowledge_import_records_table.c.mapping_id.in_(visible_mapping_ids),
+                                knowledge_import_records_table.c.mapping_id.is_(None),
+                            )
+                        ),
+                    )
+                else:
+                    db.execute(
+                        knowledge_import_records_table.delete()
+                        .where(knowledge_import_records_table.c.collection_id == collection_id),
+                    )
                 db.commit()
 
     # ═════════════════════════════════════════════════════════════
-    # Search  (Phase 4: scope-filter knowledge results)
-    # ═════════════════════════════════════════════════════════════
-
-    def search(self, query: str, user: dict[str, Any] | None = None) -> dict[str, Any]:
-        needle = query.strip().lower()
-        sources: list[dict[str, str]] = []
-
-        # Knowledge results are scope-filtered
-        sources.extend(
-            {"type": "知识库", "title": item["title"], "description": item["desc"]}
-            for item in self.list_knowledge_spaces(user=user)["items"]
-        )
-        # Public reference data — visible to all authenticated users
-        sources.extend({"type": "文档", "title": item["name"], "description": item["location"]} for item in DEFAULT_DOCUMENTS)
-        sources.extend({"type": "公告", "title": item["title"], "description": item["source"]} for item in DEFAULT_NOTICES)
-        sources.extend({"type": "服务", "title": name, "description": "服务分类"} for name in DEFAULT_SERVICES)
-        items = [item for item in sources if not needle or needle in f"{item['title']}{item['description']}{item['type']}".lower()]
-        return list_response(items[:20])
-
-    # ═════════════════════════════════════════════════════════════
-    # Chat persistence  (no scope changes — chat is session-scoped)
+    # Chat persistence  (Phase 4: user-level scoping)
     # ═════════════════════════════════════════════════════════════
 
     def save_chat_message(
@@ -975,32 +2145,50 @@ class PortalStore:
         action: str | None = None,
         title: str | None = None,
         created_at: str | None = None,
+        user_id: int | None = None,
     ) -> None:
-        """保存一条聊天消息，同时 upsert 会话。"""
+        """保存一条聊天消息，同时 upsert 会话。
+
+        When *user_id* is provided the session is scoped to that user:
+        new sessions record the owner; existing sessions are validated
+        for ownership before accepting messages.
+        """
         now = created_at or datetime.now(timezone.utc).isoformat()
         with self._lock:
             with self._session() as db:
                 # Upsert session
-                existing = db.scalar(
-                    select(chat_sessions_table.c.id).where(chat_sessions_table.c.id == session_id)
-                )
-                if existing is None:
+                existing_row = db.execute(
+                    select(chat_sessions_table.c.id, chat_sessions_table.c.user_id)
+                    .where(chat_sessions_table.c.id == session_id)
+                ).mappings().first()
+
+                if existing_row is None:
                     db.execute(
                         insert(chat_sessions_table).values(
                             id=session_id,
                             title=title or "",
+                            user_id=user_id,
                             created_at=now,
                             updated_at=now,
                         )
                     )
                 else:
+                    # Ownership check: if the session belongs to a different
+                    # user, reject (silently — don't leak session existence).
+                    if user_id is not None and existing_row["user_id"] is not None:
+                        if existing_row["user_id"] != user_id:
+                            return  # silently drop — don't write to foreign session
                     values: dict[str, Any] = {"updated_at": now}
                     if title:
                         values["title"] = title
+                    # If the session has no owner yet (backfilled to NULL),
+                    # claim it for this user.
+                    if existing_row["user_id"] is None and user_id is not None:
+                        values["user_id"] = user_id
                     db.execute(
                         update(chat_sessions_table)
                         .where(chat_sessions_table.c.id == session_id)
-                        .values(**values)
+                        .values(**values),
                     )
                 # Insert message
                 db.execute(
@@ -1014,17 +2202,40 @@ class PortalStore:
                 )
                 db.commit()
 
-    def list_chat_sessions(self) -> dict[str, Any]:
-        """列出所有聊天会话，按更新时间倒序。"""
-        with self._session() as db:
-            rows = db.execute(
-                select(chat_sessions_table).order_by(chat_sessions_table.c.updated_at.desc())
-            ).mappings().all()
-            return list_response([dict(row) for row in rows])
+    def list_chat_sessions(self, user: dict[str, Any] | None = None) -> dict[str, Any]:
+        """列出当前用户的聊天会话，按更新时间倒序。
 
-    def get_chat_messages(self, session_id: str, limit: int = 0) -> dict[str, Any]:
-        """获取指定会话的消息。limit=0 表示不限制，limit>0 返回最近 N 条。"""
+        When *user* is None the full list is returned (internal / seed path).
+        """
         with self._session() as db:
+            stmt = select(chat_sessions_table).order_by(chat_sessions_table.c.updated_at.desc())
+            if user is not None:
+                stmt = stmt.where(chat_sessions_table.c.user_id == user["id"])
+            rows = db.execute(stmt).mappings().all()
+            return self.list_response([self._stringify_dt(dict(row)) for row in rows])
+
+    def get_chat_messages(
+        self, session_id: str, limit: int = 0,
+        user: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        """获取指定会话的消息。
+
+        When *user* is provided the session must belong to that user or
+        the response is empty (uniform with nonexistent sessions to
+        prevent ID enumeration).
+        """
+        with self._session() as db:
+            # Verify ownership first
+            if user is not None:
+                session = db.execute(
+                    select(chat_sessions_table.c.user_id)
+                    .where(chat_sessions_table.c.id == session_id)
+                ).mappings().first()
+                if session is None:
+                    return self.list_response([])
+                if session["user_id"] is not None and session["user_id"] != user["id"]:
+                    return self.list_response([])  # uniform empty — don't leak existence
+
             stmt = (
                 select(chat_messages_table)
                 .where(chat_messages_table.c.session_id == session_id)
@@ -1036,12 +2247,30 @@ class PortalStore:
             # 按 id 升序返回（时间顺序），因为我们用 desc 查询
             result = [dict(row) for row in rows]
             result.reverse()
-            return list_response(result)
+            return self.list_response(result)
 
-    def delete_chat_session(self, session_id: str) -> bool:
-        """删除会话及其所有消息。"""
+    def delete_chat_session(
+        self, session_id: str,
+        user: dict[str, Any] | None = None,
+    ) -> bool:
+        """删除会话及其所有消息。
+
+        When *user* is provided the session must belong to that user.
+        Returns False when the session doesn't exist or isn't owned by
+        *user* (uniform response).
+        """
         with self._lock:
             with self._session() as db:
+                if user is not None:
+                    session = db.execute(
+                        select(chat_sessions_table.c.user_id)
+                        .where(chat_sessions_table.c.id == session_id)
+                    ).mappings().first()
+                    if session is None:
+                        return False
+                    if session["user_id"] is not None and session["user_id"] != user["id"]:
+                        return False  # uniform — don't leak existence
+
                 db.execute(
                     delete(chat_messages_table).where(chat_messages_table.c.session_id == session_id)
                 )
@@ -1101,6 +2330,12 @@ def knowledge_space_from_mapping(row: Any) -> dict[str, Any]:
         "last_synced_at": row["last_synced_at"],
         "last_imported_at": row["last_imported_at"],
         "stale": bool(row["stale"]),
+        # ── Phase 5: attribution fields for retrieval_policy ─────
+        "org_id": row.get("org_id"),
+        "department_id": row.get("department_id"),
+        "owner_id": row.get("owner_id"),
+        "visibility": row.get("visibility", "dept"),
+        "sensitivity": row.get("sensitivity", "internal"),
     }
 
 

@@ -6,11 +6,12 @@ the canonical reference for role-permission mappings throughout the app.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
 from typing import Any
 
+from utils import _ts
+
 # ──────────────────────────────────────────────────────────────────
-# Permission codes (31 total, matching rbac-design-v2.md §5.3)
+# Permission codes (53 total — Phase 1 expansion)
 # ──────────────────────────────────────────────────────────────────
 
 PERMISSIONS: list[dict[str, str]] = [
@@ -55,6 +56,37 @@ PERMISSIONS: list[dict[str, str]] = [
     {"code": "notice:create",    "name": "创建通知",       "resource": "notice",   "action": "create"},
     {"code": "notice:update",    "name": "更新通知",       "resource": "notice",   "action": "update"},
     {"code": "notice:delete",    "name": "删除通知",       "resource": "notice",   "action": "delete"},
+    # ── Phase 1: enterprise module permissions (22 new) ──────────
+    # repair (报修)
+    {"code": "repair:view",      "name": "查看报修",       "resource": "repair",   "action": "view"},
+    {"code": "repair:create",    "name": "创建报修",       "resource": "repair",   "action": "create"},
+    {"code": "repair:assign",    "name": "派单",           "resource": "repair",   "action": "assign"},
+    {"code": "repair:update",    "name": "更新报修",       "resource": "repair",   "action": "update"},
+    {"code": "repair:close",     "name": "关闭报修",       "resource": "repair",   "action": "close"},
+    # asset (资产)
+    {"code": "asset:view",       "name": "查看资产",       "resource": "asset",    "action": "view"},
+    {"code": "asset:create",     "name": "创建资产",       "resource": "asset",    "action": "create"},
+    {"code": "asset:update",     "name": "更新资产",       "resource": "asset",    "action": "update"},
+    {"code": "asset:borrow",     "name": "借用资产",       "resource": "asset",    "action": "borrow"},
+    # oa (OA 审批)
+    {"code": "oa:view",          "name": "查看OA",         "resource": "oa",       "action": "view"},
+    {"code": "oa:create",        "name": "创建OA",         "resource": "oa",       "action": "create"},
+    {"code": "oa:update",        "name": "更新OA",         "resource": "oa",       "action": "update"},
+    # hr (人事)
+    {"code": "hr:view",          "name": "查看人事",       "resource": "hr",       "action": "view"},
+    {"code": "hr:create",        "name": "创建人事",       "resource": "hr",       "action": "create"},
+    {"code": "hr:update",        "name": "更新人事",       "resource": "hr",       "action": "update"},
+    # finance (财务)
+    {"code": "finance:view",     "name": "查看财务",       "resource": "finance",  "action": "view"},
+    {"code": "finance:create",   "name": "创建财务",       "resource": "finance",  "action": "create"},
+    {"code": "finance:approve",  "name": "审批财务",       "resource": "finance",  "action": "approve"},
+    # subsystem (子系统管理)
+    {"code": "subsystem:view",   "name": "查看子系统",     "resource": "subsystem","action": "view"},
+    {"code": "subsystem:manage", "name": "管理子系统",     "resource": "subsystem","action": "manage"},
+    # dashboard (仪表板)
+    {"code": "dashboard:view",   "name": "查看仪表板",     "resource": "dashboard","action": "view"},
+    # enterprise records (企业记录总览)
+    {"code": "enterprise:records:view", "name": "查看企业记录", "resource": "enterprise", "action": "records:view"},
 ]
 
 # ──────────────────────────────────────────────────────────────────
@@ -74,18 +106,31 @@ ROLES: list[dict[str, Any]] = [
 # ──────────────────────────────────────────────────────────────────
 
 ROLE_PERMISSION_MAP: dict[str, list[str]] = {
-    "super_admin": [p["code"] for p in PERMISSIONS],  # all 31
+    "super_admin": [p["code"] for p in PERMISSIONS],  # all 53
 
     "org_admin": [
+        # user / org / dept / audit
         "user:view", "user:create", "user:update",
         "org:view", "org:update",
         "dept:view", "dept:update",
         "audit:view",
+        # tasks / calendar / knowledge / search
         "task:view", "task:create", "task:update", "task:delete",
         "calendar:view", "calendar:create", "calendar:update", "calendar:delete",
         "kb:view", "kb:create", "kb:update", "kb:delete", "kb:import", "kb:chat", "kb:chat_sensitive",
         "search:view",
+        # notices
         "notice:view", "notice:create", "notice:update", "notice:delete",
+        # enterprise modules (full access)
+        "repair:view", "repair:create", "repair:assign", "repair:update", "repair:close",
+        "asset:view", "asset:create", "asset:update", "asset:borrow",
+        "oa:view", "oa:create", "oa:update",
+        "hr:view", "hr:create", "hr:update",
+        "finance:view", "finance:create", "finance:approve",
+        # subsystem / dashboard / enterprise
+        "subsystem:view", "subsystem:manage",
+        "dashboard:view",
+        "enterprise:records:view",
     ],
 
     "dept_leader": [
@@ -96,6 +141,14 @@ ROLE_PERMISSION_MAP: dict[str, list[str]] = {
         "kb:view", "kb:update", "kb:import", "kb:chat",
         "search:view",
         "notice:view", "notice:create", "notice:update",
+        # enterprise modules (view + limited create)
+        "repair:view", "repair:create", "repair:update",
+        "asset:view",
+        "oa:view",
+        "hr:view",
+        "finance:view",
+        "subsystem:view",
+        "dashboard:view",
     ],
 
     "dept_staff": [
@@ -106,6 +159,14 @@ ROLE_PERMISSION_MAP: dict[str, list[str]] = {
         "kb:view", "kb:chat",
         "search:view",
         "notice:view",
+        # enterprise modules (view only)
+        "repair:view",
+        "asset:view",
+        "oa:view",
+        "hr:view",
+        "finance:view",
+        "subsystem:view",
+        "dashboard:view",
     ],
 
     "external": [
@@ -115,6 +176,157 @@ ROLE_PERMISSION_MAP: dict[str, list[str]] = {
         "search:view",
     ],
 }
+
+# ──────────────────────────────────────────────────────────────────
+# Permission groups for admin UI checkbox grid
+# ──────────────────────────────────────────────────────────────────
+
+PERMISSION_GROUPS: dict[str, dict[str, str | list[dict[str, str]]]] = {
+    "用户管理": {
+        "resource": "user",
+        "permissions": [
+            {"code": "user:view",        "name": "查看用户"},
+            {"code": "user:create",      "name": "创建用户"},
+            {"code": "user:update",      "name": "更新用户"},
+            {"code": "user:disable",     "name": "禁用用户"},
+            {"code": "user:assign_role", "name": "分配角色"},
+        ],
+    },
+    "组织管理": {
+        "resource": "org",
+        "permissions": [
+            {"code": "org:view",   "name": "查看组织"},
+            {"code": "org:update", "name": "更新组织"},
+        ],
+    },
+    "部门管理": {
+        "resource": "dept",
+        "permissions": [
+            {"code": "dept:view",   "name": "查看部门"},
+            {"code": "dept:update", "name": "更新部门"},
+        ],
+    },
+    "系统配置": {
+        "resource": "system",
+        "permissions": [
+            {"code": "system:config", "name": "系统配置"},
+        ],
+    },
+    "操作审计": {
+        "resource": "audit",
+        "permissions": [
+            {"code": "audit:view", "name": "查看审计"},
+        ],
+    },
+    "任务": {
+        "resource": "task",
+        "permissions": [
+            {"code": "task:view",   "name": "查看任务"},
+            {"code": "task:create", "name": "创建任务"},
+            {"code": "task:update", "name": "更新任务"},
+            {"code": "task:delete", "name": "删除任务"},
+        ],
+    },
+    "日历": {
+        "resource": "calendar",
+        "permissions": [
+            {"code": "calendar:view",   "name": "查看日历"},
+            {"code": "calendar:create", "name": "创建日历"},
+            {"code": "calendar:update", "name": "更新日历"},
+            {"code": "calendar:delete", "name": "删除日历"},
+        ],
+    },
+    "知识库": {
+        "resource": "kb",
+        "permissions": [
+            {"code": "kb:view",           "name": "查看知识库"},
+            {"code": "kb:create",         "name": "创建知识库"},
+            {"code": "kb:update",         "name": "更新知识库"},
+            {"code": "kb:delete",         "name": "删除知识库"},
+            {"code": "kb:import",         "name": "导入知识库"},
+            {"code": "kb:chat",           "name": "知识库问答"},
+            {"code": "kb:chat_sensitive", "name": "敏感知识问答"},
+        ],
+    },
+    "搜索": {
+        "resource": "search",
+        "permissions": [
+            {"code": "search:view", "name": "搜索"},
+        ],
+    },
+    "通知公告": {
+        "resource": "notice",
+        "permissions": [
+            {"code": "notice:view",   "name": "查看通知"},
+            {"code": "notice:create", "name": "创建通知"},
+            {"code": "notice:update", "name": "更新通知"},
+            {"code": "notice:delete", "name": "删除通知"},
+        ],
+    },
+    "报修系统": {
+        "resource": "repair",
+        "permissions": [
+            {"code": "repair:view",   "name": "查看报修"},
+            {"code": "repair:create", "name": "创建报修"},
+            {"code": "repair:assign", "name": "派单"},
+            {"code": "repair:update", "name": "更新报修"},
+            {"code": "repair:close",  "name": "关闭报修"},
+        ],
+    },
+    "资产系统": {
+        "resource": "asset",
+        "permissions": [
+            {"code": "asset:view",   "name": "查看资产"},
+            {"code": "asset:create", "name": "创建资产"},
+            {"code": "asset:update", "name": "更新资产"},
+            {"code": "asset:borrow", "name": "借用资产"},
+        ],
+    },
+    "OA 系统": {
+        "resource": "oa",
+        "permissions": [
+            {"code": "oa:view",   "name": "查看OA"},
+            {"code": "oa:create", "name": "创建OA"},
+            {"code": "oa:update", "name": "更新OA"},
+        ],
+    },
+    "人事系统": {
+        "resource": "hr",
+        "permissions": [
+            {"code": "hr:view",   "name": "查看人事"},
+            {"code": "hr:create", "name": "创建人事"},
+            {"code": "hr:update", "name": "更新人事"},
+        ],
+    },
+    "财务系统": {
+        "resource": "finance",
+        "permissions": [
+            {"code": "finance:view",    "name": "查看财务"},
+            {"code": "finance:create",  "name": "创建财务"},
+            {"code": "finance:approve", "name": "审批财务"},
+        ],
+    },
+    "子系统管理": {
+        "resource": "subsystem",
+        "permissions": [
+            {"code": "subsystem:view",   "name": "查看子系统"},
+            {"code": "subsystem:manage", "name": "管理子系统"},
+        ],
+    },
+    "仪表板": {
+        "resource": "dashboard",
+        "permissions": [
+            {"code": "dashboard:view", "name": "查看仪表板"},
+        ],
+    },
+    "企业记录": {
+        "resource": "enterprise",
+        "permissions": [
+            {"code": "enterprise:records:view", "name": "查看企业记录"},
+        ],
+    },
+}
+
 
 # ──────────────────────────────────────────────────────────────────
 # Default seed data
@@ -135,10 +347,6 @@ SYSTEM_SEED_PASSWORD_HASH = "$2b$12$MeUrwDTjryFVbkrtQPTU1.4pmwZX0qcvZbGUguk9bdMl
 # ──────────────────────────────────────────────────────────────────
 # Seed helpers (called from migration)
 # ──────────────────────────────────────────────────────────────────
-
-def _ts() -> str:
-    return datetime.now(timezone.utc).isoformat()
-
 
 def seed_org_and_dept(conn: Any) -> None:
     """Insert default org and HQ department if they do not exist."""

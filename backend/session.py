@@ -10,19 +10,32 @@ from config import get_settings
 
 def create_db_engine(database_url: str | None = None) -> Engine:
     """Build a SQLAlchemy engine from settings or an explicit URL."""
-    url = database_url or get_settings().DATABASE_URL
+    settings = get_settings()
+    url = database_url or settings.DATABASE_URL
     connect_args: dict[str, object] = {}
-    if url.startswith("sqlite"):
+
+    is_sqlite = url.startswith("sqlite")
+    is_postgres = url.startswith("postgresql")
+
+    engine_kwargs: dict[str, object] = {"echo": False}
+
+    if is_sqlite:
         connect_args["check_same_thread"] = False
+        engine_kwargs["connect_args"] = connect_args
+        engine_kwargs["pool_pre_ping"] = True
+    elif is_postgres:
+        engine_kwargs["connect_args"] = connect_args
+        engine_kwargs["pool_size"] = settings.POOL_SIZE
+        engine_kwargs["max_overflow"] = settings.MAX_OVERFLOW
+        engine_kwargs["pool_pre_ping"] = True
+        engine_kwargs["pool_recycle"] = 1800
+    else:
+        engine_kwargs["connect_args"] = connect_args
+        engine_kwargs["pool_pre_ping"] = True
 
-    engine = create_engine(
-        url,
-        echo=False,
-        connect_args=connect_args,
-        pool_pre_ping=True,
-    )
+    engine = create_engine(url, **engine_kwargs)
 
-    if url.startswith("sqlite"):
+    if is_sqlite:
         from sqlalchemy import event
 
         @event.listens_for(engine, "connect")

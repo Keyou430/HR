@@ -1,0 +1,111 @@
+version: "3.9"
+
+services:
+  # ── PostgreSQL 16 + pgvector ──────────────────────────────────
+  postgres:
+    image: pgvector/pgvector:pg16
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-replica}
+      POSTGRES_USER: ${POSTGRES_USER:-replica}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-replica}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-replica} -d ${POSTGRES_DB:-replica}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - replica-net
+
+  # ── FastAPI backend ───────────────────────────────────────────
+  api:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER:-replica}:${POSTGRES_PASSWORD:-replica}@postgres:5432/${POSTGRES_DB:-replica}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:?JWT_SECRET_KEY must be set}
+      ENVIRONMENT: ${ENVIRONMENT:-production}
+      DEBUG: "${DEBUG:-false}"
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost}
+      # Admin bootstrap
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-}
+      # Backup
+      BACKUP_RETENTION_DAYS: "${BACKUP_RETENTION_DAYS:-14}"
+      # JSON logging in production
+      JSON_LOGS: "${JSON_LOGS:-true}"
+    volumes:
+      - frontend-dist:/app/static
+      - backups:/backups
+    entrypoint: ["/bin/bash", "-c"]
+    command:
+      - |
+        echo "Running Alembic migrations..."
+        alembic upgrade head
+        echo "Bootstrapping admin user..."
+        /app/scripts/init-admin.sh
+        echo "Starting API server..."
+        exec uvicorn main:app --host 0.0.0.0 --port 8000
+    networks:
+      - replica-net
+
+  # ── Nginx reverse proxy ───────────────────────────────────────
+  nginx:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    ports:
+      - "${NGINX_PORT:-80}:80"
+    depends_on:
+      - api
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+      - frontend-dist:/usr/share/nginx/html:ro
+    networks:
+      - replica-net
+
+  # ── Periodic PostgreSQL backup ─────────────────────────────────
+  pgbackup:
+    image: pgvector/pgvector:pg16
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PGHOST: postgres
+      PGDATABASE: ${POSTGRES_DB:-replica}
+      PGUSER: ${POSTGRES_USER:-replica}
+      PGPASSWORD: ${POSTGRES_PASSWORD:-replica}
+      BACKUP_DIR: /backups
+      BACKUP_RETENTION_DAYS: "${BACKUP_RETENTION_DAYS:-14}"
+    volumes:
+      - backups:/backups
+      - ./scripts/backup.sh:/backup.sh:ro
+    entrypoint: ["/bin/bash", "-c"]
+    command:
+      - |
+        echo "Backup service started (interval: 6h)"
+        sleep 60
+        while true; do
+          echo "=== Backup started at $$(date -u +%Y-%m-%dT%H:%M:%SZ) ==="
+          /backup.sh
+          echo "=== Backup finished, sleeping 6h ==="
+          sleep 21600
+        done
+    networks:
+      - replica-net
+
+volumes:
+  pgdata:
+  frontend-dist:
+  backups:
+
+networks:
+  replica-net:
+    driver: bridge

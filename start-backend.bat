@@ -1,4 +1,4 @@
-@echo off
+﻿@echo off
 chcp 65001 >nul
 title Replica Backend - FastAPI (Port 8000)
 
@@ -30,8 +30,19 @@ echo Starting FastAPI server on http://0.0.0.0:8000
 echo API docs: http://localhost:8000/docs
 echo.
 echo ============================================
+echo   Press Ctrl+C to stop
+echo ============================================
 echo.
 
+set DEBUG=false
 python main.py
 
-pause
+echo.
+if %errorlevel% neq 0 (
+    echo [ERROR] Backend exited with code %errorlevel%.
+    echo If the error says "address already in use",
+    echo another instance is still running on port 8000.
+)
+echo.
+echo Press any key to close this window...
+pause >nul

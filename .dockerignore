@@ -1,0 +1,64 @@
+# ── Python ────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+
+# ── Database (dev) ───────────────────────────────────────────────
+*.db
+*.db-shm
+*.db-wal
+*.sqlite3
+
+# ── Git ──────────────────────────────────────────────────────────
+.git/
+.gitignore
+.gitattributes
+
+# ── IDE / Editor ─────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# ── Node (frontend builder handles its own install) ──────────────
+node_modules/
+frontend/node_modules/
+
+# ── Temp / Logs / PID ────────────────────────────────────────────
+*.pid
+*.log
+tmp-*
+
+# ── Docs ─────────────────────────────────────────────────────────
+docs/
+
+# ── Docker ───────────────────────────────────────────────────────
+Dockerfile
+.dockerignore
+docker-compose.yml
+docker-compose.*.yml
+
+# ── Environment (use docker-compose / env vars at runtime) ───────
+.env
+.env.*
+!.env.example
+
+# ── Test artifacts ───────────────────────────────────────────────
+*_result.txt
+*_result.json
+*_test.txt
+temp_*.txt
+chain_test.txt
+improved_result.txt
+multi_query_result.txt
+rag_log_test.txt
+complex_qa_result.json
+.code-review-findings.json
+
+# ── OS ───────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
