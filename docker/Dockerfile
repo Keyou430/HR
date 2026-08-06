@@ -3,7 +3,7 @@
 # Run:    docker compose -f docker/compose.yml up -d
 
 # Stage 1: Build frontend
-FROM node:22-alpine AS frontend-builder
+FROM node:25-alpine AS frontend-builder
 WORKDIR /frontend
 COPY frontend/package.json frontend/package-lock.json ./
 RUN npm ci
