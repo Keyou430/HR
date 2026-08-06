@@ -140,8 +140,36 @@ class BaseStore:
                 and_(table.c.visibility == "org", table.c.org_id == ctx.default_org_id)
             )
         if ctx.default_dept_id is not None:
+            # Include own dept + descendants (visible_dept_ids) + ancestors (walk up path)
+            dept_ids = set(ctx.visible_dept_ids) if ctx.visible_dept_ids else {ctx.default_dept_id}
+            if ctx.default_dept_id not in dept_ids:
+                dept_ids.add(ctx.default_dept_id)
+            # Resolve ancestor department IDs by walking up the path column
+            try:
+                from sqlalchemy import text as _text
+                path_row = db.execute(
+                    _text("SELECT path FROM departments WHERE org_id = :oid AND id = :did"),
+                    {"oid": ctx.default_org_id, "did": ctx.default_dept_id},
+                ).fetchone()
+                if path_row and path_row[0]:
+                    parts = path_row[0].split("/")
+                    # Collect ancestor paths (all prefixes including full path)
+                    ancestor_paths = {"/".join(parts[: i + 1]) for i in range(len(parts))}
+                    ancestor_rows = db.execute(
+                        _text(
+                            "SELECT id FROM departments "
+                            "WHERE org_id = :oid AND path IN ({})".format(
+                                ", ".join(f":p{i}" for i in range(len(ancestor_paths)))
+                            )
+                        ),
+                        {"oid": ctx.default_org_id, **{f"p{i}": p for i, p in enumerate(sorted(ancestor_paths))}},
+                    ).fetchall()
+                    for r in ancestor_rows:
+                        dept_ids.add(r[0])
+            except Exception:
+                pass  # departments table may not exist in very early migration states
             clauses.append(
-                and_(table.c.visibility == "dept", table.c.department_id == ctx.default_dept_id)
+                and_(table.c.visibility == "dept", table.c.department_id.in_(dept_ids))
             )
         clauses.append(
             and_(table.c.visibility == "private", table.c.owner_id == ctx.user_id)
@@ -164,6 +192,7 @@ class BaseStore:
         item["common_actions"] = json.loads(item.pop("common_actions_json") or "[]")
         item["related_resources"] = json.loads(item.pop("related_resources_json") or "[]")
         item["menu_items"] = json.loads(item.pop("menu_items_json", None) or "[]")
+        item["approval_chain"] = json.loads(item.pop("approval_chain_json", None) or "[]")
         return item
 
     def _bool_fields_from_row(self, row: Any, *fields: str) -> dict[str, Any]:

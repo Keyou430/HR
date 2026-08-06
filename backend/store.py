@@ -160,6 +160,7 @@ portal_subsystems_table = Table(
     Column("common_actions_json", Text, nullable=False),
     Column("related_resources_json", Text, nullable=False),
     Column("menu_items_json", Text, nullable=False, default="[]"),
+    Column("approval_chain_json", Text, nullable=False, default="[]"),
     Column("entry_url", String(512), nullable=True),
     Column("created_at", String(32), nullable=False),
     Column("updated_at", String(32), nullable=False),
@@ -227,6 +228,10 @@ portal_documents_table = Table(
     Column("sensitivity", String(16), nullable=False, default="normal"),
     Column("created_by", Integer, nullable=True),
     Column("updated_by", Integer, nullable=True),
+    # External integration fields (reserved for Feishu/WPS cloud docs)
+    Column("external_id", String(256), nullable=True),
+    Column("external_source", String(32), nullable=True),
+    Column("external_url", String(1024), nullable=True),
 )
 
 portal_resources_table = Table(
@@ -636,7 +641,28 @@ DEFAULT_SYSTEMS = [
     "报修管理系统",
 ]
 
-DEFAULT_SERVICES: list[dict[str, Any]] = []  # No hardcoded seed services
+DEFAULT_SERVICES: list[dict[str, Any]] = [
+    # 人事服务
+    {"code": "hr-attendance", "title": "教职工考勤", "category": "人事服务", "description": "教职工日常考勤记录、异常申诉与月度汇总查询。", "materials": "身份证明、考勤异常说明", "audience": "全校教职工", "contact": "人事处服务台", "status": "active"},
+    {"code": "hr-leave", "title": "教职工请假", "category": "人事服务", "description": "教职工病假、事假、婚假等各类请假申请与审批。", "materials": "身份证明、请假证明材料", "audience": "全校教职工", "contact": "人事处服务台", "status": "active"},
+    {"code": "hr-certificate", "title": "在职证明", "category": "人事服务", "description": "在线申请开具在职证明、收入证明等。", "materials": "身份证明、申请用途说明", "audience": "全校教职工", "contact": "人事处服务台", "status": "active"},
+    # 学生服务
+    {"code": "stu-enrollment", "title": "新生报到注册", "category": "学生服务", "description": "新生入学资格审核、信息登记与报到注册。", "materials": "录取通知书、身份证明", "audience": "全体学生", "contact": "教务处服务台", "status": "active"},
+    {"code": "stu-award", "title": "奖助学金申请", "category": "学生服务", "description": "国家级、校级奖助学金的申报、评审与发放管理。", "materials": "成绩单、家庭经济情况证明", "audience": "全体学生", "contact": "学生处服务台", "status": "active"},
+    {"code": "stu-leave", "title": "学生请假", "category": "学生服务", "description": "学生课程请假、离校申请与审批。", "materials": "身份证明、请假证明材料", "audience": "全体学生", "contact": "教务处服务台", "status": "active"},
+    # 信息服务
+    {"code": "info-wifi", "title": "校园网络开通", "category": "信息服务", "description": "校园有线/无线网络账户开通与认证。", "materials": "身份证明、设备MAC地址", "audience": "全校师生", "contact": "信息中心服务台", "status": "active"},
+    {"code": "info-vpn", "title": "VPN 申请", "category": "信息服务", "description": "校外访问校内资源的VPN账号申请。", "materials": "身份证明", "audience": "全校师生", "contact": "信息中心服务台", "status": "active"},
+    {"code": "info-account", "title": "统一账号管理", "category": "信息服务", "description": "校园统一身份认证账号的开通、重置与注销。", "materials": "身份证明", "audience": "全校师生", "contact": "信息中心服务台", "status": "active"},
+    # 财务资产
+    {"code": "fin-salary", "title": "工资查询", "category": "财务资产", "description": "教职工月度工资条、年终奖金与个税明细查询。", "materials": "身份证明", "audience": "全校教职工", "contact": "财务处服务台", "status": "active"},
+    {"code": "fin-reimburse", "title": "费用报销", "category": "财务资产", "description": "差旅费、办公费等日常费用报销申请与审批。", "materials": "发票原件、费用明细、审批单", "audience": "全校师生", "contact": "财务处服务台", "status": "active"},
+    {"code": "asset-borrow", "title": "资产借用", "category": "财务资产", "description": "教学设备、实验器材等固定资产的借用申请。", "materials": "身份证明、借用说明", "audience": "全校师生", "contact": "资产管理处服务台", "status": "active"},
+    # 教学科研
+    {"code": "teach-course", "title": "课程调整申请", "category": "教学科研", "description": "教师调课、停课、补课申请的提交与审批。", "materials": "课程信息、调整原因说明", "audience": "全校教师", "contact": "教务处服务台", "status": "active"},
+    {"code": "teach-lab", "title": "实验室预约", "category": "教学科研", "description": "教学实验室、科研实验室的在线预约与使用管理。", "materials": "实验方案、安全承诺书", "audience": "全校师生", "contact": "实验室管理处服务台", "status": "active"},
+    {"code": "res-project", "title": "科研项目申报", "category": "教学科研", "description": "国家级、省部级科研项目的申报、立项与进度管理。", "materials": "项目申报书、预算表", "audience": "全校教师", "contact": "科研处服务台", "status": "active"},
+]
 
 DEFAULT_KNOWLEDGE: list[dict[str, Any]] = []
 
@@ -910,6 +936,13 @@ DEFAULT_MENU_ITEMS = {
     ],
 }
 
+DEFAULT_SUBSYSTEM_APPROVAL_CHAINS: dict[str, list[dict[str, Any]]] = {
+    "repair":  [{"role": "dept_leader", "level": 1}],
+    "oa":      [{"role": "dept_leader", "level": 1}, {"role": "org_admin", "level": 2}],
+    "hr":      [{"role": "dept_leader", "level": 1}],
+    "finance": [{"role": "dept_leader", "level": 1}, {"role": "org_admin", "level": 2}],
+}
+
 # Shell subsystems configured as disabled (Phase 2) or iframe entries.
 # Deep subsystems (oa/hr/finance/assets/repair/supervision) remain entry_type=internal.
 SHELL_SUBSYSTEM_ENTRY = {
@@ -1111,6 +1144,9 @@ class PortalStore(
                         "menu_items_json": json.dumps(
                             DEFAULT_MENU_ITEMS.get(code, []), ensure_ascii=False,
                         ),
+                        "approval_chain_json": json.dumps(
+                            DEFAULT_SUBSYSTEM_APPROVAL_CHAINS.get(code, []), ensure_ascii=False,
+                        ),
                         "created_at": now,
                         "updated_at": now,
                     }
@@ -1182,6 +1218,27 @@ class PortalStore(
                         )
             except Exception:
                 pass  # entry_url column missing — migration 005 not yet applied
+
+            # Idempotent: update approval_chain_json for subsystems on existing DBs.
+            try:
+                for code, chain in DEFAULT_SUBSYSTEM_APPROVAL_CHAINS.items():
+                    current = db.scalar(
+                        select(portal_subsystems_table.c.approval_chain_json)
+                        .where(portal_subsystems_table.c.code == code)
+                    )
+                    desired = json.dumps(chain, ensure_ascii=False)
+                    if (current or "[]") != desired:
+                        db.execute(
+                            update(portal_subsystems_table)
+                            .where(portal_subsystems_table.c.code == code)
+                            .values(
+                                approval_chain_json=desired,
+                                updated_at=now,
+                            )
+                        )
+            except Exception:
+                pass  # column missing — migration 012 not yet applied
+
             if DEFAULT_NOTICES and db.scalar(select(func.count()).select_from(portal_notices_table)) == 0:
                 db.execute(insert(portal_notices_table), [
                     {
@@ -1214,24 +1271,30 @@ class PortalStore(
                     }
                     for item in DEFAULT_DOCUMENTS
                 ])
-            if DEFAULT_SERVICES and db.scalar(select(func.count()).select_from(portal_services_table)) == 0:
-                db.execute(insert(portal_services_table), [
-                    {
+            if DEFAULT_SERVICES:
+                for item in DEFAULT_SERVICES:
+                    existing = db.scalar(
+                        select(portal_services_table.c.code).where(
+                            portal_services_table.c.code == item["code"]
+                        )
+                    )
+                    values = {
                         **_PORTAL_BASE,
-                        "code": f"service-{index}",
-                        "title": title,
-                        "category": "人事服务" if index <= 9 else "统一服务",
-                        "description": f"{title}的办理说明、材料要求和联系人信息。",
-                        "materials": "身份证明、申请说明、相关附件",
-                        "audience": "组织内部成员",
-                        "contact": "综合服务台",
-                        "status": "active",
+                        **item,
                         "subscribed_count": 0,
                         "updated_at": now,
                         "created_at": now,
                     }
-                    for index, title in enumerate(DEFAULT_SERVICES, start=1)
-                ])
+                    if existing is None:
+                        db.execute(insert(portal_services_table).values(values))
+                    else:
+                        update_vals = {k: v for k, v in item.items() if k in portal_services_table.c}
+                        update_vals["updated_at"] = now
+                        db.execute(
+                            update(portal_services_table)
+                            .where(portal_services_table.c.code == item["code"])
+                            .values(**update_vals)
+                        )
             if DEFAULT_NEWS and db.scalar(select(func.count()).select_from(portal_news_table)) == 0:
                 db.execute(insert(portal_news_table), [
                     {

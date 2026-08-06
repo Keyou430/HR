@@ -464,6 +464,47 @@ class AdminServiceListResponse(BaseModel):
     total: int
 
 
+# ── T: Admin news schemas ───────────────────────────────────────────────
+
+class AdminNewsCreateRequest(BaseModel):
+    title: str = Field(min_length=1, max_length=255)
+    source: str = Field(min_length=1, max_length=128)
+    category: str = Field(min_length=1, max_length=64)
+    body: str = Field(min_length=1)
+    pinned: bool = False
+    published_at: str = Field(min_length=1, max_length=32)
+
+
+class AdminNewsUpdateRequest(BaseModel):
+    title: str | None = Field(default=None, min_length=1, max_length=255)
+    source: str | None = Field(default=None, min_length=1, max_length=128)
+    category: str | None = Field(default=None, min_length=1, max_length=64)
+    body: str | None = Field(default=None, min_length=1)
+    pinned: bool | None = None
+    published_at: str | None = Field(default=None, min_length=1, max_length=32)
+
+
+class AdminNewsItem(BaseModel):
+    id: int
+    title: str
+    source: str
+    category: str
+    body: str
+    pinned: bool = False
+    published_at: str
+    status: str | None = None
+    org_id: str | None = None
+    department_id: str | None = None
+    visibility: str = "org"
+    created_at: str | None = None
+    updated_at: str | None = None
+
+
+class AdminNewsListResponse(BaseModel):
+    items: list[AdminNewsItem]
+    total: int
+
+
 # ── T7: Notification schemas ───────────────────────────────────────────
 
 class NotificationItem(BaseModel):

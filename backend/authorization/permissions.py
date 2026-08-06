@@ -56,6 +56,7 @@ PERMISSIONS: list[dict[str, str]] = [
     {"code": "notice:create",    "name": "创建通知",       "resource": "notice",   "action": "create"},
     {"code": "notice:update",    "name": "更新通知",       "resource": "notice",   "action": "update"},
     {"code": "notice:delete",    "name": "删除通知",       "resource": "notice",   "action": "delete"},
+    {"code": "notice:publish",   "name": "发布通知",       "resource": "notice",   "action": "publish"},
     # ── Phase 1: enterprise module permissions (22 new) ──────────
     # repair (报修)
     {"code": "repair:view",      "name": "查看报修",       "resource": "repair",   "action": "view"},
@@ -120,7 +121,7 @@ ROLE_PERMISSION_MAP: dict[str, list[str]] = {
         "kb:view", "kb:create", "kb:update", "kb:delete", "kb:import", "kb:chat", "kb:chat_sensitive",
         "search:view",
         # notices
-        "notice:view", "notice:create", "notice:update", "notice:delete",
+        "notice:view", "notice:create", "notice:update", "notice:delete", "notice:publish",
         # enterprise modules (full access)
         "repair:view", "repair:create", "repair:assign", "repair:update", "repair:close",
         "asset:view", "asset:create", "asset:update", "asset:borrow",
@@ -140,7 +141,7 @@ ROLE_PERMISSION_MAP: dict[str, list[str]] = {
         "calendar:view", "calendar:create", "calendar:update", "calendar:delete",
         "kb:view", "kb:update", "kb:import", "kb:chat",
         "search:view",
-        "notice:view", "notice:create", "notice:update",
+        "notice:view", "notice:create", "notice:update", "notice:publish",
         # enterprise modules (view + limited create)
         "repair:view", "repair:create", "repair:update",
         "asset:view",
@@ -261,6 +262,7 @@ PERMISSION_GROUPS: dict[str, dict[str, str | list[dict[str, str]]]] = {
             {"code": "notice:create", "name": "创建通知"},
             {"code": "notice:update", "name": "更新通知"},
             {"code": "notice:delete", "name": "删除通知"},
+            {"code": "notice:publish", "name": "发布通知"},
         ],
     },
     "报修系统": {

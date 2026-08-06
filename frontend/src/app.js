@@ -48,6 +48,12 @@
       { id: "xinhua", label: "新华社" }, { id: "cctv", label: "央视新闻" }
     ];
     const allNewsSourcesById = Object.fromEntries(allNewsSources.map(s => [s.id, s.label]));
+    const ASSISTANT_MOCK_MESSAGES = [
+      { actor: "张三", action: "修改了《2026年度预算报告》", time: "10:24" },
+      { actor: "李四", action: "评论了《部门季度工作复盘表》", time: "09:12" },
+      { actor: "王五", action: "分享了《会议纪要模板》", time: "昨天" },
+    ];
+
     const portalNewsItems = [
       { title: "欢迎使用协同门户 — 点击订阅管理配置资讯源", source: "enterprise", tags: ["入门"], date: "" },
     ];
@@ -1222,6 +1228,8 @@
     var _adminSubTab = "users";
     var _adminAuditPage = 1;
     var _adminAIQueryPage = 1;
+    var _adminNewsPage = 1;
+    var _serviceCategory = "人事服务";
     var _adminSessionPage = 1;
 
     function switchAdminSubTab(tab) {
@@ -1237,6 +1245,7 @@
       else if (tab === "aiquery") { fetchAdminAIQueries(); }
       else if (tab === "sessions") { fetchAdminSessions(); }
       else if (tab === "anomalies") { fetchAdminAnomalies(); }
+      else if (tab === "news") { fetchAdminNews(); }
     }
 
     // ── Audit logs ──────────────────────────────────────────────
@@ -1394,6 +1403,96 @@
       } else {
         badge.hidden = true;
       }
+    }
+
+    // ── Admin news CRUD ─────────────────────────────────────────
+
+    async function fetchAdminNews() {
+      try {
+        var data = await apiJson("/api/v1/admin/news?page=" + _adminNewsPage + "&page_size=20");
+        renderAdminNews(data);
+      } catch (e) { /* silently fail */ }
+    }
+
+    function renderAdminNews(data) {
+      var tbody = $("#adminNewsTableBody");
+      if (!tbody) return;
+      tbody.innerHTML = (data.items || []).map(function (item) {
+        return '<tr>' +
+          '<td>' + escapeHTML(item.title) + '</td>' +
+          '<td>' + escapeHTML(item.source) + '</td>' +
+          '<td>' + escapeHTML(item.category) + '</td>' +
+          '<td>' + (item.published_at ? item.published_at.slice(0, 16) : "") + '</td>' +
+          '<td>' + (item.pinned ? "是" : "否") + '</td>' +
+          '<td><button class="card-link" data-news-edit="' + item.id + '">编辑</button> ' +
+          '<button class="card-link danger" data-news-delete="' + item.id + '">删除</button></td>' +
+          '</tr>';
+      }).join("") || '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:20px">暂无资讯</td></tr>';
+
+      var total = data.total || 0;
+      var maxPage = Math.max(1, Math.ceil(total / 20));
+      $("#adminNewsPageInfo").textContent = "第 " + _adminNewsPage + " / " + maxPage + " 页，共 " + total + " 条";
+      $("#adminNewsPagePrev").disabled = _adminNewsPage <= 1;
+      $("#adminNewsPageNext").disabled = _adminNewsPage >= maxPage;
+
+      // Wire edit/delete buttons
+      $$("[data-news-edit]").forEach(function (btn) {
+        btn.onclick = function () { openNewsModal(parseInt(btn.dataset.newsEdit)); };
+      });
+      $$("[data-news-delete]").forEach(function (btn) {
+        btn.onclick = function () { deleteNewsById(parseInt(btn.dataset.newsDelete)); };
+      });
+    }
+
+    function openNewsModal(newsId) {
+      var modal = $("#adminNewsModal");
+      if (!modal) return;
+      $("#adminNewsModalTitle").textContent = newsId ? "编辑资讯" : "新建资讯";
+      $("#adminNewsDeleteBtn").hidden = !newsId;
+      if (newsId) {
+        // Fetch existing news to fill form
+        apiJson("/api/v1/admin/news?page=1&page_size=100").then(function (data) {
+          var item = (data.items || []).find(function (n) { return n.id === newsId; });
+          if (item) {
+            $("#adminNewsTitle").value = item.title || "";
+            $("#adminNewsSource").value = item.source || "";
+            $("#adminNewsCategory").value = item.category || "";
+            $("#adminNewsBody").value = item.body || "";
+            $("#adminNewsPinned").checked = item.pinned;
+            $("#adminNewsPublishedAt").value = (item.published_at || "").slice(0, 16);
+          }
+        });
+        $("#adminNewsForm").dataset.editingId = newsId;
+      } else {
+        $("#adminNewsForm").reset();
+        $("#adminNewsForm").dataset.editingId = "";
+      }
+      modal.classList.add("show");
+    }
+
+    async function deleteNewsById(newsId) {
+      if (!confirm("确定要删除这条资讯吗？")) return;
+      try {
+        await apiJson("/api/v1/admin/news/" + newsId, { method: "DELETE" });
+        showToast("资讯已删除");
+        fetchAdminNews();
+      } catch (e) { showToast("删除失败"); }
+    }
+
+    function canPublishNotices() {
+      if (!_authUser) return false;
+      return (_authUser.roles || []).indexOf("super_admin") !== -1 ||
+             (_authUser.permissions || []).indexOf("notice:publish") !== -1;
+    }
+
+    function openNoticePublishModal() {
+      var modal = $("#noticePublishModal");
+      if (!modal) return;
+      var now = new Date();
+      var pad = function (n) { return String(n).padStart(2, "0"); };
+      $("#noticePublishPublishedAt").value = now.getFullYear() + "-" + pad(now.getMonth() + 1) + "-" + pad(now.getDate()) + "T" + pad(now.getHours()) + ":" + pad(now.getMinutes());
+      $("#noticePublishForm").reset();
+      modal.classList.add("show");
     }
 
     function updatePlatformTime() {
@@ -1817,6 +1916,20 @@
     }
 
     function renderWorkspaceAssets() {
+      // Inject publish button for authorized users
+      var noticeCardHeader = document.querySelector("#workspace-notices .card-header");
+      if (noticeCardHeader && canPublishNotices()) {
+        var existingPublishBtn = noticeCardHeader.querySelector("[data-open-publish-notice]");
+        if (!existingPublishBtn) {
+          var publishBtn = document.createElement("button");
+          publishBtn.className = "card-link";
+          publishBtn.setAttribute("data-open-publish-notice", "");
+          publishBtn.style.marginRight = "8px";
+          publishBtn.textContent = "发布公告";
+          noticeCardHeader.insertBefore(publishBtn, noticeCardHeader.lastChild);
+          publishBtn.addEventListener("click", openNoticePublishModal);
+        }
+      }
       const noticeList = $("#noticeList");
       if (noticeList) {
         const notices = state.notices.map(normalizeNotice).slice(0, 3);
@@ -1832,6 +1945,27 @@
       }
       bindAssetOpeners();
       bindAssetCenterOpeners();
+      renderWorkspaceAssistant();
+    }
+
+    function renderWorkspaceAssistant() {
+      var stream = $("#assistantStream");
+      if (stream) {
+        stream.innerHTML = ASSISTANT_MOCK_MESSAGES.map(function (msg) {
+          return '<div class="assistant-msg"><span class="assistant-avatar">' + escapeHTML(msg.actor[0]) + '</span>' +
+            '<div><p><strong>' + escapeHTML(msg.actor) + '</strong> ' + escapeHTML(msg.action) + '</p>' +
+            '<time>' + escapeHTML(msg.time) + '</time></div></div>';
+        }).join("");
+      }
+      var recent = $("#assistantRecentDocs");
+      if (recent) {
+        recent.innerHTML = state.documents.slice(0, 5).map(function (d) {
+          return '<button class="assistant-doc" data-open-asset="documents:' + d.id + '">' +
+            '<span class="file-type">' + escapeHTML(d.file_type || "D") + '</span>' +
+            '<span>' + escapeHTML(d.name) + '</span></button>';
+        }).join("") || '<div class="assistant-empty">暂无文档</div>';
+        bindAssetOpeners();
+      }
     }
 
     function formatShortDate(value) {
@@ -2352,6 +2486,7 @@
       renderPortalNews();
       renderSubsystems();
       renderPortalServices();
+      bindServiceMenu();
       renderPortalDashboard();
       renderWorkspaceAssets();
       renderPortalSchedule();
@@ -2403,9 +2538,33 @@
       if (!container) return;
       const subscribed = new Set(state.serviceSubscriptions);
       const services = state.services.map(normalizeService);
-      const filtered = services.filter((service) => !subscribed.size || subscribed.has(service.code) || subscribed.has(service.title));
-      container.innerHTML = (filtered.length ? filtered : services).map((service, index) => `<button class="service-item" data-open-asset="services:${escapeHTML(service.code)}"><span class="app-icon ${service.icon_tone || ["app-green","app-orange","app-blue"][index % 3]}">${escapeHTML(service.title || "").slice(0, 1)}</span><span>${escapeHTML(service.title || "")}</span></button>`).join("");
+      var filtered = services.filter(function (service) {
+        return !subscribed.size || subscribed.has(service.code) || subscribed.has(service.title);
+      });
+      // Filter by active service category
+      if (_serviceCategory) {
+        filtered = filtered.filter(function (service) {
+          return service.category === _serviceCategory;
+        });
+      }
+      container.innerHTML = (filtered.length ? filtered : []).map(function (service, index) {
+        return '<button class="service-item" data-open-asset="services:' + escapeHTML(service.code) + '">' +
+          '<span class="app-icon ' + (service.icon_tone || ["app-green","app-orange","app-blue"][index % 3]) + '">' + escapeHTML((service.title || "").slice(0, 1)) + '</span>' +
+          '<span><strong>' + escapeHTML(service.title || "") + '</strong><small>' + escapeHTML((service.description || "").slice(0, 24)) + '</small></span>' +
+          '</button>';
+      }).join("") || '<div class="empty-state"><div><strong>该分类暂无服务</strong></div></div>';
       bindAssetOpeners();
+    }
+
+    function bindServiceMenu() {
+      $$(".service-menu button").forEach(function (btn) {
+        btn.onclick = function () {
+          $$(".service-menu button").forEach(function (b) { b.classList.remove("active"); });
+          btn.classList.add("active");
+          _serviceCategory = btn.textContent.trim();
+          renderPortalServices();
+        };
+      });
     }
 
     function renderNewsSubModal() {
@@ -3752,6 +3911,58 @@
     $("#adminSessionPageNext")?.addEventListener("click", adminSessionNext);
     // Phase 6: Anomaly panel
     $("#adminAnomalyRefresh")?.addEventListener("click", fetchAdminAnomalies);
+    // Admin news panel
+    $("#adminNewsAddBtn")?.addEventListener("click", function () { openNewsModal(null); });
+    $("#adminNewsPagePrev")?.addEventListener("click", function () { if (_adminNewsPage > 1) { _adminNewsPage--; fetchAdminNews(); } });
+    $("#adminNewsPageNext")?.addEventListener("click", function () { _adminNewsPage++; fetchAdminNews(); });
+    // Admin news modal
+    $("#adminNewsModal")?.addEventListener("click", function (e) { if (e.target === this) this.classList.remove("show"); });
+    $("#adminNewsModal [data-close-modal]")?.addEventListener("click", function () { $("#adminNewsModal").classList.remove("show"); });
+    $("#adminNewsForm")?.addEventListener("submit", function (e) {
+      e.preventDefault();
+      var editingId = this.dataset.editingId;
+      var payload = {
+        title: $("#adminNewsTitle").value.trim(),
+        source: $("#adminNewsSource").value.trim(),
+        category: $("#adminNewsCategory").value.trim(),
+        body: $("#adminNewsBody").value.trim(),
+        pinned: $("#adminNewsPinned").checked,
+        published_at: $("#adminNewsPublishedAt").value || new Date().toISOString(),
+      };
+      var method = editingId ? "PUT" : "POST";
+      var url = editingId ? "/api/v1/admin/news/" + editingId : "/api/v1/admin/news";
+      apiJson(url, { method: method, body: JSON.stringify(payload) }).then(function () {
+        $("#adminNewsModal").classList.remove("show");
+        showToast(editingId ? "资讯已更新" : "资讯已发布");
+        fetchAdminNews();
+      }).catch(function (e) { showToast("操作失败: " + (e.message || "")); });
+    });
+    $("#adminNewsDeleteBtn")?.addEventListener("click", function () {
+      var editingId = $("#adminNewsForm").dataset.editingId;
+      if (editingId) { deleteNewsById(parseInt(editingId)); $("#adminNewsModal").classList.remove("show"); }
+    });
+    // Notice publish
+    $$("[data-open-publish-notice]").forEach(function (btn) {
+      btn.addEventListener("click", openNoticePublishModal);
+    });
+    $("#noticePublishModal")?.addEventListener("click", function (e) { if (e.target === this) this.classList.remove("show"); });
+    $("#noticePublishModal [data-close-modal]")?.addEventListener("click", function () { $("#noticePublishModal").classList.remove("show"); });
+    $("#noticePublishForm")?.addEventListener("submit", function (e) {
+      e.preventDefault();
+      var payload = {
+        title: $("#noticePublishTitle").value.trim(),
+        source: $("#noticePublishSource").value.trim(),
+        category: $("#noticePublishCategory").value.trim(),
+        body: $("#noticePublishBody").value.trim(),
+        published_at: $("#noticePublishPublishedAt").value || new Date().toISOString(),
+        visibility: $("#noticePublishVisibility").value,
+      };
+      apiJson("/api/v1/admin/notices", { method: "POST", body: JSON.stringify(payload) }).then(function () {
+        $("#noticePublishModal").classList.remove("show");
+        showToast("公告已发布");
+        fetchPortalBootstrap();
+      }).catch(function (e) { showToast("发布失败: " + (e.message || "")); });
+    });
 
     // Command hint chips: click to fill input with command template
     $$("#commandHints .command-hint-chip").forEach((chip) => chip.addEventListener("click", () => {
@@ -3833,6 +4044,7 @@
     renderNotifications();
     renderShortcuts();
     renderWorkbenchSchedule();
+    bindServiceMenu();
     renderPortal();
     syncProfileUI();
     renderCalendar();

@@ -454,8 +454,8 @@ class TestAdminCustomRoles:
         assert "permission_codes" in sa_role
         assert "created_at" in sa_role
         assert "updated_at" in sa_role
-        # Verify super_admin has all 53 permissions
-        assert len(sa_role["permission_codes"]) == 53
+        # Verify super_admin has all 54 permissions
+        assert len(sa_role["permission_codes"]) == 54
 
 
 # ═════════════════════════════════════════════════════════════════════

@@ -33,6 +33,10 @@ from schemas import (
     AdminNoticeItem,
     AdminNoticeListResponse,
     AdminNoticeUpdateRequest,
+    AdminNewsCreateRequest,
+    AdminNewsItem,
+    AdminNewsListResponse,
+    AdminNewsUpdateRequest,
     AdminOrgCreateRequest,
     AdminOrgItem,
     AdminOrgListResponse,
@@ -88,6 +92,18 @@ def require_admin(current_user: dict[str, Any] = Depends(get_current_user)) -> d
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="需要超级管理员权限",
+        )
+    return current_user
+
+
+def require_notice_manager(current_user: dict[str, Any] = Depends(get_current_user)) -> dict[str, Any]:
+    """Allow super_admin or users with notice:publish permission."""
+    roles = current_user.get("roles", [])
+    perms = current_user.get("permissions", [])
+    if SUPER_ADMIN_ROLE not in roles and "notice:publish" not in perms:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="缺少权限: notice:publish",
         )
     return current_user
 
@@ -1789,27 +1805,48 @@ def list_notices_admin(
     page: int = 1,
     page_size: int = 20,
     db: Session = Depends(get_db),
-    _admin: dict[str, Any] = Depends(require_admin),
+    current_user: dict[str, Any] = Depends(require_notice_manager),
 ) -> dict[str, Any]:
-    """List all notices with pagination (admin view)."""
+    """List notices with pagination. Non-super_admins see only own org/dept scope."""
     page_size = max(1, min(page_size, 100))
     page = max(1, page)
     offset = (page - 1) * page_size
 
-    total = db.execute(
-        text("SELECT COUNT(*) FROM portal_notices")
-    ).fetchone()[0]
+    roles = current_user.get("roles", [])
+    is_super = SUPER_ADMIN_ROLE in roles
 
-    rows = db.execute(
-        text(
-            "SELECT id, title, source, category, body, pinned, published_at, "
-            "read_count, status, org_id, department_id, visibility, "
-            "created_at, updated_at "
-            "FROM portal_notices ORDER BY pinned DESC, published_at DESC "
-            "LIMIT :limit OFFSET :offset"
-        ),
-        {"limit": page_size, "offset": offset},
-    ).mappings().all()
+    if is_super:
+        total = db.execute(
+            text("SELECT COUNT(*) FROM portal_notices")
+        ).fetchone()[0]
+        rows = db.execute(
+            text(
+                "SELECT id, title, source, category, body, pinned, published_at, "
+                "read_count, status, org_id, department_id, visibility, "
+                "created_at, updated_at "
+                "FROM portal_notices ORDER BY pinned DESC, published_at DESC "
+                "LIMIT :limit OFFSET :offset"
+            ),
+            {"limit": page_size, "offset": offset},
+        ).mappings().all()
+    else:
+        org_id = current_user.get("default_org_id") or "default"
+        dept_id = current_user.get("default_dept_id") or "HQ"
+        total = db.execute(
+            text("SELECT COUNT(*) FROM portal_notices WHERE org_id = :oid AND department_id = :did"),
+            {"oid": org_id, "did": dept_id},
+        ).fetchone()[0]
+        rows = db.execute(
+            text(
+                "SELECT id, title, source, category, body, pinned, published_at, "
+                "read_count, status, org_id, department_id, visibility, "
+                "created_at, updated_at "
+                "FROM portal_notices WHERE org_id = :oid AND department_id = :did "
+                "ORDER BY pinned DESC, published_at DESC "
+                "LIMIT :limit OFFSET :offset"
+            ),
+            {"oid": org_id, "did": dept_id, "limit": page_size, "offset": offset},
+        ).mappings().all()
 
     items = [_build_notice_item(r) for r in rows]
     return {"items": items, "total": total}
@@ -1819,10 +1856,15 @@ def list_notices_admin(
 def create_notice(
     body: AdminNoticeCreateRequest,
     db: Session = Depends(get_db),
-    current_user: dict[str, Any] = Depends(require_admin),
+    current_user: dict[str, Any] = Depends(require_notice_manager),
 ) -> AdminNoticeItem:
-    """Create a new notice."""
+    """Create a new notice. Non-super_admins get their org/dept auto-assigned."""
     ts = _ts()
+    roles = current_user.get("roles", [])
+    is_super = SUPER_ADMIN_ROLE in roles
+
+    org_id = body.org_id or current_user.get("default_org_id") or "default"
+    actual_dept = current_user.get("default_dept_id") or "HQ"
     db.commit()
     with db.begin():
         result = db.execute(
@@ -1839,8 +1881,8 @@ def create_notice(
                 "category": body.category, "body": body.body,
                 "pinned": 1 if body.pinned else 0,
                 "published_at": body.published_at,
-                "org_id": body.org_id or "default",
-                "dept_id": "HQ",
+                "org_id": org_id,
+                "dept_id": actual_dept,
                 "visibility": body.visibility,
                 "ts": ts,
             },
@@ -1858,7 +1900,7 @@ def create_notice(
         category=body.category, body=body.body,
         pinned=body.pinned, published_at=body.published_at,
         read_count=0, status="active",
-        org_id=body.org_id or "default", department_id="HQ",
+        org_id=org_id, department_id=actual_dept,
         visibility=body.visibility, created_at=ts, updated_at=ts,
     )
 
@@ -1868,9 +1910,12 @@ def update_notice(
     notice_id: int,
     body: AdminNoticeUpdateRequest,
     db: Session = Depends(get_db),
-    current_user: dict[str, Any] = Depends(require_admin),
+    current_user: dict[str, Any] = Depends(require_notice_manager),
 ) -> AdminNoticeItem:
-    """Update an existing notice."""
+    """Update an existing notice. Non-super_admins can only update own org/dept notices."""
+    roles = current_user.get("roles", [])
+    is_super = SUPER_ADMIN_ROLE in roles
+
     row = db.execute(
         text(
             "SELECT id, title, source, category, body, pinned, published_at, "
@@ -1881,6 +1926,13 @@ def update_notice(
     ).mappings().fetchone()
     if row is None:
         raise HTTPException(status_code=404, detail="公告不存在")
+
+    # Scope guard: non-super_admins can only update their own org/dept notices
+    if not is_super:
+        user_org = current_user.get("default_org_id") or "default"
+        user_dept = current_user.get("default_dept_id") or "HQ"
+        if row.get("org_id") != user_org or row.get("department_id") != user_dept:
+            raise HTTPException(status_code=404, detail="公告不存在")
 
     ts = _ts()
     updates: list[str] = []
@@ -1932,15 +1984,25 @@ def update_notice(
 def delete_notice(
     notice_id: int,
     db: Session = Depends(get_db),
-    current_user: dict[str, Any] = Depends(require_admin),
+    current_user: dict[str, Any] = Depends(require_notice_manager),
 ) -> dict[str, bool]:
-    """Delete a notice."""
+    """Delete a notice. Non-super_admins can only delete own org/dept notices."""
+    roles = current_user.get("roles", [])
+    is_super = SUPER_ADMIN_ROLE in roles
+
     row = db.execute(
-        text("SELECT id, title FROM portal_notices WHERE id = :nid"),
+        text("SELECT id, title, org_id, department_id FROM portal_notices WHERE id = :nid"),
         {"nid": notice_id},
     ).fetchone()
     if row is None:
         raise HTTPException(status_code=404, detail="公告不存在")
+
+    # Scope guard: non-super_admins can only delete their own org/dept notices
+    if not is_super:
+        user_org = current_user.get("default_org_id") or "default"
+        user_dept = current_user.get("default_dept_id") or "HQ"
+        if row[2] != user_org or row[3] != user_dept:
+            raise HTTPException(status_code=404, detail="公告不存在")
 
     ts = _ts()
     db.commit()
@@ -1953,6 +2015,209 @@ def delete_notice(
             db, action="admin.notice.delete",
             user_id=current_user["id"], resource_type="notice",
             resource_id=str(notice_id),
+            detail={"title": row[1]},
+        )
+    return {"ok": True}
+
+
+# ═════════════════════════════════════════════════════════════════════
+# T: News management (admin)
+# ═════════════════════════════════════════════════════════════════════
+
+
+def _build_news_item(row: Any) -> AdminNewsItem:
+    """Normalize a portal_news row into AdminNewsItem."""
+    try:
+        m = row._mapping if hasattr(row, "_mapping") else row
+        return AdminNewsItem(
+            id=m["id"], title=m["title"], source=m["source"],
+            category=m["category"], body=m["body"],
+            pinned=bool(m.get("pinned")),
+            published_at=m["published_at"],
+            status=m.get("status"), org_id=m.get("org_id"),
+            department_id=m.get("department_id"),
+            visibility=m.get("visibility", "org"),
+            created_at=m.get("created_at"), updated_at=m.get("updated_at"),
+        )
+    except (KeyError, TypeError):
+        # Legacy tuple fallback
+        return AdminNewsItem(
+            id=row[0], title=row[1], source=row[2], category=row[3],
+            body=row[4], pinned=bool(row[5]), published_at=row[6],
+            status=row[7] if len(row) > 7 else None,
+            org_id=row[8] if len(row) > 8 else None,
+            department_id=row[9] if len(row) > 9 else None,
+            visibility=row[10] if len(row) > 10 else "org",
+            created_at=row[11] if len(row) > 11 else None,
+            updated_at=row[12] if len(row) > 12 else None,
+        )
+
+
+@router.get("/news", response_model=AdminNewsListResponse)
+def list_news_admin(
+    page: int = 1,
+    page_size: int = 20,
+    db: Session = Depends(get_db),
+    _admin: dict[str, Any] = Depends(require_admin),
+) -> dict[str, Any]:
+    """List all news with pagination (admin view)."""
+    page_size = max(1, min(page_size, 100))
+    page = max(1, page)
+    offset = (page - 1) * page_size
+
+    total = db.execute(
+        text("SELECT COUNT(*) FROM portal_news")
+    ).fetchone()[0]
+
+    rows = db.execute(
+        text(
+            "SELECT id, title, source, category, body, pinned, published_at, "
+            "status, org_id, department_id, visibility, "
+            "created_at, updated_at "
+            "FROM portal_news ORDER BY pinned DESC, published_at DESC "
+            "LIMIT :limit OFFSET :offset"
+        ),
+        {"limit": page_size, "offset": offset},
+    ).mappings().all()
+
+    items = [_build_news_item(r) for r in rows]
+    return {"items": items, "total": total}
+
+
+@router.post("/news", status_code=201, response_model=AdminNewsItem)
+def create_news(
+    body: AdminNewsCreateRequest,
+    db: Session = Depends(get_db),
+    current_user: dict[str, Any] = Depends(require_admin),
+) -> AdminNewsItem:
+    """Create a new news article."""
+    ts = _ts()
+    db.commit()
+    with db.begin():
+        result = db.execute(
+            text(
+                "INSERT INTO portal_news (title, source, category, body, pinned, "
+                "published_at, status, org_id, department_id, "
+                "visibility, sensitivity, created_at, updated_at) "
+                "VALUES (:title, :source, :category, :body, :pinned, "
+                ":published_at, 'active', :org_id, :dept_id, "
+                ":visibility, 'normal', :ts, :ts)"
+            ),
+            {
+                "title": body.title, "source": body.source,
+                "category": body.category, "body": body.body,
+                "pinned": 1 if body.pinned else 0,
+                "published_at": body.published_at,
+                "org_id": "default",
+                "dept_id": "HQ",
+                "visibility": "org",
+                "ts": ts,
+            },
+        )
+        news_id = result.lastrowid
+        audit_log(
+            db, action="admin.news.create",
+            user_id=current_user["id"], resource_type="news",
+            resource_id=str(news_id),
+            detail={"title": body.title, "category": body.category},
+        )
+
+    return AdminNewsItem(
+        id=news_id, title=body.title, source=body.source,
+        category=body.category, body=body.body,
+        pinned=body.pinned, published_at=body.published_at,
+        status="active", org_id="default", department_id="HQ",
+        visibility="org", created_at=ts, updated_at=ts,
+    )
+
+
+@router.put("/news/{news_id}", response_model=AdminNewsItem)
+def update_news(
+    news_id: int,
+    body: AdminNewsUpdateRequest,
+    db: Session = Depends(get_db),
+    current_user: dict[str, Any] = Depends(require_admin),
+) -> AdminNewsItem:
+    """Update an existing news article."""
+    row = db.execute(
+        text(
+            "SELECT id, title, source, category, body, pinned, published_at, "
+            "status, org_id, department_id, visibility, "
+            "created_at, updated_at FROM portal_news WHERE id = :nid"
+        ),
+        {"nid": news_id},
+    ).mappings().fetchone()
+    if row is None:
+        raise HTTPException(status_code=404, detail="资讯不存在")
+
+    ts = _ts()
+    updates: list[str] = []
+    params: dict[str, Any] = {"nid": news_id, "ts": ts}
+
+    field_map = {
+        "title": body.title, "source": body.source, "category": body.category,
+        "body": body.body, "pinned": body.pinned, "published_at": body.published_at,
+    }
+    for field, value in field_map.items():
+        if value is not None:
+            if field == "pinned":
+                updates.append("pinned = :pinned")
+                params["pinned"] = 1 if value else 0
+            else:
+                updates.append(f"{field} = :{field}")
+                params[field] = value
+
+    if updates:
+        updates.append("updated_at = :ts")
+        db.commit()
+        with db.begin():
+            db.execute(
+                text(f"UPDATE portal_news SET {', '.join(updates)} WHERE id = :nid"),
+                params,
+            )
+            audit_log(
+                db, action="admin.news.update",
+                user_id=current_user["id"], resource_type="news",
+                resource_id=str(news_id),
+                detail={"before": {"title": row["title"]},
+                        "after": {"title": body.title or row["title"]}},
+            )
+
+    row2 = db.execute(
+        text(
+            "SELECT id, title, source, category, body, pinned, published_at, "
+            "status, org_id, department_id, visibility, "
+            "created_at, updated_at FROM portal_news WHERE id = :nid"
+        ),
+        {"nid": news_id},
+    ).mappings().fetchone()
+    return _build_news_item(row2)
+
+
+@router.delete("/news/{news_id}")
+def delete_news(
+    news_id: int,
+    db: Session = Depends(get_db),
+    current_user: dict[str, Any] = Depends(require_admin),
+) -> dict[str, bool]:
+    """Delete a news article."""
+    row = db.execute(
+        text("SELECT id, title FROM portal_news WHERE id = :nid"),
+        {"nid": news_id},
+    ).fetchone()
+    if row is None:
+        raise HTTPException(status_code=404, detail="资讯不存在")
+
+    db.commit()
+    with db.begin():
+        db.execute(
+            text("DELETE FROM portal_news WHERE id = :nid"),
+            {"nid": news_id},
+        )
+        audit_log(
+            db, action="admin.news.delete",
+            user_id=current_user["id"], resource_type="news",
+            resource_id=str(news_id),
             detail={"title": row[1]},
         )
     return {"ok": True}

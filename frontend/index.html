@@ -152,7 +152,14 @@
             </article>
             <article class="card" id="workspace-assistant">
               <div class="card-header"><div class="card-title">文档助手</div><button class="card-link" data-open-asset-center="documents">了解更多</button></div>
-              <div class="empty-state"><div><div class="empty-illustration"></div><strong>暂无文档消息</strong><div>评论、修改意见和相关负责人会在这里汇总。</div><button class="empty-action" data-open-asset-center="documents">打开文档中心</button></div></div>
+              <div class="assistant-layout">
+                <div class="assistant-stream" id="assistantStream"></div>
+                <aside class="assistant-side">
+                  <h4>最近文档</h4>
+                  <div class="assistant-recent" id="assistantRecentDocs"></div>
+                  <button class="btn assistant-connect" type="button" disabled title="即将支持">连接飞书文档</button>
+                </aside>
+              </div>
             </article>
             <article class="card workspace-dashboard-card" id="workspace-dashboard">
               <div class="card-header"><div class="card-title">经营看板</div><button class="card-link" data-view-link="portal-dashboard">详情</button></div>
@@ -300,6 +307,7 @@
             <button class="admin-subtab" data-admin-panel="audit">审计日志</button>
             <button class="admin-subtab" data-admin-panel="aiquery">AI查询</button>
             <button class="admin-subtab" data-admin-panel="sessions">会话管理</button>
+            <button class="admin-subtab" data-admin-panel="news">资讯管理</button>
             <button class="admin-subtab" data-admin-panel="anomalies" id="adminAnomalyTab">异常统计<span class="subtab-badge warn" id="adminAnomalyBadge" hidden>0</span></button>
           </nav>
 
@@ -431,6 +439,29 @@
             </div>
           </div>
 
+          <!-- Panel: News -->
+          <div class="admin-panel" id="adminPanelNews">
+            <article class="card">
+              <div class="card-header">
+                <div class="card-title">资讯管理</div>
+                <button class="btn primary btn-sm" id="adminNewsAddBtn">新建资讯</button>
+              </div>
+              <div class="card-body" style="padding:0;overflow-x:auto">
+                <table class="admin-table">
+                  <thead><tr><th>标题</th><th>来源</th><th>分类</th><th>发布时间</th><th>置顶</th><th>操作</th></tr></thead>
+                  <tbody id="adminNewsTableBody"></tbody>
+                </table>
+                <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 18px;border-top:1px solid var(--line);font-size:12px;color:var(--muted)">
+                  <span id="adminNewsPageInfo"></span>
+                  <div style="display:flex;gap:4px">
+                    <button class="btn btn-sm" id="adminNewsPagePrev" disabled>上一页</button>
+                    <button class="btn btn-sm" id="adminNewsPageNext" disabled>下一页</button>
+                  </div>
+                </div>
+              </div>
+            </article>
+          </div>
+
           <!-- Panel: Anomalies -->
           <div class="admin-panel" id="adminPanelAnomalies">
             <div class="anomaly-grid" id="adminAnomalyGrid">
@@ -461,6 +492,12 @@
   <div class="modal-backdrop" id="profileModal"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="profileModalTitle"><div class="modal-header"><h2 id="profileModalTitle">编辑个人资料</h2><button class="btn icon-only" data-close-profile aria-label="关闭"><svg class="icon"><use href="#i-close"/></svg></button></div><form id="profileForm"><div class="form-grid"><div class="field"><label for="profileName">姓名</label><input id="profileName" required placeholder="请输入姓名" /></div><div class="field"><label for="profileDept">部门</label><input id="profileDept" placeholder="请输入部门" /></div><div class="field"><label for="profileEmail">邮箱</label><input id="profileEmail" type="email" placeholder="请输入邮箱" /></div><div class="field"><label for="profilePhone">电话</label><input id="profilePhone" type="tel" placeholder="请输入电话" /></div></div><div class="modal-actions"><button type="button" class="btn" data-close-profile>取消</button><button class="btn primary" type="submit">保存</button></div></form></div></div>
   <div class="modal-backdrop" id="newsSubModal"><div class="modal sub-modal" role="dialog" aria-modal="true" aria-labelledby="newsSubModalTitle"><div class="modal-header"><h2 id="newsSubModalTitle">订阅新闻来源</h2><button class="btn icon-only" data-close-news-sub aria-label="关闭"><svg class="icon"><use href="#i-close"/></svg></button></div><div class="sub-grid" id="newsSubGrid"></div><div class="modal-actions"><button type="button" class="btn" data-close-news-sub>取消</button><button class="btn primary" id="saveNewsSubsBtn">保存订阅</button></div></div></div>
   <div class="modal-backdrop" id="serviceSubModal"><div class="modal sub-modal" role="dialog" aria-modal="true" aria-labelledby="serviceSubModalTitle"><div class="modal-header"><h2 id="serviceSubModalTitle">订阅服务</h2><button class="btn icon-only" data-close-service-sub aria-label="关闭"><svg class="icon"><use href="#i-close"/></svg></button></div><div class="sub-grid" id="serviceSubGrid"></div><div class="modal-actions"><button type="button" class="btn" data-close-service-sub>取消</button><button class="btn primary" id="saveServiceSubsBtn">保存订阅</button></div></div></div>
+  <!-- ── Admin: news modal ─────────────────────────── -->
+  <div class="modal-backdrop" id="adminNewsModal"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="adminNewsModalTitle"><div class="modal-header"><h2 id="adminNewsModalTitle">编辑资讯</h2><button class="btn icon-only" data-close-modal aria-label="关闭"><svg class="icon"><use href="#i-close"/></svg></button></div><form id="adminNewsForm"><div class="form-grid"><div class="field"><label for="adminNewsTitle">标题</label><input id="adminNewsTitle" required placeholder="资讯标题" /></div><div class="field"><label for="adminNewsSource">来源</label><input id="adminNewsSource" required placeholder="例如：企业资讯" /></div><div class="field"><label for="adminNewsCategory">分类</label><input id="adminNewsCategory" required placeholder="例如：通知公告" /></div><div class="field"><label for="adminNewsPublishedAt">发布时间</label><input id="adminNewsPublishedAt" type="datetime-local" required /></div><div class="field"><label for="adminNewsBody">正文</label><textarea id="adminNewsBody" required placeholder="资讯正文内容" rows="5"></textarea></div><div class="field"><label><input type="checkbox" id="adminNewsPinned" /> 置顶</label></div></div><div class="modal-actions"><button type="button" class="btn danger" id="adminNewsDeleteBtn" hidden>删除资讯</button><button type="button" class="btn" data-close-modal>取消</button><button class="btn primary" type="submit">保存</button></div></form></div></div>
+
+  <!-- ── Admin: publish notice modal ──────────────────── -->
+  <div class="modal-backdrop" id="noticePublishModal"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="noticePublishModalTitle"><div class="modal-header"><h2 id="noticePublishModalTitle">发布公告</h2><button class="btn icon-only" data-close-modal aria-label="关闭"><svg class="icon"><use href="#i-close"/></svg></button></div><form id="noticePublishForm"><div class="form-grid"><div class="field"><label for="noticePublishTitle">标题</label><input id="noticePublishTitle" required placeholder="公告标题" /></div><div class="field"><label for="noticePublishSource">发布部门</label><input id="noticePublishSource" required placeholder="例如：党政办公室" /></div><div class="field"><label for="noticePublishCategory">分类</label><input id="noticePublishCategory" required placeholder="例如：通知公告" /></div><div class="field"><label for="noticePublishPublishedAt">发布时间</label><input id="noticePublishPublishedAt" type="datetime-local" required /></div><div class="field"><label for="noticePublishBody">正文</label><textarea id="noticePublishBody" required placeholder="公告正文内容" rows="5"></textarea></div><div class="field"><label for="noticePublishVisibility">可见范围</label><select id="noticePublishVisibility"><option value="org">本组织</option><option value="dept">本部门</option><option value="public">公开</option></select></div></div><div class="modal-actions"><button type="button" class="btn" data-close-modal>取消</button><button class="btn primary" type="submit">发布</button></div></form></div></div>
+
   <!-- ── Admin: create user modal ─────────────────── -->
   <div class="modal-backdrop" id="adminUserModal">
     <div class="modal" role="dialog" aria-modal="true" aria-labelledby="adminUserModalTitle">
