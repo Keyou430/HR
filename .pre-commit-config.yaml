@@ -1,0 +1,43 @@
+# HR Platform — Pre-commit Hooks
+# Install:     pip install pre-commit && pre-commit install
+# Install msg: pre-commit install --hook-type commit-msg
+# Run all:     pre-commit run --all-files
+
+repos:
+  # ── Generic file checks ─────────────────────────────────
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-json
+        exclude: "^frontend/package-lock\\.json$"
+      - id: check-toml
+      - id: detect-private-key
+
+  # ── Python: lint + format ───────────────────────────────
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.9.10
+    hooks:
+      - id: ruff
+        args: [--fix, --exit-non-zero-on-fix]
+        files: "^backend/"
+      - id: ruff-format
+        files: "^backend/"
+
+  # ── Frontend: lint + format ─────────────────────────────
+  - repo: https://github.com/biomejs/pre-commit
+    rev: v1.9.4
+    hooks:
+      - id: biome
+        args: [check, --write, --files-ignore-unknown]
+        files: "^frontend/"
+
+  # ── Commit message ──────────────────────────────────────
+  - repo: https://github.com/alessandrojcm/commitlint-pre-commit-hook
+    rev: v9.22.0
+    hooks:
+      - id: commitlint
+        stages: [commit-msg]
+        additional_dependencies: ["@commitlint/config-conventional"]
