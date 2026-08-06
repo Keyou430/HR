@@ -34,6 +34,11 @@
     function _removeScoped(key) {
       try { window.localStorage.removeItem(_scopedKey(key)); } catch (e) { /* ignore */ }
     }
+
+    function getToken() {
+      return (window.App && window.App._authToken) || (window.__auth && window.__auth.getToken && window.__auth.getToken()) || null;
+    }
+
     const defaultEmbedUrls = {
       feishu: "https://www.feishu.cn/",
       dingtalk: "https://www.dingtalk.com/"
@@ -523,11 +528,11 @@
         var raw = _loadScoped(taskStorageKey, null);
         if (raw) {
           var parsed = JSON.parse(raw);
-          if (Array.isArray(parsed)) return parsed.map(function (t) { return Object.assign({}, t, { dueTime: t.dueTime || t.due_time || null }); });
+          if (Array.isArray(parsed)) return parsed.map(function (t) { return Object.assign({}, t, { deadline: t.deadline || t.dueTime || t.due_time || null }); });
         }
         // Fallback: unscoped key (backward compatibility)
         var savedTasks = JSON.parse(window.localStorage.getItem(taskStorageKey) || "null");
-        if (Array.isArray(savedTasks)) return savedTasks.map(function (t) { return Object.assign({}, t, { dueTime: t.dueTime || t.due_time || null }); });
+        if (Array.isArray(savedTasks)) return savedTasks.map(function (t) { return Object.assign({}, t, { deadline: t.deadline || t.dueTime || t.due_time || null }); });
       } catch (error) {
         window.localStorage.removeItem(taskStorageKey);
       }
@@ -710,8 +715,8 @@
       if (!serverPayload || !Array.isArray(serverPayload.items)) {
         return { merged: localTasks, localOnly: [], diverged: [] };
       }
-      // Normalize snake_case from server to camelCase for frontend
-      const normalize = (t) => ({ ...t, dueTime: t.dueTime || t.due_time || null });
+      // Normalize snake_case from server + legacy dueTime to deadline
+      const normalize = (t) => ({ ...t, deadline: t.deadline || t.dueTime || t.due_time || null });
       const serverTasks = serverPayload.items.filter((t) => !state.pendingDeletes.has(t.id)).map(normalize);
       const serverMap = new Map(serverTasks.map((t) => [t.id, t]));
       const localMap = new Map(localTasks.map((t) => [t.id, t]));
@@ -723,7 +728,7 @@
       const diverged = [];
       for (const lt of localTasks) {
         const st = serverMap.get(lt.id);
-        if (st && (st.done !== lt.done || st.title !== lt.title || st.tag !== lt.tag || (st.dueTime || null) !== (lt.dueTime || null))) {
+        if (st && (st.done !== lt.done || st.title !== lt.title || st.tag !== lt.tag || (st.deadline || null) !== (lt.deadline || null))) {
           diverged.push(lt);
         }
       }
@@ -742,7 +747,7 @@
       // Create local-only tasks on server
       for (const task of localOnly) {
         try {
-          const created = await createTaskRemote(task.title, task.tag, task.dueTime);
+          const created = await createTaskRemote(task.title, task.tag, task.deadline);
           const idx = state.tasks.findIndex((t) => t.id === task.id);
           if (idx !== -1) {
             state.tasks[idx] = { ...created, done: task.done };
@@ -843,7 +848,7 @@
       saveTasks();
       saveEvents();
       renderTasks();
-      renderNotifications();
+      updateSidebarBadge();
       renderShortcuts();
       renderWorkspaceAssets();
       renderPortalDashboard();
@@ -977,6 +982,9 @@
           "<button class=\"btn btn-sm\" data-admin-reset-pwd=\"" + u.id + "\">重置密码</button>" +
           "<button class=\"btn btn-sm\" data-admin-roles=\"" + u.id + "\">分配角色</button>" +
           "<button class=\"btn btn-sm " + toggleClass + "\" data-admin-toggle=\"" + u.id + "\">" + toggleLabel + "</button>" +
+          (u.id !== (_authUser ? _authUser.id : null)
+            ? "<button class=\"btn btn-sm btn-action-danger\" data-admin-delete=\"" + u.id + "\">删除</button>"
+            : "") +
           "</div></td>" +
           "</tr>";
       }).join("");
@@ -991,6 +999,9 @@
       // Bind reset-password buttons
       $$("#adminUserTableBody [data-admin-reset-pwd]").forEach(function(btn) {
         btn.addEventListener("click", function() { openAdminResetPwdModal(parseInt(btn.dataset.adminResetPwd)); });
+      });
+      $$("#adminUserTableBody [data-admin-delete]").forEach(function(btn) {
+        btn.addEventListener("click", function() { deleteAdminUser(parseInt(btn.dataset.adminDelete)); });
       });
 
       // ── Pagination ──────────────────────────────────────────
@@ -1080,6 +1091,17 @@
         showToast("账号已" + actionLabel);
         fetchAdminUsers();
       } catch (e) { showToast(e.message || "操作失败"); }
+    }
+
+    async function deleteAdminUser(userId) {
+      var user = (state.adminUsers || []).find(function(u) { return u.id === userId; });
+      if (!user) return;
+      if (!window.confirm("确认永久删除账号 " + (user.display_name || user.username) + "？此操作不可恢复。")) return;
+      try {
+        await apiJson("/api/v1/admin/users/" + userId, { method: "DELETE" });
+        showToast("账号已删除");
+        fetchAdminUsers();
+      } catch (e) { showToast(e.message || "删除失败"); }
     }
 
     async function openAdminKbAuthModal(userId) {
@@ -1640,17 +1662,17 @@
       try { window.localStorage.setItem(taskStorageKey, data); } catch (e) {}
     }
 
-    async function createTaskRemote(title, tag, dueTime) {
+    async function createTaskRemote(title, tag, deadline) {
       return apiJson("/api/v1/tasks", {
         method: "POST",
-        body: JSON.stringify({ title, tag, due_time: dueTime || null })
+        body: JSON.stringify({ title, tag, deadline: deadline || null })
       });
     }
 
     async function updateTaskRemote(task) {
       return apiJson(`/api/v1/tasks/${task.id}`, {
         method: "PATCH",
-        body: JSON.stringify({ title: task.title, tag: task.tag, due_time: task.dueTime || null, done: task.done })
+        body: JSON.stringify({ title: task.title, tag: task.tag, deadline: task.deadline || null, done: task.done })
       });
     }
 
@@ -1702,70 +1724,213 @@
       if (dashboardTodoTarget) dashboardTodoTarget.textContent = `${todoCount} 项`;
     }
 
+    function _isTaskOverdue(task) {
+      if (task.done) return false;
+      if (task.status === "overdue") return true;
+      if (task.deadline) {
+        var now = new Date().toISOString();
+        return task.deadline < now;
+      }
+      return false;
+    }
+
+    function _formatDeadline(deadline) {
+      if (!deadline) return "";
+      // deadline is ISO string like "2026-08-06T14:30:00"
+      var dt = deadline.replace("T", " ").substring(0, 16);
+      var now = new Date();
+      var today = now.getFullYear() + "-" + String(now.getMonth()+1).padStart(2,"0") + "-" + String(now.getDate()).padStart(2,"0");
+      if (deadline.substring(0, 10) === today) {
+        // Today: show only time
+        return deadline.substring(11, 16);
+      }
+      // Other days: show MM-DD HH:mm
+      return deadline.substring(5, 10) + " " + deadline.substring(11, 16);
+    }
+
     function renderTasks() {
-      const list = $("#taskList");
-      const tasks = state.tasks.filter((task) => state.taskFilter === "all" || (state.taskFilter === "done" ? task.done : !task.done));
-      $("#todoCount").textContent = state.tasks.filter((task) => !task.done).length;
-      list.innerHTML = tasks.length ? tasks.map((task) => `<div class="task-row ${task.done ? "done" : ""}"><input type="checkbox" data-task-id="${task.id}" ${task.done ? "checked" : ""}/><span class="task-title">${escapeHTML(task.title)}</span><span class="task-tag">${escapeHTML(task.tag)}${task.dueTime ? `<span class="task-time">${escapeHTML(task.dueTime)}</span>` : ""}</span><button class="task-delete" type="button" data-delete-task="${task.id}" aria-label="删除任务 ${escapeHTML(task.title)}"><svg class="icon" style="width:14px;height:14px"><use href="#i-close"/></svg></button></div>`).join("") : `<div class="empty-state"><div><div class="empty-illustration"></div><strong>${state.taskFilter === "done" ? "还没有已完成任务" : "暂无待办任务"}</strong><div>${state.taskFilter === "done" ? "完成任务后会显示在这里。" : "当前没有需要处理的任务。"}</div><button class="empty-action" data-toast="${state.taskFilter === "done" ? "暂无已完成任务可查看" : "待办任务已刷新"}">${state.taskFilter === "done" ? "查看任务中心" : "刷新待办"}</button></div></div>`;
-      $$("[data-task-id]").forEach((input) => input.addEventListener("change", (event) => {
-        const task = state.tasks.find((item) => item.id === Number(event.target.dataset.taskId));
-        task.done = event.target.checked;
-        saveTasks();
-        updateTaskRemote(task).catch((error) => console.warn("Task update stayed local.", error));
-        renderTasks();
-        renderNotifications();
-        showToast(task.done ? "任务已完成" : "任务已恢复为未完成");
-      }));
-      $$("[data-delete-task]").forEach((button) => button.addEventListener("click", async () => {
-        const taskId = Number(button.dataset.deleteTask);
-        state.tasks = state.tasks.filter((task) => task.id !== taskId);
-        // Track deletion so server tasks don't reappear on next bootstrap
-        state.pendingDeletes.add(taskId);
-        savePendingDeletes();
-        saveTasks();
-        try {
-          await deleteTaskRemote(taskId);
-          state.pendingDeletes.delete(taskId);
-          savePendingDeletes();
-        } catch (error) {
-          console.warn("Task delete stayed local.", error);
+      var list = $("#taskList");
+      if (!list) return; // not on workspace view — nothing to render
+      var now = new Date().toISOString();
+      var overdueTasks = [];
+      var todoTasks = [];
+      state.tasks.forEach(function(task) {
+        if (task.done) {
+          // done tasks are handled separately via the "done" filter
+        } else if (_isTaskOverdue(task)) {
+          overdueTasks.push(task);
+        } else {
+          todoTasks.push(task);
         }
-        renderTasks();
-        renderNotifications();
-        showToast("任务已删除");
-      }));
+      });
+
+      var filtered;
+      switch (state.taskFilter) {
+        case "overdue": filtered = overdueTasks; break;
+        case "done": filtered = state.tasks.filter(function(t) { return t.done; }); break;
+        case "todo": filtered = todoTasks; break;
+        default: filtered = state.tasks; break; // "all"
+      }
+
+      // Update filter tab counts
+      var todoEl = document.querySelector("[data-task-filter=todo]");
+      var overdueEl = document.querySelector("[data-task-filter=overdue]");
+      var doneEl = document.querySelector("[data-task-filter=done]");
+      if (todoEl) todoEl.textContent = "未完成 " + todoTasks.length;
+      if (overdueEl) overdueEl.textContent = "已过期 " + overdueTasks.length;
+      if (doneEl) {
+        var doneCount = state.tasks.filter(function(t) { return t.done; }).length;
+        doneEl.textContent = "已完成 " + doneCount;
+      }
+
+      // Sidebar badge
+      var sidebarBadge = document.querySelector(".side-link[data-view-link='workspace'] small");
+      if (!sidebarBadge) {
+        var workspaceBtn = document.querySelector(".side-link[data-view-link='workspace']");
+        if (!workspaceBtn) {
+          // Find by text content
+          var sideLinks = document.querySelectorAll(".side-link");
+          for (var s = 0; s < sideLinks.length; s++) {
+            if (sideLinks[s].textContent.indexOf("待办中心") !== -1) {
+              sidebarBadge = sideLinks[s].querySelector("small");
+              break;
+            }
+          }
+        } else {
+          sidebarBadge = workspaceBtn.querySelector("small");
+        }
+      }
+      if (sidebarBadge) {
+        var undoneCount = state.tasks.filter(function(t) { return !t.done; }).length;
+        sidebarBadge.textContent = undoneCount;
+        sidebarBadge.style.display = undoneCount > 0 ? "" : "none";
+        // Red background when any overdue task exists
+        if (overdueTasks.length > 0) {
+          sidebarBadge.classList.add("badge-danger");
+        } else {
+          sidebarBadge.classList.remove("badge-danger");
+        }
+      }
+
+      var emptyTexts = {
+        todo: { strong: "暂无待办任务", desc: "当前没有需要处理的任务。", btn: "刷新待办", toast: "待办任务已刷新" },
+        overdue: { strong: "没有过期任务", desc: "所有任务都在截止时间之内。", btn: "查看未完成", toast: "已切换到未完成视图" },
+        done: { strong: "还没有已完成任务", desc: "完成任务后会显示在这里。", btn: "查看任务中心", toast: "暂无已完成任务可查看" },
+        all: { strong: "暂无任务", desc: "添加一个新任务开始吧。", btn: "添加任务", toast: "请输入任务内容" }
+      };
+
+      if (!filtered.length) {
+        var e = emptyTexts[state.taskFilter] || emptyTexts.todo;
+        list.innerHTML = '<div class="empty-state"><div><div class="empty-illustration"></div><strong>' + e.strong + '</strong><div>' + e.desc + '</div><button class="empty-action" data-toast="' + e.toast + '">' + e.btn + '</button></div></div>';
+      } else {
+        list.innerHTML = filtered.map(function(task) {
+          var isOverdue = _isTaskOverdue(task);
+          var rowClass = task.done ? "done" : (isOverdue ? "overdue-row" : "");
+          var deadlineHtml = task.deadline
+            ? '<span class="task-time' + (isOverdue ? " overdue" : "") + '">' + escapeHTML(_formatDeadline(task.deadline)) + '</span>'
+            : "";
+          var overdueBadge = isOverdue ? '<span class="task-overdue-badge">⏰已过期</span>' : "";
+          return '<div class="task-row ' + rowClass + '">' +
+            '<input type="checkbox" data-task-id="' + task.id + '" ' + (task.done ? "checked" : "") + '/>' +
+            '<span class="task-title">' + escapeHTML(task.title) + '</span>' +
+            '<span class="task-tag">' + escapeHTML(task.tag) + deadlineHtml + overdueBadge + '</span>' +
+            '<button class="task-delete" type="button" data-delete-task="' + task.id + '" aria-label="删除任务 ' + escapeHTML(task.title) + '"><svg class="icon" style="width:14px;height:14px"><use href="#i-close"/></svg></button>' +
+            '</div>';
+        }).join("");
+      }
+
+      $$("[data-task-id]").forEach(function(input) {
+        input.addEventListener("change", function(event) {
+          var task = state.tasks.find(function(item) { return item.id === Number(event.target.dataset.taskId); });
+          task.done = event.target.checked;
+          saveTasks();
+          updateTaskRemote(task).catch(function(error) { console.warn("Task update stayed local.", error); });
+          renderTasks();
+          updateSidebarBadge();
+          showToast(task.done ? "任务已完成" : "任务已恢复为未完成");
+        });
+      });
+      $$("[data-delete-task]").forEach(function(button) {
+        button.addEventListener("click", async function() {
+          var taskId = Number(button.dataset.deleteTask);
+          state.tasks = state.tasks.filter(function(task) { return task.id !== taskId; });
+          state.pendingDeletes.add(taskId);
+          savePendingDeletes();
+          saveTasks();
+          try {
+            await deleteTaskRemote(taskId);
+            state.pendingDeletes.delete(taskId);
+            savePendingDeletes();
+          } catch (error) {
+            console.warn("Task delete stayed local.", error);
+          }
+          renderTasks();
+          updateSidebarBadge();
+          showToast("任务已删除");
+        });
+      });
       renderWorkbenchOverview();
       bindToasts();
     }
 
-    function getOverdueTasks() {
-      const now = new Date();
-      const nowSec = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
-      return state.tasks.filter(task => {
-        if (task.done || !task.dueTime) return false;
-        if (task.tag !== "今天") return false;
-        const [h, m] = task.dueTime.split(":").map(Number);
-        if (isNaN(h) || isNaN(m)) return false;
-        return nowSec > h * 3600 + m * 60;
-      });
+    function updateSidebarBadge() {
+      var undoneCount = state.tasks.filter(function(t) { return !t.done; }).length;
+      var hasOverdue = state.tasks.some(function(t) { return _isTaskOverdue(t); });
+      var sidebarBadge = null;
+      var sideLinks = document.querySelectorAll(".side-link");
+      for (var s = 0; s < sideLinks.length; s++) {
+        if (sideLinks[s].textContent.indexOf("待办中心") !== -1) {
+          sidebarBadge = sideLinks[s].querySelector("small");
+          break;
+        }
+      }
+      if (sidebarBadge) {
+        sidebarBadge.textContent = undoneCount;
+        sidebarBadge.style.display = undoneCount > 0 ? "" : "none";
+        if (hasOverdue) {
+          sidebarBadge.classList.add("badge-danger");
+        } else {
+          sidebarBadge.classList.remove("badge-danger");
+        }
+      }
     }
 
-    function renderNotifications() {
-      const overdue = getOverdueTasks();
-      const prevIds = state._lastOverdueIds;
-      const nowIds = new Set(overdue.map(t => t.id));
-      // T7: Use component API for overdue count (server notifications are separate)
-      if (window.App && window.App.components && window.App.components.notificationBell) {
-        // Don't overwrite server unread count with overdue count;
-        // overdue tasks use toast only (see below)
+    // ── SSE-driven overdue notifications (replaces old client-side polling) ──
+    var _sseConnection = null;
+
+    function startNotificationStream() {
+      if (_sseConnection) { _sseConnection.close(); }
+      var token = getToken();
+      if (!token) return;
+      _sseConnection = new EventSource("/api/v1/notifications/stream?token=" + encodeURIComponent(token));
+      _sseConnection.onmessage = function(event) {
+        try {
+          var msg = JSON.parse(event.data);
+          if (msg.type === "task_overdue") {
+            // Update local task status
+            var task = state.tasks.find(function(t) { return t.id === msg.task.id; });
+            if (task) { task.status = "overdue"; }
+            // Toast for immediate visibility
+            showToast("⏰ 任务已过期：" + (msg.task.title || ""));
+            // Refresh UI
+            renderTasks();
+            updateSidebarBadge();
+            // Refresh notification bell unread count
+            fetchUnreadCount();
+          }
+        } catch (e) { /* ignore malformed events */ }
+      };
+      _sseConnection.onerror = function() {
+        // EventSource will auto-reconnect (retry: 3000 from server)
+        // No action needed — the browser handles it natively
+      };
+    }
+
+    function stopNotificationStream() {
+      if (_sseConnection) {
+        _sseConnection.close();
+        _sseConnection = null;
       }
-      // Toast only for genuinely new overdue tasks (skip initial load when prevIds is null)
-      if (prevIds) {
-        overdue.forEach(task => {
-          if (!prevIds.has(task.id)) showToast(`⏰ 任务已过期：${task.title}`);
-        });
-      }
-      state._lastOverdueIds = nowIds;
     }
 
     const assetViews = {
@@ -1930,18 +2095,25 @@
           publishBtn.addEventListener("click", openNoticePublishModal);
         }
       }
+      var EMPTY_ROW = '<div class="empty-state" style="padding:20px;text-align:center;color:var(--text-secondary);font-size:13px">暂无数据</div>';
       const noticeList = $("#noticeList");
       if (noticeList) {
         const notices = state.notices.map(normalizeNotice).slice(0, 3);
-        noticeList.innerHTML = notices.map((item) => `<button class="feed-item" data-open-asset="notices:${item.id}"><span class="feed-mark"><svg class="icon"><use href="#i-message"/></svg></span><span><span class="feed-title">${escapeHTML(item.title)}</span><span class="feed-meta"><span>${escapeHTML(item.source || "")}</span><span>${escapeHTML(item.category || "公告")}</span></span></span><span class="feed-time">${formatShortDate(item.published_at)}</span></button>`).join("");
+        noticeList.innerHTML = notices.length
+          ? notices.map((item) => `<button class="feed-item" data-open-asset="notices:${item.id}"><span class="feed-mark"><svg class="icon"><use href="#i-message"/></svg></span><span><span class="feed-title">${escapeHTML(item.title)}</span><span class="feed-meta"><span>${escapeHTML(item.source || "")}</span><span>${escapeHTML(item.category || "公告")}</span></span></span><span class="feed-time">${formatShortDate(item.published_at)}</span></button>`).join("")
+          : EMPTY_ROW;
       }
       const documentRows = $("#documentRows");
       if (documentRows) {
-        documentRows.innerHTML = state.documents.slice(0, 4).map((item) => `<tr data-open-asset="documents:${item.id}"><td><button class="card-link" type="button"><span class="doc-name"><span class="file-type">${escapeHTML(item.file_type || "D")}</span>${escapeHTML(item.name)}</span></button></td><td>${escapeHTML(item.location || "")}</td><td>${escapeHTML(item.owner || "")}</td><td>${formatShortDate(item.updated_at)}</td></tr>`).join("");
+        documentRows.innerHTML = state.documents.length
+          ? state.documents.slice(0, 4).map((item) => `<tr data-open-asset="documents:${item.id}"><td><button class="card-link" type="button"><span class="doc-name"><span class="file-type">${escapeHTML(item.file_type || "D")}</span>${escapeHTML(item.name)}</span></button></td><td>${escapeHTML(item.location || "")}</td><td>${escapeHTML(item.owner || "")}</td><td>${formatShortDate(item.updated_at)}</td></tr>`).join("")
+          : '<tr><td colspan="4" style="text-align:center;color:var(--text-secondary);padding:24px">暂无文档</td></tr>';
       }
       const resourceList = $("#resourceList");
       if (resourceList) {
-        resourceList.innerHTML = state.resources.slice(0, 4).map((item) => `<button class="resource-item" data-open-asset="resources:${item.code}"><span class="app-icon ${item.icon_tone || "app-blue"}">${escapeHTML(item.title || "").slice(0, 1)}</span><span><strong>${escapeHTML(item.title)}</strong><small>${escapeHTML(item.description || "")}</small></span></button>`).join("");
+        resourceList.innerHTML = state.resources.length
+          ? state.resources.slice(0, 4).map((item) => `<button class="resource-item" data-open-asset="resources:${item.code}"><span class="app-icon ${item.icon_tone || "app-blue"}">${escapeHTML(item.title || "").slice(0, 1)}</span><span><strong>${escapeHTML(item.title)}</strong><small>${escapeHTML(item.description || "")}</small></span></button>`).join("")
+          : EMPTY_ROW;
       }
       bindAssetOpeners();
       bindAssetCenterOpeners();
@@ -3687,12 +3859,12 @@
       } catch (e) { /* best-effort */ }
     }
 
-    // Start polling unread count (60s) + refresh on window focus
+    // Start SSE stream for real-time notifications + refresh on window focus
     if (window.App && window.App.components && window.App.components.notificationBell) {
       fetchUnreadCount();
-      setInterval(fetchUnreadCount, 60000);
       window.addEventListener("focus", fetchUnreadCount);
     }
+    startNotificationStream();
 
     $("#userButton").addEventListener("click", (event) => {
       event.stopPropagation(); closePopovers();
@@ -3805,14 +3977,50 @@
         return;
       }
       const tag = $("#taskTag").value;
-      const dueTime = $("#taskTime").value || null;
+      const timeVal = $("#taskTime").value || null;
+
+      // Auto-fill deadline from tag selection
+      var deadline = null;
+      if (timeVal) {
+        var today = new Date();
+        var dateStr = today.getFullYear() + "-" + String(today.getMonth()+1).padStart(2,"0") + "-" + String(today.getDate()).padStart(2,"0");
+        if (tag === "明天") {
+          var tomorrow = new Date(today);
+          tomorrow.setDate(tomorrow.getDate() + 1);
+          dateStr = tomorrow.getFullYear() + "-" + String(tomorrow.getMonth()+1).padStart(2,"0") + "-" + String(tomorrow.getDate()).padStart(2,"0");
+        } else if (tag === "本周") {
+          var friday = new Date(today);
+          var dayOfWeek = friday.getDay();
+          var daysUntilFriday = dayOfWeek === 0 ? 5 : (5 - dayOfWeek);
+          if (daysUntilFriday <= 0) daysUntilFriday += 7;
+          friday.setDate(friday.getDate() + daysUntilFriday);
+          dateStr = friday.getFullYear() + "-" + String(friday.getMonth()+1).padStart(2,"0") + "-" + String(friday.getDate()).padStart(2,"0");
+        }
+        deadline = dateStr + "T" + timeVal + ":00";
+      } else if (tag !== "跟进") {
+        // Default deadline times by tag (no time picker value)
+        var now = new Date();
+        var defaultDate = new Date(now);
+        var defaultTime = "18:00:00";
+        if (tag === "明天") {
+          defaultDate.setDate(defaultDate.getDate() + 1);
+        } else if (tag === "本周") {
+          var dow = defaultDate.getDay();
+          var toFri = dow === 0 ? 5 : (5 - dow);
+          if (toFri <= 0) toFri += 7;
+          defaultDate.setDate(defaultDate.getDate() + toFri);
+        }
+        var ds = defaultDate.getFullYear() + "-" + String(defaultDate.getMonth()+1).padStart(2,"0") + "-" + String(defaultDate.getDate()).padStart(2,"0");
+        deadline = ds + "T" + defaultTime;
+      }
+
       let task;
       try {
-        task = await createTaskRemote(title, tag, dueTime);
-        task = { ...task, dueTime: task.dueTime || task.due_time || dueTime };
+        task = await createTaskRemote(title, tag, deadline);
+        task = { ...task, deadline: task.deadline || deadline };
       } catch (error) {
         console.warn("Task create stayed local.", error);
-        task = { id: Date.now(), title, tag, dueTime, done: false };
+        task = { id: Date.now(), title, tag, deadline, done: false };
       }
       state.tasks.unshift(task);
       state.taskFilter = "todo";
@@ -3821,7 +4029,7 @@
       $("#taskTime").value = "";
       saveTasks();
       renderTasks();
-      renderNotifications();
+      updateSidebarBadge();
     });
     $("#clearDoneTasks").addEventListener("click", async () => {
       const before = state.tasks.length;
@@ -3843,7 +4051,7 @@
         console.warn("Task cleanup stayed local.", error);
       }
       renderTasks();
-      renderNotifications();
+      updateSidebarBadge();
       showToast(before === state.tasks.length ? "没有可清理的已完成任务" : "已清理完成任务");
     });
     // Chat event handlers
@@ -4039,9 +4247,8 @@
 
     updatePlatformTime();
     window.setInterval(updatePlatformTime, 1000);
-    window.setInterval(renderNotifications, 5000);
     renderTasks();
-    renderNotifications();
+    updateSidebarBadge();
     renderShortcuts();
     renderWorkbenchSchedule();
     bindServiceMenu();

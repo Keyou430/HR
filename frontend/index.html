@@ -75,7 +75,7 @@
           <button class="side-link"><svg class="icon"><use href="#i-file"/></svg><span>我的文档</span></button>
           <div class="side-section">工作空间</div>
           <button class="side-link"><svg class="icon"><use href="#i-message"/></svg><span>消息中心</span><small>0</small></button>
-          <button class="side-link"><svg class="icon"><use href="#i-check"/></svg><span>待办中心</span><small>0</small></button>
+          <button class="side-link" data-view-link="workspace"><svg class="icon"><use href="#i-check"/></svg><span>待办中心</span><small style="display:none">0</small></button>
         </div>
         <div class="sidebar-foot" id="sidebarFoot">
           <span class="sidebar-avatar" id="sidebarAvatar">?</span>
@@ -104,7 +104,7 @@
                 <input type="time" id="taskTime" aria-label="截止时间" />
                 <button class="btn primary" type="submit"><svg class="icon"><use href="#i-plus"/></svg>添加</button>
               </form>
-              <div class="tabs"><button class="tab active" data-task-filter="todo">未完成 <span id="todoCount">0</span></button><button class="tab" data-task-filter="done">已完成</button><button class="tab" data-task-filter="all">全部</button></div>
+              <div class="tabs"><button class="tab active" data-task-filter="todo">未完成</button><button class="tab" data-task-filter="overdue">已过期</button><button class="tab" data-task-filter="done">已完成</button><button class="tab" data-task-filter="all">全部</button></div>
               <div class="task-list" id="taskList"></div>
             </article>
             <article class="card overview-card" id="workspace-today">

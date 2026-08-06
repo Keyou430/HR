@@ -314,6 +314,7 @@ background: var(--blue-soft);
 font-weight: 700;
     }
     .side-link small { margin-left: auto; color: var(--subtle); font-size: 11px; font-weight: 400; }
+    .side-link small.badge-danger { color: #fff; background: var(--red); padding: 1px 6px; border-radius: 10px; font-weight: 700; }
     .main {
 min-width: 0;
 flex: 1;
@@ -737,6 +738,8 @@ color: var(--subtle);
 background: transparent;
     }
     .task-delete:hover { color: #d44f4b; border-color: #f5c6c4; background: #fff6f5; }
+    .task-row.overdue-row { border-left: 3px solid var(--red); padding-left: 15px; }
+    .task-overdue-badge { margin-left: 6px; padding: 2px 6px; border-radius: 4px; color: #fff; background: var(--red); font-size: 10px; font-weight: 600; white-space: nowrap; }
     .shortcut-card { margin-top: 0; }
     .shortcut-list { display: flex; flex-wrap: wrap; gap: 10px; padding: 14px 18px; }
     .shortcut {

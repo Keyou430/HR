@@ -133,7 +133,7 @@
 
   function showCreateForm() {
     showModal("新建申请",
-      '<form id="hrForm"><div class="form-grid"><div class="field"><label>标题</label><input name="title" required maxlength="255"></div><div class="field"><label>申请类型</label><select name="request_type"><option value="certificate">证明申请</option><option value="attendance">考勤补签</option><option value="leave">请假申请</option></select></div><div class="field"><label>审批人ID</label><input name="approved_by" type="number"></div><div class="field"><label>备注</label><textarea name="content_json" rows="2" placeholder='{"reason":"..."}'></textarea></div></div></form>',
+      '<form id="hrForm"><div class="form-grid"><div class="field"><label>标题</label><input name="title" required maxlength="255"></div><div class="field"><label>申请类型</label><select name="request_type"><option value="certificate">证明申请</option><option value="attendance">考勤补签</option><option value="leave">请假申请</option></select></div><div class="field"><label>审批人ID</label><input name="approved_by" type="number"></div><div class="field"><label>备注</label><textarea name="content_json" rows="2" placeholder=\'{"reason":"..."}\'></textarea></div></div></form>',
       async function () {
         var fd = new FormData(document.getElementById("hrForm"));
         var payload = {}; fd.forEach(function (v, k) { if (v) payload[k] = v; });

@@ -20,6 +20,8 @@ DEV_USERS = [
      "email": "leader@hr.example.com", "role": "dept_leader"},
     {"username": "staff", "password": "Admin123!", "display_name": "Department Staff",
      "email": "staff@hr.example.com", "role": "dept_staff"},
+    {"username": "staff2", "password": "staff123", "display_name": "Staff 2",
+     "email": "staff2@hr.example.com", "role": "dept_staff"},
     {"username": "external", "password": "Admin123!", "display_name": "External User",
      "email": "external@hr.example.com", "role": "external"},
 ]
@@ -85,8 +87,8 @@ def _seed() -> None:
                          {"uid": user_id, "ts": ts})
             role_id = role_ids.get(user_def["role"])
             if role_id:
-                conn.execute(text("INSERT INTO user_role_bindings (user_id, role_id, org_id, created_at) "
-                                  "VALUES (:uid, :rid, 'default', :ts)"), {"uid": user_id, "rid": role_id, "ts": ts})
+                conn.execute(text("INSERT INTO role_bindings (user_id, role_id, org_id, department_id, created_at) "
+                                  "VALUES (:uid, :rid, 'default', 'HQ', :ts)"), {"uid": user_id, "rid": role_id, "ts": ts})
 
         # ── Sample repair orders ───────────────────────────────────
         repair_count = conn.execute(text("SELECT COUNT(*) FROM repair_orders")).scalar()

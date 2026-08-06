@@ -158,7 +158,7 @@ def idor_db(tmp_path, monkeypatch):
         with engine.begin() as conn:
             result = conn.execute(
                 text(
-                    "INSERT INTO portal_tasks (title, tag, due_time, done, "
+                    "INSERT INTO portal_tasks (title, tag, deadline, done, "
                     "org_id, department_id, owner_id, visibility, sensitivity) "
                     "VALUES (:title, '今天', NULL, 0, :org, :dept, :owner, :vis, :sens)"
                 ),

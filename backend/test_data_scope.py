@@ -110,7 +110,7 @@ def _create_user(engine, username: str, password: str, display_name: str,
 def _insert_task(engine, **kwargs) -> int:
     """Insert a task with attribution columns. Returns task id."""
     defaults = {
-        "title": "test task", "tag": "今天", "due_time": None, "done": False,
+        "title": "test task", "tag": "今天", "deadline": None, "done": False,
         "org_id": "default", "department_id": "HQ", "owner_id": 1,
         "visibility": "private", "sensitivity": "normal",
     }
@@ -118,9 +118,9 @@ def _insert_task(engine, **kwargs) -> int:
     with engine.begin() as conn:
         result = conn.execute(
             text(
-                "INSERT INTO portal_tasks (title, tag, due_time, done, "
+                "INSERT INTO portal_tasks (title, tag, deadline, done, "
                 "org_id, department_id, owner_id, visibility, sensitivity) "
-                "VALUES (:title, :tag, :due_time, :done, "
+                "VALUES (:title, :tag, :deadline, :done, "
                 ":org_id, :department_id, :owner_id, :visibility, :sensitivity)"
             ),
             defaults,

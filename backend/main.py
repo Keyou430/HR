@@ -24,7 +24,7 @@ from integrations import router as integrations_router
 from knowledge import router as knowledge_router
 from portal import router as portal_router
 from routers.enterprise import router as enterprise_router
-from routers.notifications import router as notifications_router
+from routers.notifications import router as notifications_router, push_event
 from search import router as search_router
 from session import get_engine
 from subsystems import router as subsystems_router
@@ -80,7 +80,7 @@ _settings = get_settings()
 
 @asynccontextmanager
 async def _lifespan(_app: FastAPI) -> AsyncIterator[None]:
-    """Startup: verify security-critical configuration."""
+    """Startup: verify security-critical configuration and start the overdue scanner."""
     settings = get_settings()
 
     # ── JWT secret check ─────────────────────────────────────────
@@ -112,7 +112,59 @@ async def _lifespan(_app: FastAPI) -> AsyncIterator[None]:
             )
         logger.info("Running in PRODUCTION mode — security checks passed.")
 
-    yield
+    # ── APScheduler: overdue task scanner (every 2 s) ────────────
+    from apscheduler.schedulers.asyncio import AsyncIOScheduler
+    from store import store as _store
+
+    _scheduler = AsyncIOScheduler()
+
+    async def _scan_overdue_tasks():
+        """Find tasks whose deadline has passed and notify their owners."""
+        try:
+            overdue = _store.find_overdue_tasks()
+        except Exception:
+            logger.exception("Overdue scanner failed to query tasks")
+            return
+
+        for task in overdue:
+            try:
+                task_id = task["id"]
+                owner_id = task.get("owner_id")
+                title = task.get("title", "")
+
+                # Mark task as overdue-notified
+                _store.mark_task_overdue_notified(task_id)
+
+                # Create notification record
+                if owner_id is not None:
+                    notif = _store.create_notification(
+                        user_id=owner_id,
+                        title="任务已过期",
+                        content=f"「{title}」已超过截止时间，请尽快处理",
+                        type_="task_overdue",
+                        reference_type="task",
+                        reference_id=str(task_id),
+                    )
+
+                    # Push SSE event to online user
+                    if notif:
+                        push_event(owner_id, {
+                            "type": "task_overdue",
+                            "notification": notif,
+                            "task": {"id": task_id, "title": title, "status": "overdue"},
+                        })
+            except Exception:
+                logger.exception("Overdue scanner failed for task %d", task.get("id"))
+
+    _scheduler.add_job(_scan_overdue_tasks, "interval", seconds=2, id="overdue_scanner")
+    _scheduler.start()
+    logger.info("APScheduler overdue scanner started (interval=2s)")
+
+    try:
+        yield
+    finally:
+        _scheduler.shutdown(wait=False)
+        logger.info("APScheduler overdue scanner stopped")
 
 
 app = FastAPI(

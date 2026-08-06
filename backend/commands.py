@@ -41,7 +41,7 @@ def _build_system_prompt() -> str:
 ## 支持的指令类型
 
 ### 1. create_task — 创建任务
-参数: title (任务标题), tag (标签: 今天/明天/本周/本月), due_time (截止时间 HH:MM，可选)
+参数: title (任务标题), tag (标签: 今天/明天/本周/本月), deadline (截止时间 ISO 格式，可选)
 触发词: "创建任务"、"添加任务"、"新建任务"、"帮我加一个"、"提醒我"、"别忘了"、"帮我创建"、"帮我建一个"
 
 ### 2. update_task — 更新/完成任务
@@ -90,7 +90,7 @@ def _build_system_prompt() -> str:
 ## 示例
 
 用户: "帮我创建一个任务：明天下午3点提交季度报告"
-输出: {{"action": "create_task", "params": {{"title": "提交季度报告", "tag": "明天", "due_time": "15:00"}}, "reply": "好的，已为你创建任务「提交季度报告」，截止明天 15:00 ✅"}}
+输出: {"action": "create_task", "params": {"title": "提交季度报告", "tag": "明天", "deadline": "2026-08-07T15:00:00"}, "reply": "好的，已为你创建任务「提交季度报告」，截止明天 15:00 ✅"}
 
 用户: "完成了提交季度报告这个任务"
 输出: {{"action": "update_task", "params": {{"title": "提交季度报告", "done": true}}, "reply": "已将任务「提交季度报告」标记为完成 ✓"}}
@@ -221,19 +221,19 @@ def _handle_create_task(params: dict, reply: str) -> dict:
     if tag not in valid_tags:
         tag = "今天"
 
-    due_time = params.get("due_time") or None
-    if due_time and not isinstance(due_time, str):
-        due_time = None
+    deadline = params.get("deadline") or None
+    if deadline and not isinstance(deadline, str):
+        deadline = None
 
-    task = store.create_task({"title": title, "tag": tag, "due_time": due_time})
+    task = store.create_task({"title": title, "tag": tag, "deadline": deadline})
 
     # 优先使用 Hermes 给出的友好回复，仅在缺失时构造默认回复
     if reply:
         response = reply
     else:
         response = f"✅ 已创建任务「{title}」（{tag}"
-        if due_time:
-            response += f"，截止 {due_time}"
+        if deadline:
+            response += f"，截止 {deadline}"
         response += "）"
 
     return {"answer": response, "mode": "command", "action": "create_task", "result": task}
@@ -287,11 +287,11 @@ def _handle_update_task(params: dict, reply: str) -> dict:
         updates["done"] = params["done"]
     if "tag" in params and params["tag"]:
         updates["tag"] = params["tag"]
-    if "due_time" in params:
-        due_time = params.get("due_time") or None
-        if due_time and not isinstance(due_time, str):
-            due_time = None
-        updates["due_time"] = due_time
+    if "deadline" in params:
+        deadline = params.get("deadline") or None
+        if deadline and not isinstance(deadline, str):
+            deadline = None
+        updates["deadline"] = deadline
 
     if not updates:
         updates["done"] = True  # 默认行为：标记完成

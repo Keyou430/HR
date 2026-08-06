@@ -23,7 +23,7 @@ class TestExecuteCommand:
         """基本创建任务。"""
         cmd = {
             "action": "create_task",
-            "params": {"title": "测试任务", "tag": "今天", "due_time": "10:00"},
+            "params": {"title": "测试任务", "tag": "今天", "deadline": "2026-08-06T10:00:00"},
             "reply": "已创建",
         }
         result = execute_command(cmd)

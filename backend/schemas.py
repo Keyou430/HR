@@ -37,13 +37,13 @@ class PortalBootstrapResponse(BaseModel):
 class TaskCreate(BaseModel):
     title: str = Field(min_length=1, max_length=255)
     tag: str = Field(default="今天", min_length=1, max_length=32)
-    due_time: str | None = Field(default=None, min_length=0, max_length=8)
+    deadline: str | None = Field(default=None, max_length=32)
 
 
 class TaskUpdate(BaseModel):
     title: str | None = Field(default=None, min_length=1, max_length=255)
     tag: str | None = Field(default=None, min_length=1, max_length=32)
-    due_time: str | None = Field(default=None, min_length=0, max_length=8)
+    deadline: str | None = Field(default=None, max_length=32)
     done: bool | None = None
 
 

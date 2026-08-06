@@ -1158,6 +1158,76 @@ def revoke_user_sessions(
     return {"ok": True, "revoked_count": result.rowcount}
 
 
+@router.delete("/users/{user_id}")
+def delete_user(
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user: dict[str, Any] = Depends(require_admin),
+) -> dict[str, Any]:
+    """Delete a user permanently.
+
+    Safety guards:
+    - Cannot delete yourself
+    - Cannot delete the last active super_admin
+    """
+    user = _load_user_or_404(db, user_id)
+
+    if user_id == current_user["id"]:
+        raise HTTPException(status_code=400, detail="不能删除自己的账号")
+
+    if _user_has_role(db, user_id, SUPER_ADMIN_ROLE):
+        active_super_count = _count_active_super_admins(db)
+        if active_super_count <= 1:
+            raise HTTPException(status_code=400, detail="不能删除唯一的超级管理员")
+
+    ts = _ts()
+
+    db.commit()
+    with db.begin():
+        # Revoke sessions
+        db.execute(
+            text("UPDATE auth_sessions SET revoked_at = :ts, updated_at = :ts "
+                 "WHERE user_id = :uid AND revoked_at IS NULL"),
+            {"ts": ts, "uid": user_id},
+        )
+        # Clear AI query logs FK
+        db.execute(
+            text("DELETE FROM ai_query_logs WHERE user_id = :uid"),
+            {"uid": user_id},
+        )
+        # Nullify owner references on portal assets owned by this user
+        for table in ("portal_notices", "portal_documents", "portal_resources",
+                       "portal_services", "portal_news"):
+            db.execute(
+                text(f"UPDATE {table} SET owner_id = NULL WHERE owner_id = :uid"),
+                {"uid": user_id},
+            )
+        # Unassign owned enterprise records
+        for table in ("enterprise_repair_tickets", "enterprise_asset_items",
+                       "enterprise_oa_flows", "hr_requests", "finance_claims"):
+            db.execute(
+                text(f"UPDATE {table} SET owner_id = NULL WHERE owner_id = :uid"),
+                {"uid": user_id},
+            )
+        # Delete user-owned portal_tasks and calendar_events (private data)
+        db.execute(text("DELETE FROM portal_tasks WHERE owner_id = :uid"), {"uid": user_id})
+        db.execute(text("DELETE FROM portal_calendar_events WHERE owner_id = :uid"), {"uid": user_id})
+        # Clean up memberships and roles
+        db.execute(text("DELETE FROM user_org_memberships WHERE user_id = :uid"), {"uid": user_id})
+        db.execute(text("DELETE FROM user_department_memberships WHERE user_id = :uid"), {"uid": user_id})
+        db.execute(text("DELETE FROM role_bindings WHERE user_id = :uid"), {"uid": user_id})
+        # Delete the user
+        db.execute(text("DELETE FROM users WHERE id = :uid"), {"uid": user_id})
+        audit_log(
+            db, action="admin.user.delete",
+            user_id=current_user["id"], resource_type="user",
+            resource_id=str(user_id),
+            detail={"username": user["username"], "display_name": user["display_name"]},
+        )
+
+    return {"ok": True}
+
+
 # ═════════════════════════════════════════════════════════════════════
 # Phase 6: Anomaly statistics
 # ═════════════════════════════════════════════════════════════════════

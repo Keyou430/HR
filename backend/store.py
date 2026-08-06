@@ -30,9 +30,10 @@ tasks_table = Table(
     Column("id", Integer, primary_key=True, autoincrement=True),
     Column("title", String(255), nullable=False),
     Column("tag", String(32), nullable=False),
-    Column("due_time", String(8), nullable=True),
+    Column("deadline", String(32), nullable=True),
     Column("done", Boolean, nullable=False, default=False),
     Column("status", String(32), nullable=True),
+    Column("overdue_notified_at", String(32), nullable=True),
     Column("created_at", String(32), nullable=True),
     Column("updated_at", String(32), nullable=True),
     # ── RBAC data-attribution columns ────────────────────────────
@@ -1361,6 +1362,8 @@ class PortalStore(
                  "email": "leader@hr.example.com", "role": "dept_leader"},
                 {"username": "staff", "password": "Admin123!", "display_name": "Department Staff",
                  "email": "staff@hr.example.com", "role": "dept_staff"},
+                {"username": "staff2", "password": "staff123", "display_name": "Staff 2",
+                 "email": "staff2@hr.example.com", "role": "dept_staff"},
                 {"username": "external", "password": "Admin123!", "display_name": "External User",
                  "email": "external@hr.example.com", "role": "external"},
             ]
@@ -1408,8 +1411,8 @@ class PortalStore(
                 role_id = role_ids.get(user_def["role"])
                 if role_id:
                     db.execute(
-                        text("INSERT INTO user_role_bindings (user_id, role_id, org_id, created_at) "
-                             "VALUES (:uid, :rid, 'default', :ts)"),
+                        text("INSERT INTO role_bindings (user_id, role_id, org_id, department_id, created_at) "
+                             "VALUES (:uid, :rid, 'default', 'HQ', :ts)"),
                         {"uid": user_id, "rid": role_id, "ts": now},
                     )
         except Exception:
@@ -1420,7 +1423,8 @@ class PortalStore(
             return
         expected = {
             "portal_tasks": {
-                "due_time": "VARCHAR(8)",
+                "deadline": "VARCHAR(32)",
+                "overdue_notified_at": "VARCHAR(32)",
                 # Phase 4: RBAC attribution columns
                 "org_id": "VARCHAR(64)",
                 "department_id": "VARCHAR(64)",
@@ -1617,8 +1621,9 @@ class PortalStore(
                 values = {
                     "title": payload["title"],
                     "tag": payload.get("tag") or "今天",
-                    "due_time": payload.get("due_time") or None,
+                    "deadline": payload.get("deadline") or None,
                     "done": False,
+                    "overdue_notified_at": None,
                 }
                 # Phase 4: set attribution from user context.
                 # NEVER trust client-supplied org_id / department_id / owner_id /
@@ -1664,7 +1669,24 @@ class PortalStore(
                 if existing is None:
                     return None  # Not found or not authorized (uniform response)
 
-                updates = {key: value for key, value in payload.items() if key in {"title", "tag", "due_time", "done"}}
+                updates = {key: value for key, value in payload.items() if key in {"title", "tag", "deadline", "done"}}
+                # When deadline changes, reset overdue tracking so the task can be re-notified
+                if "deadline" in updates and updates["deadline"] != (existing.get("deadline") or None):
+                    updates["overdue_notified_at"] = None
+                    # Re-evaluate status: clear "overdue" if deadline moved to the future
+                    if existing.get("status") == "overdue":
+                        updates["status"] = None
+                # When done toggled, reflect in status
+                if "done" in updates:
+                    if updates["done"]:
+                        updates["status"] = "completed"
+                    else:
+                        # Re-evaluate: if deadline still past, stay overdue
+                        dl = updates.get("deadline") or existing.get("deadline")
+                        if dl and dl < self._now_iso():
+                            updates["status"] = "overdue"
+                        else:
+                            updates["status"] = None
                 if updates:
                     db.execute(
                         update(tasks_table)
@@ -1698,6 +1720,37 @@ class PortalStore(
                 )
                 db.commit()
                 return int(result.rowcount or 0)
+
+    def find_overdue_tasks(self) -> list[dict[str, Any]]:
+        """Return undone tasks whose deadline has passed but not yet notified.
+
+        Used by the APScheduler overdue scanner. Returns the raw row dict
+        so the scanner can create notifications and update statuses.
+        """
+        now = self._now_iso()
+        with self._session() as db:
+            rows = db.execute(
+                select(tasks_table).where(
+                    and_(
+                        tasks_table.c.done.is_(False),
+                        tasks_table.c.deadline.isnot(None),
+                        tasks_table.c.deadline < now,
+                        tasks_table.c.overdue_notified_at.is_(None),
+                    )
+                )
+            ).mappings().all()
+            return [self._task_from_row(row) for row in rows]
+
+    def mark_task_overdue_notified(self, task_id: int) -> None:
+        """Set overdue_notified_at and status='overdue' for a task."""
+        now = self._now_iso()
+        with self._session() as db:
+            db.execute(
+                update(tasks_table)
+                .where(tasks_table.c.id == task_id)
+                .values(overdue_notified_at=now, status="overdue")
+            )
+            db.commit()
 
     # ═════════════════════════════════════════════════════════════
     # Calendar Events
