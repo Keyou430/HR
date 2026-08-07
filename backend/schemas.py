@@ -421,49 +421,6 @@ class AdminNoticeListResponse(BaseModel):
 # ── T5: Admin service schemas ───────────────────────────────────────
 
 
-class AdminServiceCreateRequest(BaseModel):
-    code: str = Field(min_length=1, max_length=64, pattern=r"^[a-z][a-z0-9_-]*$")
-    title: str = Field(min_length=1, max_length=255)
-    category: str = Field(min_length=1, max_length=64)
-    description: str = Field(min_length=1)
-    materials: str = ""
-    audience: str = Field(min_length=1, max_length=128)
-    contact: str = Field(min_length=1, max_length=128)
-    status: str = "active"
-
-
-class AdminServiceUpdateRequest(BaseModel):
-    title: str | None = Field(default=None, min_length=1, max_length=255)
-    category: str | None = Field(default=None, min_length=1, max_length=64)
-    description: str | None = Field(default=None, min_length=1)
-    materials: str | None = None
-    audience: str | None = Field(default=None, min_length=1, max_length=128)
-    contact: str | None = Field(default=None, min_length=1, max_length=128)
-    status: str | None = None
-
-
-class AdminServiceItem(BaseModel):
-    code: str
-    title: str
-    category: str
-    description: str
-    materials: str = ""
-    audience: str
-    contact: str
-    status: str = "active"
-    subscribed_count: int = 0
-    org_id: str | None = None
-    department_id: str | None = None
-    visibility: str = "org"
-    created_at: str | None = None
-    updated_at: str | None = None
-
-
-class AdminServiceListResponse(BaseModel):
-    items: list[AdminServiceItem]
-    total: int
-
-
 # ── T: Admin news schemas ───────────────────────────────────────────────
 
 class AdminNewsCreateRequest(BaseModel):

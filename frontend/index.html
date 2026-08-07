@@ -188,12 +188,12 @@
             <article class="card"><div class="card-header"><div class="card-title">个人数据</div><button class="card-link">编辑</button></div><div class="card-body"><div class="profile-box"><div class="profile-photo">?</div><div><strong>欢迎使用协同门户</strong><p>组织机构：—<br />上次登录：—</p></div></div><div class="stat-stack"><div class="stat-tile"><small>我管理的资产</small><strong>13 项</strong></div><div class="stat-tile"><small>待处理任务</small><strong>4 项</strong></div><div class="stat-tile"><small>我的邮箱</small><strong>已绑定</strong></div></div></div></article>
             <article class="card"><div class="card-header"><div class="card-title">新闻资讯</div><button class="card-link">订阅管理</button></div><div class="feed-list news-list"></div></article>
           </div>
-          <div class="portal-section" id="portal-systems"><h2 class="section-title">信息系统</h2><div class="system-matrix" id="systemMatrix"></div></div>
-          <div class="portal-columns" id="portal-services">
-            <article class="card"><div class="card-header"><div class="card-title">我的日程</div><button class="card-link" data-view-link="calendar">进入日历</button></div><div class="card-body calendar-summary" style="grid-template-columns:1fr"><div class="mini-month" style="padding:0;border:0"><div class="week-labels"><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span></div><div class="month-grid" id="portalMonth"></div></div><div class="schedule-panel" id="portalSchedulePanel"></div></div></article>
-            <article class="card"><div class="card-header"><div class="card-title">服务分类</div><button class="card-link">订阅</button></div><div class="service-panel"><div class="service-menu" id="serviceMenu"></div><div class="service-items" id="serviceItems"></div></div></article>
+          <div class="portal-section" id="portal-systems">
+            <div class="section-header"><h2 class="section-title">信息系统</h2><button class="card-link" id="customSystemBtn">自定义系统</button></div>
+            <div class="system-categories" id="systemCategories"></div>
+            <div class="system-grid" id="systemGrid"></div>
           </div>
-          <div class="portal-section" id="portal-statistics"><h2 class="section-title">定制系统统计</h2><article class="card"><div class="metric-strip"><div class="metric"><strong>114</strong><span>当前进驻事项</span></div><div class="metric"><strong>48</strong><span>可在线办理项</span></div><div class="metric"><strong>36,863</strong><span>总办件数量</span></div><div class="metric"><strong>3,547</strong><span>当前正在办件</span></div><div class="metric"><strong>33,316</strong><span>已完成办件</span></div></div></article></div>
+
           <footer class="portal-footer" id="portal-footer"><div class="footer-grid"><div><strong>协同门户</strong><p>连接组织、服务与知识，让每个人更快找到下一步。</p></div><div><strong>联系信息</strong><p>地址：企业园区综合服务中心<br />电话：020-12345678 · 邮箱：service@example.com</p></div><div><strong>服务时间</strong><p>工作日 09:00-18:00<br />统一服务台 · 信息安全与合规支持</p></div></div></footer>
         </section>
 
@@ -215,11 +215,6 @@
         <section class="view" id="resource-center">
           <div class="page-heading"><div><h1>资源库</h1><p>查看制度、数据、培训和服务资料</p></div><div class="heading-actions"><button class="btn" data-view-link="portal"><svg class="icon"><use href="#i-chevron-left"/></svg>返回门户</button></div></div>
           <div class="internal-shell" id="resourceCenterContent"></div>
-        </section>
-
-        <section class="view" id="service-center">
-          <div class="page-heading"><div><h1>服务台</h1><p>查看服务事项、办理说明和材料要求</p></div><div class="heading-actions"><button class="btn" data-view-link="portal"><svg class="icon"><use href="#i-chevron-left"/></svg>返回门户</button></div></div>
-          <div class="internal-shell" id="serviceCenterContent"></div>
         </section>
 
         <section class="view" id="news-center">
@@ -484,7 +479,7 @@
     </div>
   </div>
 
-  <div class=”notification-dropdown” id=”notificationDropdown”></div>
+  <div class="notification-dropdown" id="notificationDropdown"></div>
   <div class="popover" id="userPopover"><h3 id="popoverName">未登录</h3><div class="popover-item" id="popoverDept">—<small>个人信息与账号设置</small></div><div class="popover-item" id="popoverPrefs">偏好设置<small>通知、主题与快捷入口</small></div><button class="btn" style="width:100%;margin-top:10px" id="logoutButton">退出登录</button></div>
   <div class="modal-backdrop" id="eventModal"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="eventModalTitle"><div class="modal-header"><h2 id="eventModalTitle">添加日程</h2><button class="btn icon-only" data-close-modal aria-label="关闭"><svg class="icon"><use href="#i-close"/></svg></button></div><form id="eventForm"><div class="form-grid"><div class="field"><label for="eventName">日程主题</label><input id="eventName" required placeholder="例如：部门周例会" /></div><div class="field"><label for="eventDate">日期</label><input id="eventDate" type="date" required /></div><div class="field"><label id="eventToneLabel">日程颜色</label><div class="tone-options" id="eventTone" role="radiogroup" aria-labelledby="eventToneLabel"><label class="tone-option blue"><input type="radio" name="eventTone" value="blue" checked /><span class="tone-dot"></span><span>蓝色</span></label><label class="tone-option green"><input type="radio" name="eventTone" value="green" /><span class="tone-dot"></span><span>绿色</span></label><label class="tone-option orange"><input type="radio" name="eventTone" value="orange" /><span class="tone-dot"></span><span>橙色</span></label></div></div><div class="field"><label for="eventNote">备注</label><textarea id="eventNote" placeholder="补充会议地点、参与人或事项说明"></textarea></div></div><div class="modal-actions"><button type="button" class="btn danger" id="eventDeleteButton" hidden>删除日程</button><button type="button" class="btn" data-close-modal>取消</button><button class="btn primary" type="submit">保存日程</button></div></form></div></div>
   <div class="modal-backdrop" id="searchModal"><div class="modal search-modal" role="dialog" aria-modal="true" aria-labelledby="searchModalTitle"><div class="modal-header"><h2 id="searchModalTitle">全局搜索</h2><button class="btn icon-only" data-close-search aria-label="关闭"><svg class="icon"><use href="#i-close"/></svg></button></div><div class="knowledge-search"><svg class="icon"><use href="#i-search"/></svg><input id="globalSearchInput" autofocus placeholder="搜索公告、文档、日程和知识库" /></div><div class="search-results" id="searchResults"><div class="search-result"><strong>输入关键词开始搜索</strong><p>支持搜索子系统、公告、文档、报修、资产、OA 流程等</p></div></div></div></div>
@@ -617,6 +612,7 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="/node_modules/gridstack/dist/gridstack-all.js"></script>
   <script type="module" src="/src/main.ts"></script>
   <script src="/src/app.js"></script>
   <script src="/src/components/status-badge.js"></script>
@@ -628,14 +624,9 @@
   <script src="/src/components/sidebar.js"></script>
   <script src="/src/components/search.js"></script>
   <script src="/src/views/repair.js"></script>
-  <script src="/src/views/asset.js"></script>
   <script src="/src/views/oa.js"></script>
   <script src="/src/views/hr.js"></script>
   <script src="/src/views/finance.js"></script>
   <script src="/src/views/data-portal.js"></script>
-  <!-- Phase 4 T17: website, estate, employment -->
-  <script src="/src/views/website.js"></script>
-  <script src="/src/views/estate.js"></script>
-  <script src="/src/views/employment.js"></script>
 </body>
 </html>

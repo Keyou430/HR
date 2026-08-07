@@ -46,10 +46,7 @@ from schemas import (
     AdminRoleListResponse,
     AdminRolePermissionUpdateRequest,
     AdminRoleUpdateRequest,
-    AdminServiceCreateRequest,
-    AdminServiceItem,
-    AdminServiceListResponse,
-    AdminServiceUpdateRequest,
+
     AdminSessionItem,
     AdminSessionListResponse,
     AdminResetPasswordRequest,
@@ -1197,7 +1194,7 @@ def delete_user(
         )
         # Nullify owner references on portal assets owned by this user
         for table in ("portal_notices", "portal_documents", "portal_resources",
-                       "portal_services", "portal_news"):
+                       "portal_news"):
             db.execute(
                 text(f"UPDATE {table} SET owner_id = NULL WHERE owner_id = :uid"),
                 {"uid": user_id},
@@ -2288,206 +2285,6 @@ def delete_news(
             db, action="admin.news.delete",
             user_id=current_user["id"], resource_type="news",
             resource_id=str(news_id),
-            detail={"title": row[1]},
-        )
-    return {"ok": True}
-
-
-# ═════════════════════════════════════════════════════════════════════
-# T5: Service management
-# ═════════════════════════════════════════════════════════════════════
-
-
-@router.get("/services", response_model=AdminServiceListResponse)
-def list_services_admin(
-    page: int = 1,
-    page_size: int = 20,
-    db: Session = Depends(get_db),
-    _admin: dict[str, Any] = Depends(require_admin),
-) -> dict[str, Any]:
-    """List all services with pagination (admin view)."""
-    page_size = max(1, min(page_size, 100))
-    page = max(1, page)
-    offset = (page - 1) * page_size
-
-    total = db.execute(
-        text("SELECT COUNT(*) FROM portal_services")
-    ).fetchone()[0]
-
-    rows = db.execute(
-        text(
-            "SELECT code, title, category, description, materials, audience, "
-            "contact, status, subscribed_count, org_id, department_id, "
-            "visibility, created_at, updated_at "
-            "FROM portal_services ORDER BY code LIMIT :limit OFFSET :offset"
-        ),
-        {"limit": page_size, "offset": offset},
-    ).fetchall()
-
-    items = [
-        AdminServiceItem(
-            code=r[0], title=r[1], category=r[2], description=r[3],
-            materials=r[4] or "", audience=r[5], contact=r[6],
-            status=r[7] or "active",
-            subscribed_count=int(r[8]) if r[8] is not None else 0,
-            org_id=r[9], department_id=r[10],
-            visibility=r[11] if len(r) > 11 else "org",
-            created_at=r[12] if len(r) > 12 else None,
-            updated_at=r[13] if len(r) > 13 else None,
-        )
-        for r in rows
-    ]
-    return {"items": items, "total": total}
-
-
-@router.post("/services", status_code=201, response_model=AdminServiceItem)
-def create_service(
-    body: AdminServiceCreateRequest,
-    db: Session = Depends(get_db),
-    current_user: dict[str, Any] = Depends(require_admin),
-) -> AdminServiceItem:
-    """Create a new service."""
-    ts = _ts()
-
-    existing = db.execute(
-        text("SELECT code FROM portal_services WHERE code = :code"),
-        {"code": body.code},
-    ).fetchone()
-    if existing:
-        raise HTTPException(status_code=409, detail="服务代码已被占用")
-
-    db.commit()
-    with db.begin():
-        db.execute(
-            text(
-                "INSERT INTO portal_services (code, title, category, description, "
-                "materials, audience, contact, status, subscribed_count, "
-                "org_id, department_id, visibility, sensitivity, "
-                "created_at, updated_at) "
-                "VALUES (:code, :title, :category, :description, "
-                ":materials, :audience, :contact, :status, 0, "
-                ":org_id, :dept_id, 'org', 'normal', :ts, :ts)"
-            ),
-            {
-                "code": body.code, "title": body.title,
-                "category": body.category, "description": body.description,
-                "materials": body.materials, "audience": body.audience,
-                "contact": body.contact, "status": body.status,
-                "org_id": "default", "dept_id": "HQ", "ts": ts,
-            },
-        )
-        audit_log(
-            db, action="admin.service.create",
-            user_id=current_user["id"], resource_type="service",
-            resource_id=body.code,
-            detail={"title": body.title, "category": body.category},
-        )
-
-    return AdminServiceItem(
-        code=body.code, title=body.title, category=body.category,
-        description=body.description, materials=body.materials or "",
-        audience=body.audience, contact=body.contact,
-        status=body.status, subscribed_count=0,
-        org_id="default", department_id="HQ",
-        visibility="org", created_at=ts, updated_at=ts,
-    )
-
-
-@router.put("/services/{code}", response_model=AdminServiceItem)
-def update_service(
-    code: str,
-    body: AdminServiceUpdateRequest,
-    db: Session = Depends(get_db),
-    current_user: dict[str, Any] = Depends(require_admin),
-) -> AdminServiceItem:
-    """Update an existing service."""
-    row = db.execute(
-        text(
-            "SELECT code, title, category, description, materials, audience, "
-            "contact, status, subscribed_count, org_id, department_id, "
-            "visibility, created_at, updated_at FROM portal_services WHERE code = :code"
-        ),
-        {"code": code},
-    ).fetchone()
-    if row is None:
-        raise HTTPException(status_code=404, detail="服务不存在")
-
-    ts = _ts()
-    updates: list[str] = []
-    params: dict[str, Any] = {"code": code, "ts": ts}
-
-    field_map = {
-        "title": body.title, "category": body.category,
-        "description": body.description, "materials": body.materials,
-        "audience": body.audience, "contact": body.contact,
-        "status": body.status,
-    }
-    for field, value in field_map.items():
-        if value is not None:
-            updates.append(f"{field} = :{field}")
-            params[field] = value
-
-    if updates:
-        updates.append("updated_at = :ts")
-        db.commit()
-        with db.begin():
-            db.execute(
-                text(f"UPDATE portal_services SET {', '.join(updates)} WHERE code = :code"),
-                params,
-            )
-            audit_log(
-                db, action="admin.service.update",
-                user_id=current_user["id"], resource_type="service",
-                resource_id=code,
-                detail={"before": {"title": row[1]}, "after": {"title": body.title or row[1]}},
-            )
-
-    # Re-query
-    row2 = db.execute(
-        text(
-            "SELECT code, title, category, description, materials, audience, "
-            "contact, status, subscribed_count, org_id, department_id, "
-            "visibility, created_at, updated_at FROM portal_services WHERE code = :code"
-        ),
-        {"code": code},
-    ).fetchone()
-    return AdminServiceItem(
-        code=row2[0], title=row2[1], category=row2[2], description=row2[3],
-        materials=row2[4] or "", audience=row2[5], contact=row2[6],
-        status=row2[7] or "active",
-        subscribed_count=int(row2[8]) if row2[8] is not None else 0,
-        org_id=row2[9], department_id=row2[10],
-        visibility=row2[11] if len(row2) > 11 else "org",
-        created_at=row2[12] if len(row2) > 12 else None,
-        updated_at=row2[13] if len(row2) > 13 else None,
-    )
-
-
-@router.delete("/services/{code}")
-def delete_service(
-    code: str,
-    db: Session = Depends(get_db),
-    current_user: dict[str, Any] = Depends(require_admin),
-) -> dict[str, bool]:
-    """Delete a service."""
-    row = db.execute(
-        text("SELECT code, title FROM portal_services WHERE code = :code"),
-        {"code": code},
-    ).fetchone()
-    if row is None:
-        raise HTTPException(status_code=404, detail="服务不存在")
-
-    ts = _ts()
-    db.commit()
-    with db.begin():
-        db.execute(
-            text("DELETE FROM portal_services WHERE code = :code"),
-            {"code": code},
-        )
-        audit_log(
-            db, action="admin.service.delete",
-            user_id=current_user["id"], resource_type="service",
-            resource_id=code,
             detail={"title": row[1]},
         )
     return {"ok": True}

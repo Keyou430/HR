@@ -47,7 +47,6 @@ SKILLS: list[dict[str, Any]] = [
     {"code": "task", "title": "待办中心", "description": "任务管理"},
     {"code": "portal", "title": "融合门户", "description": "门户首页"},
     {"code": "document", "title": "云文档", "description": "文档协作"},
-    {"code": "service", "title": "服务台", "description": "统一服务入口"},
 ]
 
 
@@ -128,19 +127,6 @@ async def get_resource(code: str, current_user: dict[str, Any] = Depends(get_cur
     item = store.get_portal_asset("resources", code, user=current_user)
     if item is None:
         raise HTTPException(status_code=404, detail="resource not found")
-    return item
-
-
-@router.get("/services")
-async def list_services(current_user: dict[str, Any] = Depends(get_current_user)) -> dict:
-    return store.list_portal_assets("services", user=current_user)
-
-
-@router.get("/services/{code}")
-async def get_service(code: str, current_user: dict[str, Any] = Depends(get_current_user)) -> dict:
-    item = store.get_portal_asset("services", code, user=current_user)
-    if item is None:
-        raise HTTPException(status_code=404, detail="service not found")
     return item
 
 

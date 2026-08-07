@@ -207,7 +207,6 @@ class BaseStore:
             "notices": self._portal_notices_table,
             "documents": self._portal_documents_table,
             "resources": self._portal_resources_table,
-            "services": self._portal_services_table,
             "news": self._portal_news_table,
         }
         if collection not in tables:

@@ -95,17 +95,17 @@ class PortalMixin:
     ) -> dict[str, Any]:
         allowed = {
             "favorite_subsystems",
-            "favorite_services",
             "favorite_documents",
             "hidden_cards",
             "card_order",
             "news_subscriptions",
-            "service_subscriptions",
+            "system_order",
+            "system_active_category",
         }
         user_id = user.get("id") if user else 0
         current = self.get_portal_preferences(user=user)
         for key, value in payload.items():
-            if key in allowed and isinstance(value, list):
+            if key in allowed and value is not None:
                 current[key] = value
         now = datetime.now(timezone.utc).isoformat()
         with self._lock:

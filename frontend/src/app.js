@@ -6,7 +6,6 @@
     const chatSessionsStorageKey = "collab-chat-sessions";
     const profileStorageKey = "collab-portal-profile";
     const newsSubsStorageKey = "collab-news-subs";
-    const serviceSubsStorageKey = "collab-service-subs";
     const lastUserIdKey = "collab-last-user-id";
 
     // ── User-scoped localStorage helpers ──────────────────────────────
@@ -45,7 +44,7 @@
     };
     const apiBaseUrl = window.COLLAB_API_BASE_URL || (window.location.protocol === "file:" ? "http://localhost:8000" : "");
     const authBaseUrl = apiBaseUrl + "/api/v1/auth";
-    const validViews = new Set(["workspace", "portal", "subsystem", "notice-center", "document-center", "resource-center", "service-center", "news-center", "portal-dashboard", "calendar", "knowledge", "feishu", "dingtalk", "admin"]);
+    const validViews = new Set(["workspace", "portal", "subsystem", "notice-center", "document-center", "resource-center", "news-center", "portal-dashboard", "calendar", "knowledge", "feishu", "dingtalk", "admin"]);
     const allNewsSources = [
       { id: "enterprise", label: "企业资讯" }, { id: "operations", label: "运营中心" },
       { id: "knowledge", label: "知识中心" }, { id: "security", label: "安全办公室" },
@@ -118,7 +117,7 @@
       var userDataKeys = [
         taskStorageKey, pendingDeletesStorageKey, eventStorageKey,
         embedStorageKey, chatSessionsStorageKey, profileStorageKey,
-        newsSubsStorageKey, serviceSubsStorageKey, lastUserIdKey, viewStorageKey,
+        newsSubsStorageKey, lastUserIdKey, viewStorageKey,
       ];
       for (var i = 0; i < userDataKeys.length; i++) {
         try { window.localStorage.removeItem(userDataKeys[i]); } catch (e) { /* ignore */ }
@@ -135,7 +134,6 @@
       state.chatSessions = { activeSessionId: null, sessions: [] };
       state.portalProfile = Object.assign({}, defaultProfile);
       state.newsSubscriptions = [];
-      state.serviceSubscriptions = [];
       state.notices = [];
       state.documents = [];
       state.resources = [];
@@ -143,7 +141,7 @@
       state.knowledge = [];
       state.knowledgeImports = [];
       state.portalDashboard = {};
-      state.portalPreferences = { favorite_subsystems: [], favorite_services: [], favorite_documents: [], hidden_cards: [], card_order: [], news_subscriptions: [], service_subscriptions: [] };
+      state.portalPreferences = { favorite_subsystems: [], favorite_documents: [], hidden_cards: [], card_order: [], news_subscriptions: [] };
       state.adminUsers = [];
       state.adminRoles = [];
       state.selectedSubsystem = null;
@@ -798,7 +796,7 @@
         // Different user — reset all state before merging server data
         _resetUserState();
         // Clear old user's scoped localStorage data
-        var _oldKeys = [taskStorageKey, pendingDeletesStorageKey, eventStorageKey, embedStorageKey, chatSessionsStorageKey, profileStorageKey, newsSubsStorageKey, serviceSubsStorageKey, viewStorageKey];
+        var _oldKeys = [taskStorageKey, pendingDeletesStorageKey, eventStorageKey, embedStorageKey, chatSessionsStorageKey, profileStorageKey, newsSubsStorageKey, viewStorageKey];
         for (var _i = 0; _i < _oldKeys.length; _i++) {
           try { window.localStorage.removeItem(_oldKeys[_i]); } catch (e) {}
         }
@@ -835,7 +833,6 @@
       if (payload.portal?.dashboard) state.portalDashboard = payload.portal.dashboard;
       if (payload.workspace?.dashboard) state.portalDashboard = { ...state.portalDashboard, ...payload.workspace.dashboard };
       state.newsSubscriptions = state.portalPreferences.news_subscriptions?.length ? state.portalPreferences.news_subscriptions : state.newsSubscriptions;
-      state.serviceSubscriptions = state.portalPreferences.service_subscriptions?.length ? state.portalPreferences.service_subscriptions : state.serviceSubscriptions;
       if (Array.isArray(payload.workspace?.shortcuts)) state.shortcuts = payload.workspace.shortcuts;
       // Sync local-only and diverged tasks to server before saving
       if (localOnly.length > 0 || diverged.length > 0) {
@@ -883,14 +880,31 @@
         ["公告", "通知中心", "app-orange"], ["智能问答", "AI 助手", "app-purple"], ["会议", "会议管理", "app-blue"], ["表单", "流程申请", "app-cyan"], ["轻审批", "审批中心", "app-red"], ["笔记", "我的笔记", "app-orange"], ["汇报", "工作汇报", "app-blue"], ["日历", "日程管理", "app-blue"], ["待办中心", "任务管理", "app-green"], ["融合门户", "门户首页", "app-red"]
       ],
       embedUrls: getInitialEmbedUrls(),
-      systems: ["督办系统", "一体化教学云平台", "OA 系统", "网站群", "党建系统", "校友系统", "人事系统", "学工系统", "就业系统", "心理系统", "财务系统", "房产管理系统", "资产管理系统", "数据门户", "报修管理系统"],
+      systems: [
+        { code: "oa", name: "OA", category: "办公行政类", description: "公文流转、流程审批、通知公告等协同办公一体化平台", status: "active", entry_type: "internal", owner_department: "行政管理部", owner_name: "OA 支持", support_contact: "OA 支持", icon_tone: "app-blue" },
+        { code: "supervision", name: "督办", category: "办公行政类", description: "重点工作任务分解、进度追踪、责任落实的闭环管理系统", status: "active", entry_type: "internal", owner_department: "行政管理部", owner_name: "综合服务台", support_contact: "综合服务台", icon_tone: "app-blue" },
+        { code: "hr", name: "HR 人事", category: "人力组织类", description: "组织架构、入转调离、合同档案、人事基础数据中心", status: "active", entry_type: "internal", owner_department: "人力资源部", owner_name: "人事服务台", support_contact: "人事服务台", icon_tone: "app-green" },
+        { code: "recruit", name: "招聘", category: "人力组织类", description: "岗位发布、简历筛选、面试安排、录用审批全流程管理", status: "active", entry_type: "internal", owner_department: "人力资源部", owner_name: "招聘专员", support_contact: "招聘专员", icon_tone: "app-green" },
+        { code: "training", name: "培训", category: "人力组织类", description: "培训计划制定、课程发布、学员管理、培训效果评估", status: "active", entry_type: "internal", owner_department: "人力资源部", owner_name: "培训专员", support_contact: "培训专员", icon_tone: "app-green" },
+        { code: "care", name: "员工关怀", category: "人力组织类", description: "员工福利、健康关怀、团建活动、生日节日慰问管理", status: "active", entry_type: "internal", owner_department: "人力资源部", owner_name: "员工关系", support_contact: "员工关系", icon_tone: "app-green" },
+        { code: "crm", name: "CRM", category: "经营业务类", description: "客户信息管理、销售机会跟踪、客户关系维护一体化平台", status: "active", entry_type: "internal", owner_department: "销售管理部", owner_name: "CRM 支持", support_contact: "CRM 支持", icon_tone: "app-orange" },
+        { code: "erp", name: "ERP", category: "经营业务类", description: "企业资源计划管理系统，涵盖采购、库存、生产、销售全链路", status: "active", entry_type: "internal", owner_department: "运营管理部", owner_name: "ERP 支持", support_contact: "ERP 支持", icon_tone: "app-orange" },
+        { code: "ticket", name: "售后工单", category: "经营业务类", description: "客户报修、投诉处理、服务请求的工单流转与闭环管理", status: "active", entry_type: "internal", owner_department: "客户服务部", owner_name: "工单中心", support_contact: "工单中心", icon_tone: "app-orange" },
+        { code: "supply-chain", name: "供应链生产", category: "经营业务类", description: "供应商管理、采购计划、生产排程、物流配送协同平台", status: "active", entry_type: "internal", owner_department: "供应链管理部", owner_name: "供应链支持", support_contact: "供应链支持", icon_tone: "app-orange" },
+        { code: "finance", name: "财务", category: "财资后勤 & 支撑类", description: "财务核算、预算管理、费用报销、财务报表一体化管理系统", status: "active", entry_type: "internal", owner_department: "财务管理部", owner_name: "财务服务台", support_contact: "财务服务台", icon_tone: "app-purple" },
+        { code: "fixed-assets", name: "固定资产", category: "财资后勤 & 支撑类", description: "资产登记、领用、调拨、盘点、报废全生命周期管理", status: "active", entry_type: "internal", owner_department: "资产管理部", owner_name: "资产管理", support_contact: "资产管理", icon_tone: "app-purple" },
+        { code: "property", name: "厂区物业", category: "财资后勤 & 支撑类", description: "厂区设施管理、安全巡查、环境卫生、绿化养护服务", status: "active", entry_type: "internal", owner_department: "物业管理部", owner_name: "物业服务", support_contact: "物业服务", icon_tone: "app-purple" },
+        { code: "repair", name: "报修", category: "财资后勤 & 支撑类", description: "设备设施故障报修、维修派单、进度跟踪、满意度评价", status: "active", entry_type: "internal", owner_department: "后勤保障部", owner_name: "报修中心", support_contact: "报修中心", icon_tone: "app-purple" },
+        { code: "data-hub", name: "数据中台", category: "财资后勤 & 支撑类", description: "企业数据汇聚、治理、分析、可视化的统一数据服务平台", status: "active", entry_type: "internal", owner_department: "数据管理部", owner_name: "数据中台", support_contact: "数据中台", icon_tone: "app-purple" },
+        { code: "party", name: "党建风控", category: "财资后勤 & 支撑类", description: "党建管理、纪检监察、风险控制、合规审计综合管理平台", status: "active", entry_type: "internal", owner_department: "党群工作部", owner_name: "党建支持", support_contact: "党建支持", icon_tone: "app-purple" }
+      ],
       services: ["教职工考勤", "教职工请假", "教职工信息变更管理", "离退休人员管理", "教职工进校", "教职工招聘", "在职教职工工资查询与统计", "在职证明", "因公外出报备申请"],
       notices: [],
       documents: [],
       resources: [],
       news: [],
       portalDashboard: {},
-      portalPreferences: { favorite_subsystems: [], favorite_services: [], favorite_documents: [], hidden_cards: [], card_order: [], news_subscriptions: [], service_subscriptions: [] },
+      portalPreferences: { favorite_subsystems: [], favorite_documents: [], hidden_cards: [], card_order: [], news_subscriptions: [] },
       selectedSubsystem: null,
       selectedAsset: null,
       knowledge: [],
@@ -902,7 +916,6 @@
       portalEditMode: false,
       portalProfile: getInitialProfile(),
       newsSubscriptions: getInitialNewsSubs(),
-      serviceSubscriptions: getInitialServiceSubs(),
       _lastOverdueIds: null,
       adminUsers: [],
       adminRoles: []
@@ -1590,8 +1603,7 @@
         "notice-center": "公告中心",
         "document-center": "文档中心",
         "resource-center": "资源库",
-        "service-center": "服务台",
-        "news-center": "资讯中心",
+"news-center": "资讯中心",
         "portal-dashboard": "经营看板",
         calendar: "日历",
         knowledge: "知识库",
@@ -1603,14 +1615,14 @@
       $("#sidebarTitle").textContent = title;
       const content = {
         workspace: `<div class="side-section">首屏重点</div><button class="side-link active" data-scroll-target="workspace-tasks">${icon("i-check")}<span>待办任务</span></button><button class="side-link" data-scroll-target="workspace-today">${icon("i-grid")}<span>今日概览</span></button><div class="side-section">日常信息</div><button class="side-link" data-scroll-target="workspace-schedule">${icon("i-calendar")}<span>日程</span></button><button class="side-link" data-scroll-target="workspace-notices">${icon("i-message")}<span>公告</span></button><div class="side-section">工作资料</div><button class="side-link" data-scroll-target="workspace-documents">${icon("i-file")}<span>最近文档</span></button><button class="side-link" data-scroll-target="workspace-shortcuts">${icon("i-star")}<span>快捷入口</span></button><button class="side-link" data-scroll-target="workspace-resources">${icon("i-folder")}<span>常用资源</span></button><button class="side-link" data-scroll-target="workspace-assistant">${icon("i-spark")}<span>文档助手</span></button><div class="side-section">工作看板</div><button class="side-link" data-scroll-target="dashboard-overview">${icon("i-chart")}<span>数据概览</span></button><button class="side-link" data-scroll-target="dashboard-shortcuts">${icon("i-star")}<span>快捷卡片</span></button>`,
-        portal: `<div class="side-section">门户区块</div><button class="side-link active" data-scroll-target="portal-overview">${icon("i-home")}<span>门户概览</span></button><button class="side-link" data-scroll-target="portal-personal">${icon("i-user")}<span>个人数据</span></button><button class="side-link" data-scroll-target="portal-systems">${icon("i-grid")}<span>信息系统</span></button><button class="side-link" data-scroll-target="portal-services">${icon("i-folder")}<span>服务分类</span></button><button class="side-link" data-scroll-target="portal-statistics">${icon("i-chart")}<span>系统统计</span></button>`,
+        portal: `<div class="side-section">门户区块</div><button class="side-link active" data-scroll-target="portal-overview">${icon("i-home")}<span>门户概览</span></button><button class="side-link" data-scroll-target="portal-personal">${icon("i-user")}<span>个人数据</span></button><button class="side-link" data-scroll-target="portal-systems">${icon("i-grid")}<span>信息系统</span></button>`,
         calendar: `<div class="side-section">日历区块</div><button class="side-link active" data-scroll-target="calendar-overview">${icon("i-calendar")}<span>日历总览</span></button><button class="side-link" data-scroll-target="calendar-overview">${icon("i-video")}<span>会议与日程</span></button><button class="side-link" data-scroll-target="calendar-overview">${icon("i-user")}<span>联系人与会议室</span></button>`,
         knowledge: `<div class="side-section">功能导航</div><button class="side-link active" data-kb-sub-link="qa">${icon("i-spark")}<span>知识问答</span></button><button class="side-link" data-kb-sub-link="library">${icon("i-folder")}<span>知识库管理</span></button>`,
         subsystem: `<div class="side-section">子系统</div><button class="side-link active" data-scroll-target="subsystemContent">${icon("i-grid")}<span>系统概览</span></button><button class="side-link" data-view-link="portal">${icon("i-home")}<span>返回门户</span></button><div class="side-section">关联内容</div><button class="side-link" data-open-asset-center="services">${icon("i-folder")}<span>关联服务</span></button><button class="side-link" data-open-asset-center="resources">${icon("i-file")}<span>关联资源</span></button>`,
         "notice-center": `<div class="side-section">内容中心</div><button class="side-link active" data-scroll-target="noticeCenterContent">${icon("i-message")}<span>公告列表</span></button><button class="side-link" data-view-link="portal">${icon("i-home")}<span>返回门户</span></button>`,
         "document-center": `<div class="side-section">内容中心</div><button class="side-link active" data-scroll-target="documentCenterContent">${icon("i-file")}<span>文档目录</span></button><button class="side-link" data-view-link="portal">${icon("i-home")}<span>返回门户</span></button>`,
         "resource-center": `<div class="side-section">内容中心</div><button class="side-link active" data-scroll-target="resourceCenterContent">${icon("i-folder")}<span>资源列表</span></button><button class="side-link" data-view-link="portal">${icon("i-home")}<span>返回门户</span></button>`,
-        "service-center": `<div class="side-section">服务台</div><button class="side-link active" data-scroll-target="serviceCenterContent">${icon("i-folder")}<span>服务列表</span></button><button class="side-link" data-view-link="portal">${icon("i-home")}<span>返回门户</span></button>`,
+
         "news-center": `<div class="side-section">资讯中心</div><button class="side-link active" data-scroll-target="newsCenterContent">${icon("i-message")}<span>资讯列表</span></button><button class="side-link" data-view-link="portal">${icon("i-home")}<span>返回门户</span></button>`,
         "portal-dashboard": `<div class="side-section">经营看板</div><button class="side-link active" data-scroll-target="portalDashboardContent">${icon("i-chart")}<span>平台统计</span></button><button class="side-link" data-view-link="portal">${icon("i-home")}<span>返回门户</span></button>`,
         feishu: `<div class="side-section">飞书</div><button class="side-link active" data-scroll-target="feishu-overview">${icon("i-message")}<span>嵌入页面</span></button><button class="side-link" data-scroll-target="feishu-settings">${icon("i-settings")}<span>地址设置</span></button>`,
@@ -1937,7 +1949,7 @@
       notices: { view: "notice-center", target: "noticeCenterContent", title: "公告中心", endpoint: "/api/v1/portal/notices", detailKey: "id", nameKey: "title" },
       documents: { view: "document-center", target: "documentCenterContent", title: "文档中心", endpoint: "/api/v1/portal/documents", detailKey: "id", nameKey: "name" },
       resources: { view: "resource-center", target: "resourceCenterContent", title: "资源库", endpoint: "/api/v1/portal/resources", detailKey: "code", nameKey: "title" },
-      services: { view: "service-center", target: "serviceCenterContent", title: "服务台", endpoint: "/api/v1/portal/services", detailKey: "code", nameKey: "title" },
+
       news: { view: "news-center", target: "newsCenterContent", title: "资讯中心", endpoint: "/api/v1/portal/news", detailKey: "id", nameKey: "title" },
     };
 
@@ -2154,9 +2166,9 @@
     }
 
     async function savePortalPreferences(nextPreferences = state.portalPreferences) {
-      const payload = await apiJson("/api/v1/portal/preferences", { method: "PUT", body: JSON.stringify(nextPreferences) });
-      state.portalPreferences = payload;
-      return payload;
+      // Fire-and-forget persistence — never clobber in-memory state with the
+      // server response, because concurrent saves would race and lose data.
+      await apiJson("/api/v1/portal/preferences", { method: "PUT", body: JSON.stringify(nextPreferences) });
     }
 
     async function fetchPortalDashboard() {
@@ -2172,16 +2184,6 @@
       if (workspaceTarget) {
         workspaceTarget.innerHTML = `<div class="workspace-metric"><strong>${dashboard.subsystems_total ?? state.systems.length}</strong><span>内部子系统</span></div><div class="workspace-metric"><strong>${dashboard.subsystems_active ?? 0}</strong><span>启用系统</span></div><div class="workspace-metric"><strong id="dashboardTodoCount">${state.tasks.filter((task) => !task.done).length} 项</strong><span>今日待办</span></div><div class="workspace-metric"><strong>${dashboard.visits_7d ?? 0}</strong><span>近 7 日访问</span></div>`;
       }
-      const metricTarget = document.querySelector("#portal-statistics .metric-strip");
-      if (metricTarget) {
-        metricTarget.innerHTML = [
-          ["subsystems_total", "内部子系统"],
-          ["subsystems_active", "启用系统"],
-          ["services_total", "服务事项"],
-          ["documents_total", "平台文档"],
-          ["visits_7d", "近 7 日访问"],
-        ].map(([key, label]) => `<div class="metric"><strong>${dashboard[key] ?? 0}</strong><span>${label}</span></div>`).join("");
-      }
       const target = $("#portalDashboardContent");
       if (target) {
         target.innerHTML = `<article class="internal-card"><div class="card-header"><div class="card-title">平台经营统计</div><button class="card-link" id="refreshPortalDashboard">刷新</button></div><div class="card-body"><div class="workspace-metrics"><div class="workspace-metric"><strong>${dashboard.subsystems_total ?? 0}</strong><span>内部子系统</span></div><div class="workspace-metric"><strong>${dashboard.notices_total ?? 0}</strong><span>公告</span></div><div class="workspace-metric"><strong>${dashboard.services_total ?? 0}</strong><span>服务</span></div><div class="workspace-metric"><strong>${dashboard.documents_total ?? 0}</strong><span>文档</span></div></div></div></article>`;
@@ -2189,11 +2191,197 @@
       }
     }
 
+    // ── 信息系统: category tabs + GridStack draggable cards ───────────
+    const SYSTEM_CATEGORIES = ["办公行政类", "人力组织类", "经营业务类", "财资后勤 & 支撑类"];
+    const CATEGORY_COLORS = { "办公行政类": "#2563eb", "人力组织类": "#16a34a", "经营业务类": "#ea580c", "财资后勤 & 支撑类": "#7c3aed" };
+    var _systemGrid = null;
+    var _activeSystemCategory = (state.portalPreferences && state.portalPreferences.system_active_category) || "办公行政类";
+    var _saveOrderTimer = null;
+
+    // ── Read current grid node order as code array ──────────────────────
+    function _readGridOrder() {
+      if (!_systemGrid) return null;
+      var nodes = _systemGrid.engine.nodes.slice().sort(function (a, b) {
+        if (a.y !== b.y) return a.y - b.y;
+        return a.x - b.x;
+      });
+      var order = [];
+      nodes.forEach(function (n) {
+        var card = n.el && n.el.querySelector && n.el.querySelector(".system-card");
+        if (card) order.push(card.dataset.subsystemCode);
+      });
+      return order.length > 0 ? order : null;
+    }
+
+    // ── Persist the current grid order (debounced wrapper) ─────────────
+    function _scheduleOrderSave() {
+      clearTimeout(_saveOrderTimer);
+      _saveOrderTimer = setTimeout(_commitOrderSave, 100);
+    }
+
+    async function _commitOrderSave() {
+      if (!_systemGrid) return;
+      var order = _readGridOrder();
+      if (!order) return;
+      if (!state.portalPreferences) state.portalPreferences = {};
+      if (!state.portalPreferences.system_order) state.portalPreferences.system_order = {};
+      // Only save if the order actually changed
+      var prev = state.portalPreferences.system_order[_activeSystemCategory];
+      if (prev && prev.length === order.length && prev.every(function (code, i) { return code === order[i]; })) return;
+      state.portalPreferences.system_order[_activeSystemCategory] = order;
+      await savePortalPreferences(state.portalPreferences);
+    }
+
+    // ── Flush any pending save NOW (call before destroying grid) ───────
+    function _flushOrderSave() {
+      clearTimeout(_saveOrderTimer);
+      if (!_systemGrid) return;
+      var order = _readGridOrder();
+      if (!order) return;
+      if (!state.portalPreferences) state.portalPreferences = {};
+      if (!state.portalPreferences.system_order) state.portalPreferences.system_order = {};
+      state.portalPreferences.system_order[_activeSystemCategory] = order;
+      // Fire-and-forget — no await needed, we're about to destroy the grid
+      savePortalPreferences(state.portalPreferences);
+    }
+
     function renderSubsystems() {
-      const matrix = $("#systemMatrix");
-      if (!matrix) return;
-      matrix.innerHTML = state.systems.map(normalizeSubsystem).map((system) => `<button class="system-item" data-subsystem-code="${escapeHTML(system.code)}"><span class="app-icon ${system.icon_tone}">${escapeHTML(system.name).slice(0, 1)}</span><span><strong>${escapeHTML(system.name)}</strong><small class="status-pill ${escapeHTML(system.entry_type)}">${system.entry_type === "internal" ? "已上线" : system.entry_type === "iframe" ? "外部接入" : "未开通"}</small></span></button>`).join("");
-      $$("[data-subsystem-code]").forEach((button) => button.addEventListener("click", () => openSubsystem(button.dataset.subsystemCode)));
+      var grid = $("#systemGrid");
+      var tabs = $("#systemCategories");
+      if (!grid || !tabs) return;
+
+      tabs.innerHTML = SYSTEM_CATEGORIES.map(function (cat) {
+        var active = cat === _activeSystemCategory ? " active" : "";
+        return '<button class="category-tab' + active + '" data-category="' + escapeHTML(cat) + '">' + escapeHTML(cat) + '</button>';
+      }).join("");
+
+      var systems = state.systems.map(normalizeSubsystem).filter(function (s) { return s.category === _activeSystemCategory; });
+      var color = CATEGORY_COLORS[_activeSystemCategory] || "#2563eb";
+
+      // ── Saved order (migrate old GridStack layouts on first load) ──
+      if (!state.portalPreferences) state.portalPreferences = {};
+      if (!state.portalPreferences.system_order) {
+        state.portalPreferences.system_order = {};
+        var oldLayouts = state.portalPreferences.system_layouts || {};
+        var hadLayouts = false;
+        Object.keys(oldLayouts).forEach(function (cat) {
+          var items = oldLayouts[cat] || [];
+          if (items.length === 0) return;
+          hadLayouts = true;
+          // Sort by y then x to recover visual order from old coordinate layouts
+          items.sort(function (a, b) { return a.y !== b.y ? a.y - b.y : a.x - b.x; });
+          state.portalPreferences.system_order[cat] = items.map(function (item) { return item.code; }).filter(Boolean);
+        });
+        if (hadLayouts) {
+          delete state.portalPreferences.system_layouts;
+          savePortalPreferences(state.portalPreferences);
+        }
+      }
+      var savedOrder = state.portalPreferences.system_order[_activeSystemCategory] || [];
+
+      // Sort systems: saved-order first, new/unknown items append by name
+      var codeIndex = {};
+      savedOrder.forEach(function (code, i) { codeIndex[code] = i; });
+      systems.sort(function (a, b) {
+        var ai = codeIndex[a.code] !== undefined ? codeIndex[a.code] : 9999;
+        var bi = codeIndex[b.code] !== undefined ? codeIndex[b.code] : 9999;
+        if (ai !== bi) return ai - bi;
+        return a.name.localeCompare(b.name, "zh-Hans-CN");
+      });
+
+      // ── Build grid ──
+      grid.innerHTML = '<div class="grid-stack"></div>';
+      var gsEl = grid.querySelector(".grid-stack");
+      if (_systemGrid) { try { _systemGrid.destroy(false); } catch (e) {} }
+
+      var MARGIN = 8;
+      _systemGrid = window.GridStack.init({
+        column: 12,
+        cellHeight: 1,
+        margin: MARGIN,
+        float: false,
+        animate: true,
+        disableResize: true,
+        swap: true,
+      }, gsEl);
+
+      // ── On manual swap: schedule a debounced save ──
+      _systemGrid.on("change", _scheduleOrderSave);
+
+      // Measure column width for predicting card text-wrap
+      var gsW = gsEl.clientWidth;
+      var colW = Math.floor((gsW - 11 * MARGIN) / 12);
+      if (colW < 60) colW = 60;
+      var cardW = colW * 4 + MARGIN * 3;
+
+      var measureWrap = document.createElement("div");
+      measureWrap.style.cssText = "position:absolute;visibility:hidden;top:-9999px;left:0;";
+      measureWrap.style.width = cardW + "px";
+      document.body.appendChild(measureWrap);
+
+      // ── First pass: measure all card heights, find the max ──
+      var cardSpecs = systems.map(function (system) {
+        var statusLabel = system.entry_type === "internal" ? "已上线" : system.entry_type === "iframe" ? "外部接入" : "未开通";
+        var cardHTML = '<div class="system-card" data-subsystem-code="' + escapeHTML(system.code) + '" style="border-top:3px solid ' + color + '">'
+          + '<span class="system-card-icon" style="background:' + color + '">' + escapeHTML(system.name).slice(0, 1) + '</span>'
+          + '<span class="system-card-body"><strong>' + escapeHTML(system.name) + '</strong>'
+          + '<em>' + escapeHTML(system.description || "") + '</em>'
+          + '<small class="status-pill ' + escapeHTML(system.entry_type) + '">' + statusLabel + '</small></span>'
+          + '</div>';
+        measureWrap.innerHTML = cardHTML;
+        var naturalH = measureWrap.firstElementChild.offsetHeight;
+        return { cardHTML: cardHTML, h: Math.max(80, naturalH + 10) };
+      });
+      document.body.removeChild(measureWrap);
+
+      // Use max height so GridStack swap works (requires same-sized items)
+      var maxH = cardSpecs.reduce(function (m, s) { return Math.max(m, s.h); }, 80);
+
+      // ── Second pass: create widgets (batchUpdate suppresses change events) ──
+      _systemGrid.batchUpdate();
+      cardSpecs.forEach(function (spec, i) {
+        var gsItem = document.createElement("div");
+        gsItem.className = "grid-stack-item";
+        var gsContent = document.createElement("div");
+        gsContent.className = "grid-stack-item-content";
+        gsContent.innerHTML = spec.cardHTML;
+        gsItem.appendChild(gsContent);
+
+        _systemGrid.makeWidget(gsItem, { w: 4, h: maxH, autoPosition: true });
+      });
+      _systemGrid.batchUpdate(false);
+
+      // Save initial order only if this category has no saved order yet.
+      // Otherwise the saved order (possibly from a user swap) is authoritative.
+      if (!state.portalPreferences.system_order[_activeSystemCategory]
+          || state.portalPreferences.system_order[_activeSystemCategory].length === 0) {
+        clearTimeout(_saveOrderTimer);
+        _commitOrderSave();
+      }
+
+      // Click to open subsystem
+      $$("#systemGrid .system-card").forEach(function (card) {
+        card.addEventListener("click", function () {
+          openSubsystem(card.dataset.subsystemCode);
+        });
+      });
+    }
+
+    function bindCategoryTabs() {
+      $$("#systemCategories .category-tab").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          // Flush pending save for current tab BEFORE switching
+          _flushOrderSave();
+          _activeSystemCategory = btn.dataset.category;
+          if (!state.portalPreferences) state.portalPreferences = {};
+          state.portalPreferences.system_active_category = _activeSystemCategory;
+          savePortalPreferences(state.portalPreferences);
+          renderSubsystems();
+          bindCategoryTabs();
+        });
+      });
+      var csb = $("#customSystemBtn");
+      if (csb) { csb.onclick = function () { showToast("自定义系统功能即将上线"); }; }
     }
 
     function renderSubsystemAction(action, index = 0) {
@@ -2204,7 +2392,7 @@
       return `<button class="subsystem-action" type="button" data-subsystem-action="${escapeHTML(kind)}">${icon(iconId)}${escapeHTML(label)}</button>`;
     }
 
-    const _enterpriseSubsystemCodes = new Set(["repair", "assets", "oa"]);
+    const _enterpriseSubsystemCodes = new Set(["repair", "fixed-assets", "oa"]);
 
     async function getSubsystemWorkbench(code) {
       // Phase 2: fetch real enterprise data for repair/assets/oa
@@ -2623,13 +2811,6 @@
       bindScheduleActions(panel);
     }
 
-    function renderPortalSchedule() {
-      renderMiniCalendar("portalMonth");
-      const panel = $("#portalSchedulePanel");
-      if (!panel) return;
-      panel.innerHTML = renderSchedulePanel(false, "暂无日程");
-      bindScheduleActions(panel);
-    }
 
     function renderSchedulePanel(includeActions, emptyLabel) {
       const events = state.events.map((event, index) => ({ ...event, index })).filter((event) => event.date === state.selectedScheduleDate);
@@ -2654,14 +2835,16 @@
     }
 
     function renderPortal() {
+      // Restore saved active category (portalPreferences loaded async after module init)
+      if (state.portalPreferences && state.portalPreferences.system_active_category) {
+        _activeSystemCategory = state.portalPreferences.system_active_category;
+      }
       renderPortalProfile();
       renderPortalNews();
       renderSubsystems();
-      renderPortalServices();
-      bindServiceMenu();
+      bindCategoryTabs();
       renderPortalDashboard();
       renderWorkspaceAssets();
-      renderPortalSchedule();
       bindToasts();
       bindAssetCenterOpeners();
       bindPortalEditTriggers();
@@ -2703,63 +2886,6 @@
       const items = news.filter((item) => !subscribed.size || subscribed.has(item.source) || subscribed.has(item.category) || subscribed.has(sourceLabelById[item.source]));
       container.innerHTML = (items.length ? items : news.slice(0, 4)).map((item) => `<button class="feed-item news-item" data-open-asset="news:${item.id}"><span class="feed-mark alt"><svg class="icon"><use href="#i-message"/></svg></span><span><span class="feed-title">${escapeHTML(item.title)}</span><span class="feed-meta"><span>${escapeHTML(sourceLabelById[item.source] || item.source || "")}</span><span>${escapeHTML(item.category || "")}</span></span></span><span class="feed-time">${formatShortDate(item.published_at || item.date)}</span></button>`).join("");
       bindAssetOpeners();
-    }
-
-    function renderPortalServices() {
-      const container = $("#serviceItems");
-      const menu = $("#serviceMenu");
-      if (!container) return;
-      const subscribed = new Set(state.serviceSubscriptions);
-      const services = state.services.map(normalizeService);
-
-      // ── Data-driven category menu ──────────────────────────────
-      if (menu) {
-        var categories = [];
-        var seen = {};
-        services.forEach(function (s) {
-          var cat = (s.category || "").trim();
-          if (cat && !seen[cat]) { seen[cat] = true; categories.push(cat); }
-        });
-        // Fall back to seed categories if no services exist yet
-        if (!categories.length) categories = ["人事服务", "学生服务", "信息服务", "财务资产", "教学科研"];
-        // Default to first available category
-        if (!_serviceCategory || !seen[_serviceCategory]) {
-          _serviceCategory = categories[0];
-        }
-        menu.innerHTML = categories.map(function (cat) {
-          var active = cat === _serviceCategory ? ' class="active"' : "";
-          return "<button" + active + ">" + escapeHTML(cat) + "</button>";
-        }).join("");
-      }
-
-      // ── Subscription + category filter ─────────────────────────
-      var filtered = services.filter(function (service) {
-        if (subscribed.size && !subscribed.has(service.code) && !subscribed.has(service.title)) return false;
-        if (_serviceCategory) {
-          return (service.category || "").trim() === _serviceCategory;
-        }
-        return true;
-      });
-      container.innerHTML = (filtered.length ? filtered : []).map(function (service, index) {
-        return '<button class="service-item" data-open-asset="services:' + escapeHTML(service.code) + '">' +
-          '<span class="app-icon ' + (service.icon_tone || ["app-green","app-orange","app-blue"][index % 3]) + '">' + escapeHTML((service.title || "").slice(0, 1)) + '</span>' +
-          '<span><strong>' + escapeHTML(service.title || "") + '</strong><small>' + escapeHTML((service.description || "").slice(0, 24)) + '</small></span>' +
-          '</button>';
-      }).join("") || '<div class="empty-state"><div><strong>该分类暂无服务</strong></div></div>';
-      bindAssetOpeners();
-    }
-
-    function bindServiceMenu() {
-      var menu = $("#serviceMenu");
-      if (!menu) return;
-      menu.onclick = function (e) {
-        var btn = e.target.closest("button");
-        if (!btn) return;
-        $$("#serviceMenu button").forEach(function (b) { b.classList.remove("active"); });
-        btn.classList.add("active");
-        _serviceCategory = btn.textContent.trim();
-        renderPortalServices();
-      };
     }
 
     function renderNewsSubModal() {
@@ -3625,8 +3751,6 @@
       if (profileEditBtn) profileEditBtn.onclick = openProfileModal;
       const newsSubBtn = document.querySelector("#portal-personal .card:nth-child(2) .card-link");
       if (newsSubBtn) newsSubBtn.onclick = openNewsSubModal;
-      const serviceSubBtn = document.querySelector("#portal-services .card:last-child .card-link");
-      if (serviceSubBtn) serviceSubBtn.onclick = openServiceSubModal;
       // Drag handles and drag events
       document.querySelectorAll("#portal .card").forEach(card => {
         const header = card.querySelector(".card-header");
@@ -4274,7 +4398,6 @@
     updateSidebarBadge();
     renderShortcuts();
     renderWorkbenchSchedule();
-    bindServiceMenu();
     renderPortal();
     syncProfileUI();
     renderCalendar();

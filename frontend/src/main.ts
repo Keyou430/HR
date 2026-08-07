@@ -12,6 +12,9 @@ import './auth/authContext';
 // Import permissions module for side-effect (exposes helpers)
 import { hasPermission, hasRole, isAuthenticated, PERM, ROLE } from './auth/permissions';
 
+// Import Gridstack CSS for portal system grid
+import 'gridstack/dist/gridstack.min.css';
+
 // Expose permissions globally for vanilla JS access in index.html
 if (typeof window !== "undefined") {
   const win = window as unknown as Record<string, unknown>;

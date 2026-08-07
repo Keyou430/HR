@@ -258,29 +258,6 @@ portal_resources_table = Table(
     Column("updated_by", Integer, nullable=True),
 )
 
-portal_services_table = Table(
-    "portal_services",
-    metadata,
-    Column("code", String(64), primary_key=True),
-    Column("title", String(255), nullable=False),
-    Column("category", String(64), nullable=False),
-    Column("description", Text, nullable=False),
-    Column("materials", Text, nullable=False),
-    Column("audience", String(128), nullable=False),
-    Column("contact", String(128), nullable=False),
-    Column("status", String(32), nullable=False, default="active"),
-    Column("subscribed_count", Integer, nullable=False, default=0),
-    Column("updated_at", String(32), nullable=False),
-    Column("created_at", String(32), nullable=False),
-    Column("org_id", String(64), nullable=True),
-    Column("department_id", String(64), nullable=True),
-    Column("owner_id", Integer, nullable=True),
-    Column("visibility", String(16), nullable=False, default="org"),
-    Column("sensitivity", String(16), nullable=False, default="normal"),
-    Column("created_by", Integer, nullable=True),
-    Column("updated_by", Integer, nullable=True),
-)
-
 portal_news_table = Table(
     "portal_news",
     metadata,
@@ -625,45 +602,29 @@ DEFAULT_SHORTCUTS = [
 ]
 
 DEFAULT_SYSTEMS = [
-    "督办系统",
-    "一体化教学云平台",
+    # 办公行政类
     "OA 系统",
-    "网站群",
-    "党建系统",
-    "校友系统",
-    "人事系统",
-    "学工系统",
-    "就业系统",
-    "心理系统",
-    "财务系统",
-    "房产管理系统",
-    "资产管理系统",
-    "数据门户",
-    "报修管理系统",
+    "督办系统",
+    # 人力组织类
+    "HR 人事",
+    "招聘",
+    "培训",
+    "员工关怀",
+    # 经营业务类
+    "CRM",
+    "ERP",
+    "售后工单",
+    "供应链生产",
+    # 财资后勤 & 支撑类
+    "财务",
+    "固定资产",
+    "厂区物业",
+    "报修",
+    "数据中台",
+    "党建风控",
 ]
 
-DEFAULT_SERVICES: list[dict[str, Any]] = [
-    # 人事服务
-    {"code": "hr-attendance", "title": "教职工考勤", "category": "人事服务", "description": "教职工日常考勤记录、异常申诉与月度汇总查询。", "materials": "身份证明、考勤异常说明", "audience": "全校教职工", "contact": "人事处服务台", "status": "active"},
-    {"code": "hr-leave", "title": "教职工请假", "category": "人事服务", "description": "教职工病假、事假、婚假等各类请假申请与审批。", "materials": "身份证明、请假证明材料", "audience": "全校教职工", "contact": "人事处服务台", "status": "active"},
-    {"code": "hr-certificate", "title": "在职证明", "category": "人事服务", "description": "在线申请开具在职证明、收入证明等。", "materials": "身份证明、申请用途说明", "audience": "全校教职工", "contact": "人事处服务台", "status": "active"},
-    # 学生服务
-    {"code": "stu-enrollment", "title": "新生报到注册", "category": "学生服务", "description": "新生入学资格审核、信息登记与报到注册。", "materials": "录取通知书、身份证明", "audience": "全体学生", "contact": "教务处服务台", "status": "active"},
-    {"code": "stu-award", "title": "奖助学金申请", "category": "学生服务", "description": "国家级、校级奖助学金的申报、评审与发放管理。", "materials": "成绩单、家庭经济情况证明", "audience": "全体学生", "contact": "学生处服务台", "status": "active"},
-    {"code": "stu-leave", "title": "学生请假", "category": "学生服务", "description": "学生课程请假、离校申请与审批。", "materials": "身份证明、请假证明材料", "audience": "全体学生", "contact": "教务处服务台", "status": "active"},
-    # 信息服务
-    {"code": "info-wifi", "title": "校园网络开通", "category": "信息服务", "description": "校园有线/无线网络账户开通与认证。", "materials": "身份证明、设备MAC地址", "audience": "全校师生", "contact": "信息中心服务台", "status": "active"},
-    {"code": "info-vpn", "title": "VPN 申请", "category": "信息服务", "description": "校外访问校内资源的VPN账号申请。", "materials": "身份证明", "audience": "全校师生", "contact": "信息中心服务台", "status": "active"},
-    {"code": "info-account", "title": "统一账号管理", "category": "信息服务", "description": "校园统一身份认证账号的开通、重置与注销。", "materials": "身份证明", "audience": "全校师生", "contact": "信息中心服务台", "status": "active"},
-    # 财务资产
-    {"code": "fin-salary", "title": "工资查询", "category": "财务资产", "description": "教职工月度工资条、年终奖金与个税明细查询。", "materials": "身份证明", "audience": "全校教职工", "contact": "财务处服务台", "status": "active"},
-    {"code": "fin-reimburse", "title": "费用报销", "category": "财务资产", "description": "差旅费、办公费等日常费用报销申请与审批。", "materials": "发票原件、费用明细、审批单", "audience": "全校师生", "contact": "财务处服务台", "status": "active"},
-    {"code": "asset-borrow", "title": "资产借用", "category": "财务资产", "description": "教学设备、实验器材等固定资产的借用申请。", "materials": "身份证明、借用说明", "audience": "全校师生", "contact": "资产管理处服务台", "status": "active"},
-    # 教学科研
-    {"code": "teach-course", "title": "课程调整申请", "category": "教学科研", "description": "教师调课、停课、补课申请的提交与审批。", "materials": "课程信息、调整原因说明", "audience": "全校教师", "contact": "教务处服务台", "status": "active"},
-    {"code": "teach-lab", "title": "实验室预约", "category": "教学科研", "description": "教学实验室、科研实验室的在线预约与使用管理。", "materials": "实验方案、安全承诺书", "audience": "全校师生", "contact": "实验室管理处服务台", "status": "active"},
-    {"code": "res-project", "title": "科研项目申报", "category": "教学科研", "description": "国家级、省部级科研项目的申报、立项与进度管理。", "materials": "项目申报书、预算表", "audience": "全校教师", "contact": "科研处服务台", "status": "active"},
-]
+DEFAULT_NEWS: list[dict[str, Any]] = []  # No hardcoded seed news
 
 DEFAULT_KNOWLEDGE: list[dict[str, Any]] = []
 
@@ -686,117 +647,113 @@ _PORTAL_BASE = {
 }
 
 DEFAULT_SUBSYSTEMS = [
-    ("supervision", "督办系统", "运营管理", "跟踪重点事项、责任人和办理进度。", "党政办公室", "综合服务台", "app-orange"),
-    ("teaching-cloud", "一体化教学云平台", "教学科研", "课程、教学计划和教学运行数据管理。", "教务办公室", "教学服务台", "app-purple"),
-    ("oa", "OA 系统", "协同办公", "流程、通知、文件流转和组织协同工作入口。", "党政办公室", "OA 支持", "app-blue"),
-    ("website", "网站群", "宣传门户", "站点内容、栏目和发布状态管理。", "宣传办公室", "网站支持", "app-green"),
-    ("party", "党建系统", "组织建设", "组织活动、学习资料和党建工作台账。", "组织办公室", "党建支持", "app-red"),
-    ("alumni", "校友系统", "外联服务", "校友信息、活动和联络服务管理。", "校友办公室", "校友服务台", "app-orange"),
-    ("hr", "人事系统", "人事服务", "人员信息、证明、考勤和请假服务。", "人事处", "人事服务台", "app-green"),
-    ("student", "学工系统", "学生服务", "学生事务、奖助、就业与心理服务入口。", "学生工作部", "学生服务台", "app-blue"),
-    ("employment", "就业系统", "学生服务", "招聘信息、就业数据和就业指导服务。", "就业中心", "就业服务台", "app-purple"),
-    ("mental-health", "心理系统", "学生服务", "心理预约、测评和关怀记录入口。", "心理中心", "心理服务台", "app-green"),
-    ("finance", "财务系统", "财务资产", "预算、报销、工资查询和财务事项入口。", "财务处", "财务服务台", "app-orange"),
-    ("estate", "房产管理系统", "财务资产", "空间、房产和用房信息管理。", "资产与后勤处", "房产服务台", "app-blue"),
-    ("assets", "资产管理系统", "财务资产", "资产目录、借用、盘点和维修入口。", "资产与后勤处", "资产服务台", "app-red"),
-    ("data-portal", "数据门户", "数据运营", "组织指标、经营数据和专题看板。", "信息中心", "数据服务台", "app-cyan"),
-    ("repair", "报修管理系统", "统一服务", "故障报修、派单、处理和满意度反馈。", "后勤服务中心", "报修服务台", "app-green"),
+    # 办公行政类
+    ("oa", "OA", "办公行政类", "公文流转、流程审批、通知公告等协同办公一体化平台", "行政管理部", "OA 支持", "app-blue"),
+    ("supervision", "督办", "办公行政类", "重点工作任务分解、进度追踪、责任落实的闭环管理系统", "行政管理部", "综合服务台", "app-blue"),
+    # 人力组织类
+    ("hr", "HR 人事", "人力组织类", "组织架构、入转调离、合同档案、人事基础数据中心", "人力资源部", "人事服务台", "app-green"),
+    ("recruitment", "招聘", "人力组织类", "需求发布、简历筛选、面试安排、录用审批全流程管理", "人力资源部", "招聘服务台", "app-green"),
+    ("training", "培训", "人力组织类", "课程管理、培训计划、学分统计、在线学习与考试", "人力资源部", "培训服务台", "app-green"),
+    ("wellness", "员工关怀", "人力组织类", "生日祝福、节日福利、健康关怀、员工帮助与意见反馈", "人力资源部", "关怀服务台", "app-green"),
+    # 经营业务类
+    ("crm", "CRM", "经营业务类", "客户信息管理、商机追踪、合同管理、销售漏斗分析", "运营管理部", "CRM 支持", "app-orange"),
+    ("erp", "ERP", "经营业务类", "采购、库存、生产计划、质检等企业资源一体化管理", "运营管理部", "ERP 支持", "app-orange"),
+    ("service-desk", "售后工单", "经营业务类", "客户报修、工单分配、服务跟踪、满意度回访闭环", "运营管理部", "售后支持", "app-orange"),
+    ("supply-chain", "供应链生产", "经营业务类", "供应商协同、物料需求、排产调度、物流跟踪管理", "运营管理部", "供应链支持", "app-orange"),
+    # 财资后勤 & 支撑类
+    ("finance", "财务", "财资后勤 & 支撑类", "总账、应收应付、预算管控、财务报表与分析", "后勤保障部", "财务服务台", "app-purple"),
+    ("fixed-assets", "固定资产", "财资后勤 & 支撑类", "资产入库、领用、调拨、盘点、报废全生命周期管理", "后勤保障部", "资产服务台", "app-purple"),
+    ("facility", "厂区物业", "财资后勤 & 支撑类", "厂区空间、设备设施、安保巡查、绿化保洁管理", "后勤保障部", "物业服务台", "app-purple"),
+    ("repair", "报修", "财资后勤 & 支撑类", "设备故障报修、派工、维修记录、备件管理的统一平台", "后勤保障部", "报修服务台", "app-purple"),
+    ("data-portal", "数据中台", "财资后勤 & 支撑类", "数据汇聚、治理、开发、服务的统一数据底座", "后勤保障部", "数据服务台", "app-purple"),
+    ("party", "党建风控", "财资后勤 & 支撑类", "组织生活、党费管理、廉政教育、合规审计与风险预警", "行政管理部", "党建支持", "app-purple"),
 ]
 
 DEFAULT_SUBSYSTEM_ACTIONS = {
-    "supervision": [
-        {"label": "督办事项", "kind": "records"},
-        {"label": "责任清单", "kind": "records"},
-        {"label": "办理进度", "kind": "dashboard"},
-    ],
-    "teaching-cloud": [
-        {"label": "课程运行", "kind": "records"},
-        {"label": "调停课记录", "kind": "records"},
-        {"label": "教学通知", "kind": "notices"},
-    ],
     "oa": [
         {"label": "待办流程", "kind": "records"},
         {"label": "文件流转", "kind": "documents"},
         {"label": "办公通知", "kind": "notices"},
     ],
-    "website": [
-        {"label": "站点列表", "kind": "records"},
-        {"label": "待审稿件", "kind": "records"},
-        {"label": "发布统计", "kind": "dashboard"},
-    ],
-    "party": [
-        {"label": "组织活动", "kind": "records"},
-        {"label": "学习资料", "kind": "resources"},
-        {"label": "工作台账", "kind": "documents"},
-    ],
-    "alumni": [
-        {"label": "校友名录", "kind": "records"},
-        {"label": "活动管理", "kind": "records"},
-        {"label": "联络记录", "kind": "records"},
+    "supervision": [
+        {"label": "督办事项", "kind": "records"},
+        {"label": "责任清单", "kind": "records"},
+        {"label": "办理进度", "kind": "dashboard"},
     ],
     "hr": [
-        {"label": "证明申请", "kind": "records"},
+        {"label": "人员档案", "kind": "records"},
         {"label": "请假考勤", "kind": "records"},
-        {"label": "人事资料", "kind": "documents"},
+        {"label": "证明申请", "kind": "records"},
     ],
-    "student": [
-        {"label": "学生事务", "kind": "records"},
-        {"label": "奖助事项", "kind": "records"},
-        {"label": "学生服务", "kind": "services"},
+    "recruitment": [
+        {"label": "招聘需求", "kind": "records"},
+        {"label": "简历筛选", "kind": "records"},
+        {"label": "录用审批", "kind": "records"},
     ],
-    "employment": [
-        {"label": "招聘信息", "kind": "records"},
-        {"label": "宣讲会", "kind": "records"},
-        {"label": "就业数据", "kind": "dashboard"},
+    "training": [
+        {"label": "培训计划", "kind": "records"},
+        {"label": "在线学习", "kind": "records"},
+        {"label": "学分统计", "kind": "dashboard"},
     ],
-    "mental-health": [
-        {"label": "咨询预约", "kind": "records"},
-        {"label": "测评记录", "kind": "records"},
-        {"label": "心理资源", "kind": "resources"},
+    "wellness": [
+        {"label": "活动管理", "kind": "records"},
+        {"label": "福利发放", "kind": "records"},
+        {"label": "意见反馈", "kind": "records"},
+    ],
+    "crm": [
+        {"label": "客户管理", "kind": "records"},
+        {"label": "商机追踪", "kind": "records"},
+        {"label": "销售分析", "kind": "dashboard"},
+    ],
+    "erp": [
+        {"label": "采购管理", "kind": "records"},
+        {"label": "库存管理", "kind": "records"},
+        {"label": "生产计划", "kind": "records"},
+    ],
+    "service-desk": [
+        {"label": "工单列表", "kind": "records"},
+        {"label": "服务跟踪", "kind": "records"},
+        {"label": "满意度评价", "kind": "dashboard"},
+    ],
+    "supply-chain": [
+        {"label": "供应商管理", "kind": "records"},
+        {"label": "物料需求", "kind": "records"},
+        {"label": "物流跟踪", "kind": "records"},
     ],
     "finance": [
-        {"label": "报销单", "kind": "records"},
-        {"label": "预算项目", "kind": "records"},
-        {"label": "财务文档", "kind": "documents"},
+        {"label": "报销管理", "kind": "records"},
+        {"label": "预算管控", "kind": "records"},
+        {"label": "财务报表", "kind": "dashboard"},
     ],
-    "estate": [
-        {"label": "房间台账", "kind": "records"},
-        {"label": "用房申请", "kind": "records"},
-        {"label": "维修关联", "kind": "services"},
+    "fixed-assets": [
+        {"label": "资产台账", "kind": "records"},
+        {"label": "领用调拨", "kind": "records"},
+        {"label": "盘点管理", "kind": "records"},
     ],
-    "assets": [
-        {"label": "资产目录", "kind": "records"},
-        {"label": "借用申请", "kind": "records"},
-        {"label": "维修记录", "kind": "services"},
-    ],
-    "data-portal": [
-        {"label": "指标看板", "kind": "dashboard"},
-        {"label": "专题数据", "kind": "records"},
-        {"label": "数据资源", "kind": "resources"},
+    "facility": [
+        {"label": "空间管理", "kind": "records"},
+        {"label": "设备设施", "kind": "records"},
+        {"label": "巡查记录", "kind": "records"},
     ],
     "repair": [
         {"label": "新建报修", "kind": "records"},
         {"label": "工单列表", "kind": "records"},
         {"label": "服务评价", "kind": "dashboard"},
     ],
+    "data-portal": [
+        {"label": "指标看板", "kind": "dashboard"},
+        {"label": "专题数据", "kind": "records"},
+        {"label": "数据资源", "kind": "resources"},
+    ],
+    "party": [
+        {"label": "组织生活", "kind": "records"},
+        {"label": "党费管理", "kind": "records"},
+        {"label": "风控审计", "kind": "records"},
+    ],
 }
 
-DEFAULT_MENU_ITEMS = {
-    "supervision": [
-        {"section": "督办事项", "items": [
-            {"code": "items", "label": "全部事项", "icon": "i-list", "href": "#/subsystem/supervision/items"},
-            {"code": "new-item", "label": "新建督办", "icon": "i-plus", "href": "#/subsystem/supervision/items/new"},
-            {"code": "my-items", "label": "我的督办", "icon": "i-user", "href": "#/subsystem/supervision/items/my"},
-        ]},
-        {"section": "责任清单", "items": [
-            {"code": "units", "label": "责任单位", "icon": "i-grid", "href": "#/subsystem/supervision/units"},
-            {"code": "progress", "label": "办理进度", "icon": "i-chart", "href": "#/subsystem/supervision/progress"},
-        ]},
-        {"section": "统计分析", "items": [
-            {"code": "stats", "label": "办结统计", "icon": "i-bar-chart", "href": "#/subsystem/supervision/stats"},
-            {"code": "overdue", "label": "逾期分析", "icon": "i-alert", "href": "#/subsystem/supervision/overdue"},
-        ]},
-    ],
+DEFAULT_MENU_ITEMS: dict[str, list[dict[str, Any]]] = {
+    # ── 办公行政类 ──────────────────────────────────────────────
     "oa": [
         {"section": "流程中心", "items": [
             {"code": "todo", "label": "待办流程", "icon": "i-clock", "href": "#/subsystem/oa/flows/todo"},
@@ -812,6 +769,22 @@ DEFAULT_MENU_ITEMS = {
             {"code": "notices", "label": "通知公告", "icon": "i-bell", "href": "#/subsystem/oa/notices"},
         ]},
     ],
+    "supervision": [
+        {"section": "督办事项", "items": [
+            {"code": "items", "label": "全部事项", "icon": "i-list", "href": "#/subsystem/supervision/items"},
+            {"code": "new-item", "label": "新建督办", "icon": "i-plus", "href": "#/subsystem/supervision/items/new"},
+            {"code": "my-items", "label": "我的督办", "icon": "i-user", "href": "#/subsystem/supervision/items/my"},
+        ]},
+        {"section": "责任清单", "items": [
+            {"code": "units", "label": "责任单位", "icon": "i-grid", "href": "#/subsystem/supervision/units"},
+            {"code": "progress", "label": "办理进度", "icon": "i-chart", "href": "#/subsystem/supervision/progress"},
+        ]},
+        {"section": "统计分析", "items": [
+            {"code": "stats", "label": "办结统计", "icon": "i-bar-chart", "href": "#/subsystem/supervision/stats"},
+            {"code": "overdue", "label": "逾期分析", "icon": "i-alert", "href": "#/subsystem/supervision/overdue"},
+        ]},
+    ],
+    # ── 人力组织类 ──────────────────────────────────────────────
     "hr": [
         {"section": "证明申请", "items": [
             {"code": "cert-employment", "label": "在职证明", "icon": "i-file", "href": "#/subsystem/hr/certificates/employment"},
@@ -828,6 +801,8 @@ DEFAULT_MENU_ITEMS = {
             {"code": "dept-info", "label": "部门信息", "icon": "i-grid", "href": "#/subsystem/hr/departments"},
         ]},
     ],
+    # recruitment, training, wellness — menu items deferred
+    # ── 财资后勤 & 支撑类 ──────────────────────────────────────
     "finance": [
         {"section": "报销管理", "items": [
             {"code": "claims", "label": "报销申请", "icon": "i-edit", "href": "#/subsystem/finance/claims"},
@@ -841,21 +816,6 @@ DEFAULT_MENU_ITEMS = {
         {"section": "材料清单", "items": [
             {"code": "materials", "label": "费用材料", "icon": "i-file", "href": "#/subsystem/finance/materials"},
             {"code": "receipts", "label": "票据管理", "icon": "i-doc", "href": "#/subsystem/finance/receipts"},
-        ]},
-    ],
-    "assets": [
-        {"section": "资产管理", "items": [
-            {"code": "items", "label": "资产台账", "icon": "i-list", "href": "#/subsystem/asset/items"},
-            {"code": "new-item", "label": "资产入库", "icon": "i-plus", "href": "#/subsystem/asset/items/new"},
-        ]},
-        {"section": "借用管理", "items": [
-            {"code": "borrow", "label": "借用申请", "icon": "i-edit", "href": "#/subsystem/asset/borrow"},
-            {"code": "borrow-records", "label": "借用记录", "icon": "i-file", "href": "#/subsystem/asset/borrow/records"},
-            {"code": "return", "label": "归还管理", "icon": "i-check", "href": "#/subsystem/asset/return"},
-        ]},
-        {"section": "盘点维护", "items": [
-            {"code": "inventory", "label": "资产盘点", "icon": "i-search", "href": "#/subsystem/asset/inventory"},
-            {"code": "repair-link", "label": "维修关联", "icon": "i-tool", "href": "#/subsystem/asset/repair"},
         ]},
     ],
     "repair": [
@@ -889,52 +849,6 @@ DEFAULT_MENU_ITEMS = {
             {"code": "reports", "label": "报表配置", "icon": "i-settings", "href": "#/subsystem/data-portal/reports"},
         ]},
     ],
-    # ── Phase 4 T17: website, estate, employment ────────────────────────
-    "website": [
-        {"section": "站点管理", "items": [
-            {"code": "sites", "label": "全部站点", "icon": "i-list", "href": "#/subsystem/website/sites"},
-            {"code": "new-site", "label": "新建站点", "icon": "i-plus", "href": "#/subsystem/website/sites/new"},
-            {"code": "drafts", "label": "草稿箱", "icon": "i-edit", "href": "#/subsystem/website/sites/drafts"},
-        ]},
-        {"section": "栏目内容", "items": [
-            {"code": "columns", "label": "栏目管理", "icon": "i-grid", "href": "#/subsystem/website/columns"},
-            {"code": "pages", "label": "页面管理", "icon": "i-file", "href": "#/subsystem/website/pages"},
-        ]},
-        {"section": "发布统计", "items": [
-            {"code": "published", "label": "已发布站点", "icon": "i-check", "href": "#/subsystem/website/published"},
-            {"code": "stats", "label": "站点统计", "icon": "i-chart", "href": "#/subsystem/website/stats"},
-        ]},
-    ],
-    "estate": [
-        {"section": "空间管理", "items": [
-            {"code": "spaces", "label": "全部空间", "icon": "i-list", "href": "#/subsystem/estate/spaces"},
-            {"code": "new-space", "label": "新增空间", "icon": "i-plus", "href": "#/subsystem/estate/spaces/new"},
-            {"code": "occupied", "label": "已占用", "icon": "i-check", "href": "#/subsystem/estate/spaces/occupied"},
-        ]},
-        {"section": "用房信息", "items": [
-            {"code": "by-building", "label": "按楼栋", "icon": "i-grid", "href": "#/subsystem/estate/by-building"},
-            {"code": "vacant", "label": "空置空间", "icon": "i-info", "href": "#/subsystem/estate/vacant"},
-        ]},
-        {"section": "统计分析", "items": [
-            {"code": "stats", "label": "用房统计", "icon": "i-chart", "href": "#/subsystem/estate/stats"},
-            {"code": "maintenance", "label": "维护记录", "icon": "i-tool", "href": "#/subsystem/estate/maintenance"},
-        ]},
-    ],
-    "employment": [
-        {"section": "岗位管理", "items": [
-            {"code": "postings", "label": "全部岗位", "icon": "i-list", "href": "#/subsystem/employment/postings"},
-            {"code": "new-posting", "label": "发布岗位", "icon": "i-plus", "href": "#/subsystem/employment/postings/new"},
-            {"code": "openings", "label": "在招岗位", "icon": "i-eye", "href": "#/subsystem/employment/postings/open"},
-        ]},
-        {"section": "招聘企业", "items": [
-            {"code": "companies", "label": "企业信息", "icon": "i-grid", "href": "#/subsystem/employment/companies"},
-            {"code": "positions", "label": "职位分类", "icon": "i-tag", "href": "#/subsystem/employment/positions"},
-        ]},
-        {"section": "就业统计", "items": [
-            {"code": "stats", "label": "招聘统计", "icon": "i-chart", "href": "#/subsystem/employment/stats"},
-            {"code": "closed", "label": "已关闭", "icon": "i-check", "href": "#/subsystem/employment/closed"},
-        ]},
-    ],
 }
 
 DEFAULT_SUBSYSTEM_APPROVAL_CHAINS: dict[str, list[dict[str, Any]]] = {
@@ -942,20 +856,23 @@ DEFAULT_SUBSYSTEM_APPROVAL_CHAINS: dict[str, list[dict[str, Any]]] = {
     "oa":      [{"role": "dept_leader", "level": 1}, {"role": "org_admin", "level": 2}],
     "hr":      [{"role": "dept_leader", "level": 1}],
     "finance": [{"role": "dept_leader", "level": 1}, {"role": "org_admin", "level": 2}],
+    "supervision": [{"role": "dept_leader", "level": 1}],
+    "data-portal": [{"role": "org_admin", "level": 1}],
 }
 
-# Shell subsystems configured as disabled (Phase 2) or iframe entries.
-# Deep subsystems (oa/hr/finance/assets/repair/supervision) remain entry_type=internal.
+# Shell subsystems — disabled for not-yet-implemented systems.
+# Active internal subsystems: oa, supervision, hr, finance, repair, data-portal
 SHELL_SUBSYSTEM_ENTRY = {
-    "teaching-cloud":   ("iframe", ""),
-    # Phase 4 T17: website, estate, employment activated as internal
-    "website":          ("internal", None),
+    "recruitment":      ("disabled", None),
+    "training":         ("disabled", None),
+    "wellness":         ("disabled", None),
+    "crm":              ("disabled", None),
+    "erp":              ("disabled", None),
+    "service-desk":     ("disabled", None),
+    "supply-chain":     ("disabled", None),
+    "fixed-assets":     ("disabled", None),
+    "facility":         ("disabled", None),
     "party":            ("disabled", None),
-    "alumni":           ("disabled", None),
-    "student":          ("disabled", None),
-    "employment":       ("internal", None),
-    "mental-health":    ("disabled", None),
-    "estate":           ("internal", None),
 }
 
 DEFAULT_NEWS: list[dict[str, Any]] = []  # No hardcoded seed news
@@ -1012,7 +929,6 @@ class PortalStore(
         self._portal_notices_table = portal_notices_table
         self._portal_documents_table = portal_documents_table
         self._portal_resources_table = portal_resources_table
-        self._portal_services_table = portal_services_table
         self._portal_news_table = portal_news_table
         self._portal_user_preferences_table = portal_user_preferences_table
         self._orgs_table = orgs_table
@@ -1063,7 +979,6 @@ class PortalStore(
             portal_notices_table,
             portal_documents_table,
             portal_resources_table,
-            portal_services_table,
             portal_news_table,
             portal_user_preferences_table,
             enterprise_repair_tickets_table,
@@ -1120,40 +1035,48 @@ class PortalStore(
                         ),
                     )
             now = datetime.now(timezone.utc).isoformat()
-            if db.scalar(select(func.count()).select_from(portal_subsystems_table)) == 0:
-                db.execute(insert(portal_subsystems_table), [
-                    {
-                        **_PORTAL_BASE,
-                        "code": code,
-                        "name": name,
-                        "category": category,
-                        "description": description,
-                        "status": "active",
-                        "entry_type": SHELL_SUBSYSTEM_ENTRY.get(code, ("internal", None))[0],
-                        "entry_url": SHELL_SUBSYSTEM_ENTRY.get(code, ("internal", None))[1],
-                        "owner_department": owner_department,
-                        "owner_name": owner_department,
-                        "support_contact": support_contact,
-                        "icon_tone": tone,
-                        "sort_order": index,
-                        "is_featured": index < 6,
-                        "common_actions_json": json.dumps(
-                            DEFAULT_SUBSYSTEM_ACTIONS.get(code, [{"label": "查看概览", "kind": "overview"}]),
-                            ensure_ascii=False,
-                        ),
-                        "related_resources_json": json.dumps(["制度手册", "服务目录"], ensure_ascii=False),
-                        "menu_items_json": json.dumps(
-                            DEFAULT_MENU_ITEMS.get(code, []), ensure_ascii=False,
-                        ),
-                        "approval_chain_json": json.dumps(
-                            DEFAULT_SUBSYSTEM_APPROVAL_CHAINS.get(code, []), ensure_ascii=False,
-                        ),
-                        "created_at": now,
-                        "updated_at": now,
-                    }
-                    for index, (code, name, category, description, owner_department, support_contact, tone)
-                    in enumerate(DEFAULT_SUBSYSTEMS, start=1)
-                ])
+            # Upsert subsystems: insert new codes, update existing ones in-place
+            for index, (code, name, category, description, owner_department, support_contact, tone) in enumerate(DEFAULT_SUBSYSTEMS, start=1):
+                existing_code = db.scalar(
+                    select(portal_subsystems_table.c.code).where(portal_subsystems_table.c.code == code)
+                )
+                values = {
+                    **_PORTAL_BASE,
+                    "code": code,
+                    "name": name,
+                    "category": category,
+                    "description": description,
+                    "status": "active",
+                    "entry_type": SHELL_SUBSYSTEM_ENTRY.get(code, ("internal", None))[0],
+                    "entry_url": SHELL_SUBSYSTEM_ENTRY.get(code, ("internal", None))[1],
+                    "owner_department": owner_department,
+                    "owner_name": owner_department,
+                    "support_contact": support_contact,
+                    "icon_tone": tone,
+                    "sort_order": index,
+                    "is_featured": index < 6,
+                    "common_actions_json": json.dumps(
+                        DEFAULT_SUBSYSTEM_ACTIONS.get(code, [{"label": "查看概览", "kind": "overview"}]),
+                        ensure_ascii=False,
+                    ),
+                    "related_resources_json": json.dumps(["制度手册", "服务目录"], ensure_ascii=False),
+                    "menu_items_json": json.dumps(
+                        DEFAULT_MENU_ITEMS.get(code, []), ensure_ascii=False,
+                    ),
+                    "approval_chain_json": json.dumps(
+                        DEFAULT_SUBSYSTEM_APPROVAL_CHAINS.get(code, []), ensure_ascii=False,
+                    ),
+                    "updated_at": now,
+                }
+                if existing_code is None:
+                    values["created_at"] = now
+                    db.execute(insert(portal_subsystems_table).values(values))
+                else:
+                    db.execute(
+                        update(portal_subsystems_table)
+                        .where(portal_subsystems_table.c.code == code)
+                        .values(**values)
+                    )
             generic_action_labels = {"查看概览", "查看关联服务", "查看关联资源"}
             for code, *_ in DEFAULT_SUBSYSTEMS:
                 desired_actions = DEFAULT_SUBSYSTEM_ACTIONS.get(code)
@@ -1272,30 +1195,6 @@ class PortalStore(
                     }
                     for item in DEFAULT_DOCUMENTS
                 ])
-            if DEFAULT_SERVICES:
-                for item in DEFAULT_SERVICES:
-                    existing = db.scalar(
-                        select(portal_services_table.c.code).where(
-                            portal_services_table.c.code == item["code"]
-                        )
-                    )
-                    values = {
-                        **_PORTAL_BASE,
-                        **item,
-                        "subscribed_count": 0,
-                        "updated_at": now,
-                        "created_at": now,
-                    }
-                    if existing is None:
-                        db.execute(insert(portal_services_table).values(values))
-                    else:
-                        update_vals = {k: v for k, v in item.items() if k in portal_services_table.c}
-                        update_vals["updated_at"] = now
-                        db.execute(
-                            update(portal_services_table)
-                            .where(portal_services_table.c.code == item["code"])
-                            .values(**update_vals)
-                        )
             if DEFAULT_NEWS and db.scalar(select(func.count()).select_from(portal_news_table)) == 0:
                 db.execute(insert(portal_news_table), [
                     {
@@ -1474,7 +1373,6 @@ class PortalStore(
             "notices": portal_notices_table,
             "documents": portal_documents_table,
             "resources": portal_resources_table,
-            "services": portal_services_table,
             "news": portal_news_table,
         }
         if collection not in tables:
@@ -1508,7 +1406,6 @@ class PortalStore(
             "subsystems_active": sum(1 for item in visible_subsystems if item["status"] == "active"),
             "subsystems_maintenance": sum(1 for item in visible_subsystems if item["status"] == "maintenance"),
             "notices_total": self.list_portal_assets("notices", user=user)["total"],
-            "services_total": self.list_portal_assets("services", user=user)["total"],
             "documents_total": self.list_portal_assets("documents", user=user)["total"],
             "news_total": self.list_portal_assets("news", user=user)["total"],
             "today_tasks": self.list_tasks(user=user)["total"],
@@ -1590,7 +1487,6 @@ class PortalStore(
                     "last_login": user.get("last_login_at") or "" if user else "2026-07-16 10:56",
                 },
                 "systems": self.list_subsystems(user=user),
-                "services": self.list_portal_assets("services", user=user),
                 "news": self.list_portal_assets("news", user=user),
                 "preferences": self.get_portal_preferences(user=user),
                 "dashboard": self.portal_dashboard(user=user),
