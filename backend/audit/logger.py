@@ -228,3 +228,24 @@ class AuditLogger:
 # Module-level singleton (replaces the root-level audit_log function
 # for new code; existing callers are unaffected).
 audit_logger = AuditLogger()
+
+
+def purge_expired_audit_logs(db: Session, retention_days: int) -> int:
+    """Delete audit log records older than *retention_days*.
+
+    Returns the number of deleted rows.
+    """
+    from datetime import timedelta
+
+    from audit.models import ai_query_logs_table, audit_logs_table
+
+    cutoff = (datetime.now(timezone.utc) - timedelta(days=retention_days)).isoformat()
+    deleted = 0
+
+    for table in (audit_logs_table, ai_query_logs_table):
+        result = db.execute(table.delete().where(table.c.created_at < cutoff))
+        deleted += result.rowcount
+
+    if deleted:
+        logger.info("Purged %d audit records older than %d days (cutoff=%s)", deleted, retention_days, cutoff)
+    return deleted

@@ -21,7 +21,7 @@ export interface PortalBootstrapResponse {
   skills: PortalCatalog;
 }
 
-// ── Auth types (Phase 2) ──────────────────────────────────────────
+// 鈹€鈹€ Auth types (Phase 2) 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
 
 export interface LoginRequest {
   username: string;
@@ -66,7 +66,7 @@ export interface RegisterRequest {
   email?: string;
 }
 
-// ── Permission types (Phase 3) ─────────────────────────────────────
+// 鈹€鈹€ Permission types (Phase 3) 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
 
 /** Permission codes matching backend authorization/permissions.py (53 total) */
 export type PermissionCode =
@@ -97,7 +97,7 @@ export type RoleCode =
   | "dept_staff"
   | "external";
 
-// ── Phase 6: Admin / Audit types ─────────────────────────────────────
+// 鈹€鈹€ Phase 6: Admin / Audit types 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
 
 export interface AuditLogItem {
   id: number;

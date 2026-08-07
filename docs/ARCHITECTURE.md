@@ -25,7 +25,7 @@
                        ▼
 ┌──────────────────────────────────────────────────────────────┐
 │              PostgreSQL 16 + pgvector                         │
-│  11 Alembic migrations  │  3-dim data scope (SQL filter)     │
+│  14 Alembic migrations  │  3-dim data scope (SQL filter)     │
 └──────────────────────────────────────────────────────────────┘
 ```
 
@@ -33,7 +33,7 @@
 
 ### RBAC + 数据隔离
 - **5 角色**: super_admin, org_admin, dept_leader, dept_staff, external
-- **53 权限码**: 9 组 (admin, portal, oa, hr, finance, asset, repair, knowledge, chat)
+- **54 权限码**: 18 组 (admin_users, admin_roles, admin_audit, admin_news, admin_notices, portal, oa, hr, finance, asset, repair, knowledge, chat, notifications, tasks, calendar, integrations, search)
 - **3 维度数据隔离**: org → dept → owner，SQL 查询层自动注入 WHERE 条件
 - **JWT 双 token**: access_token (15min) + refresh_token (7d, HttpOnly cookie)
 
@@ -55,34 +55,44 @@
 ## 三、数据模型（核心表）
 
 ```
-organizations ─── departments
-     │                │
-     ├── user_org_memberships
-     └── user_department_memberships
-              │
-           users ─── user_role_bindings ─── roles ─── role_permissions ─── permissions
-              │
-     ┌────────┼────────┬──────────┬──────────┐
-     │        │         │          │          │
-  tasks   repair_    assets   oa_forms  notifications
-          orders
+orgs ─── departments
+ │              │
+ ├── user_org_memberships
+ └── user_department_memberships
+          │
+       users ─── role_bindings ─── roles ─── role_permissions ─── permissions
+          │
+ ┌────────┼────────┬──────────┬──────────────┬──────────────┐
+ │        │         │          │              │              │
+tasks  enterprise_ enterprise_ enterprise_   notifications
+       repair_     asset_      oa_flows
+       tickets     items
 ```
 
 ## 四、子系统拓扑
 
-| 类型 | 子系统 | 后端路由 | 前端视图 |
-|------|--------|----------|----------|
-| internal | OA | enterprise.py | views/oa.js |
-| internal | HR | enterprise.py | views/hr.js |
-| internal | Finance | enterprise.py | views/finance.js |
-| internal | Asset | enterprise.py | views/asset.js |
-| internal | Repair | enterprise.py | views/repair.js |
-| internal | Website | enterprise.py | views/website.js |
-| internal | Estate | enterprise.py | views/estate.js |
-| internal | Employment | enterprise.py | views/employment.js |
-| internal | Data Portal | enterprise.py | views/data-portal.js |
-| iframe | Teaching Cloud | — | index.html iframe |
-| disabled | Party/Alumni/Student/Mental | — | — |
+| 状态 | 子系统 | 编码 | 后端路由 | 前端视图 |
+|------|--------|------|----------|----------|
+| active | 办公行政(OA) | oa | enterprise.py | views/oa.js |
+| active | 督办管理 | supervision | enterprise.py | — |
+| active | 人力资源(HR) | hr | enterprise.py | views/hr.js |
+| active | 财务管理 | finance | enterprise.py | views/finance.js |
+| active | 维修服务 | repair | enterprise.py | views/repair.js |
+| active | 数据中台 | data-portal | enterprise.py | views/data-portal.js |
+| disabled | 招聘管理 | recruitment | — | — |
+| disabled | 培训发展 | training | — | — |
+| disabled | 员工关怀 | wellness | — | — |
+| disabled | 客户关系(CRM) | crm | — | — |
+| disabled | 企业资源(ERP) | erp | — | — |
+| disabled | 服务台 | service-desk | — | — |
+| disabled | 供应链 | supply-chain | — | — |
+| disabled | 固定资产 | fixed-assets | — | — |
+| disabled | 厂区物业 | facility | — | — |
+| disabled | 党建风控 | party | — | — |
+
+> **注意**: 以下子系统已在 migration 014 中移除（STALE_CODES）：
+> teaching-cloud, website, alumni, student, employment, mental-health, estate, assets
+> 对应的前端视图 asset.js, employment.js, estate.js, website.js 已删除。
 
 ## 五、API 层级
 
@@ -94,14 +104,21 @@ POST /api/v1/auth/refresh             # Token 刷新
 GET  /api/v1/subsystems               # 子系统列表
 GET  /api/v1/portal/bootstrap         # 门户启动数据
 
-GET  /api/v1/enterprise/{module}/*    # 企业模块 CRUD (13 模块)
+GET  /api/v1/enterprise/{module}/*    # 企业模块 CRUD
 GET  /api/v1/enterprise/export/{entity} # CSV 导出
 
 GET  /api/v1/knowledge/*              # 知识库 (FastGPT RAG)
 GET  /api/v1/chat/*                   # AI 聊天 (Hermes)
 GET  /api/v1/search                   # 跨源搜索
 
+GET  /api/v1/tasks/*                  # 任务管理 (CRUD)
+GET  /api/v1/calendar/events/*        # 日程管理 (CRUD)
+GET  /api/v1/notifications/*          # 通知中心 + SSE push
+GET  /api/v1/integrations/*           # 第三方集成 (飞书/钉钉)
+
 GET  /api/v1/admin/*                  # 管理后台 (CRUD + 审计)
+POST /auth/register                   # 用户注册
+POST /auth/change-password            # 修改密码
 ```
 
 ## 六、关键文件
@@ -113,8 +130,11 @@ GET  /api/v1/admin/*                  # 管理后台 (CRUD + 审计)
 | `backend/auth/dependencies.py` | 认证依赖注入 |
 | `backend/authorization/sql_filters.py` | 数据隔离 SQL WHERE 注入 |
 | `backend/audit/middleware.py` | 请求级审计日志 |
+| `backend/audit/logger.py` | 审计日志写入 + 过期清理 |
 | `backend/ai_security/firewall.py` | AI 注入防火墙 |
+| `backend/gateway_errors.py` | 共享网关错误类型与 httpx 映射 |
 | `frontend/src/app.js` | 主应用 |
-| `frontend/src/components/` | 8 个 Web Components |
+| `frontend/src/components/` | 8 个 UI 组件模块 |
+| `frontend/biome.json` | 前端代码规范配置 |
 | `docker/compose.yml` | 生产 4 容器编排 |
 | `.github/workflows/ci.yml` | CI/CD 流水线 |

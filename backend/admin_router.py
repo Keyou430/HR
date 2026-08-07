@@ -67,7 +67,7 @@ from utils import _ts
 router = APIRouter(prefix="/api/v1/admin", tags=["admin"])
 logger = logging.getLogger("replica")
 
-# ── Reusable SQL fragments ──────────────────────────────────────────
+# 鈹€鈹€ Reusable SQL fragments 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
 _USER_WITH_ROLES_SQL = """
     SELECT u.id, u.username, u.display_name, u.email, u.is_active,
            u.last_login_at, u.created_at,
@@ -88,7 +88,7 @@ def require_admin(current_user: dict[str, Any] = Depends(get_current_user)) -> d
     if SUPER_ADMIN_ROLE not in current_user.get("roles", []):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="需要超级管理员权限",
+            detail="闇€瑕佽秴绾х鐞嗗憳鏉冮檺",
         )
     return current_user
 
@@ -100,12 +100,12 @@ def require_notice_manager(current_user: dict[str, Any] = Depends(get_current_us
     if SUPER_ADMIN_ROLE not in roles and "notice:publish" not in perms:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="缺少权限: notice:publish",
+            detail="缂哄皯鏉冮檺: notice:publish",
         )
     return current_user
 
 
-# ── Helpers ────────────────────────────────────────────────────────
+# 鈹€鈹€ Helpers 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
 
 
 def _build_user_item(row: Any) -> AdminUserItem:
@@ -136,7 +136,7 @@ def _load_user_or_404(db: Session, user_id: int) -> dict[str, Any]:
         {"uid": user_id},
     ).fetchone()
     if row is None:
-        raise HTTPException(status_code=404, detail="用户不存在")
+        raise HTTPException(status_code=404, detail="鐢ㄦ埛涓嶅瓨鍦?)
     return {"id": row[0], "username": row[1], "display_name": row[2], "is_active": bool(int(row[3]))}
 
 
@@ -167,7 +167,7 @@ def _user_has_role(db: Session, user_id: int, role_code: str) -> bool:
     return row is not None
 
 
-# ── Endpoints ──────────────────────────────────────────────────────
+# 鈹€鈹€ Endpoints 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
 
 
 @router.get("/users", response_model=AdminUserListResponse)
@@ -187,14 +187,14 @@ def list_users(
     page_size = max(1, min(page_size, 100))
     page = max(1, page)
 
-    # ── Build query ────────────────────────────────────────────
+    # 鈹€鈹€ Build query 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
     where_clause = ""
     params: dict[str, Any] = {}
     if search and search.strip():
         where_clause = " WHERE (u.username LIKE :search OR u.display_name LIKE :search)"
         params["search"] = f"%{search.strip()}%"
 
-    # Total count (no JOINs needed — just count matching users)
+    # Total count (no JOINs needed 鈥?just count matching users)
     count_sql = "SELECT COUNT(*) FROM users u" + where_clause
     total = db.execute(text(count_sql), params).fetchone()[0]
 
@@ -249,7 +249,7 @@ def list_roles(
     return {"items": items}
 
 
-# ── Custom role management ──────────────────────────────────────────
+# 鈹€鈹€ Custom role management 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
 
 
 @router.get("/permissions")
@@ -258,7 +258,7 @@ def list_permissions_grouped(
 ) -> dict[str, Any]:
     """List all permissions grouped by resource for the admin role editor.
 
-    Returns PERMISSION_GROUPS — each group has a display name, resource,
+    Returns PERMISSION_GROUPS 鈥?each group has a display name, resource,
     and list of {code, name} entries.
     """
     return {"groups": PERMISSION_GROUPS}
@@ -289,7 +289,7 @@ def create_role(
         for code in body.permission_codes:
             if code not in valid_codes:
                 raise HTTPException(
-                    status_code=400, detail=f"未知权限码: {code}"
+                    status_code=400, detail=f"鏈煡鏉冮檺鐮? {code}"
                 )
 
     # Commit any implicit transaction from pre-checks
@@ -302,7 +302,7 @@ def create_role(
             {"code": body.code},
         ).fetchone()
         if existing:
-            raise HTTPException(status_code=409, detail="角色代码已被占用")
+            raise HTTPException(status_code=409, detail="瑙掕壊浠ｇ爜宸茶鍗犵敤")
 
         result = db.execute(
             text(
@@ -410,7 +410,7 @@ def update_role_permissions(
         for code in body.permission_codes:
             if code not in valid_codes:
                 raise HTTPException(
-                    status_code=400, detail=f"未知权限码: {code}"
+                    status_code=400, detail=f"鏈煡鏉冮檺鐮? {code}"
                 )
 
     # Commit any implicit transaction from the SELECT above
@@ -444,7 +444,7 @@ def update_role_permissions(
     return _load_role_by_id(db, role_id)
 
 
-# ── Role helpers ─────────────────────────────────────────────────────
+# 鈹€鈹€ Role helpers 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
 
 
 def _load_role_by_id(db: Session, role_id: int) -> AdminRoleItem:
@@ -457,7 +457,7 @@ def _load_role_by_id(db: Session, role_id: int) -> AdminRoleItem:
         {"rid": role_id},
     ).fetchone()
     if row is None:
-        raise HTTPException(status_code=404, detail="角色不存在")
+        raise HTTPException(status_code=404, detail="瑙掕壊涓嶅瓨鍦?)
     perm_rows = db.execute(
         text(
             "SELECT p.code FROM role_permissions rp "
@@ -491,10 +491,10 @@ def _load_role_or_404(
         {"rid": role_id},
     ).fetchone()
     if row is None:
-        raise HTTPException(status_code=404, detail="角色不存在")
+        raise HTTPException(status_code=404, detail="瑙掕壊涓嶅瓨鍦?)
     is_system = bool(int(row[4])) if row[4] is not None else False
     if not allow_system and is_system:
-        raise HTTPException(status_code=403, detail="系统角色不可编辑")
+        raise HTTPException(status_code=403, detail="绯荤粺瑙掕壊涓嶅彲缂栬緫")
     return {
         "id": row[0], "code": row[1], "name": row[2],
         "description": row[3], "is_system": is_system,
@@ -539,7 +539,7 @@ def _bind_permissions(
             )
 
 
-# ── User management ──────────────────────────────────────────────────
+# 鈹€鈹€ User management 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
 
 
 @router.post("/users", status_code=201, response_model=AdminUserItem)
@@ -563,7 +563,7 @@ def create_user(
             {"un": body.username},
         ).fetchone()
         if existing:
-            raise HTTPException(status_code=409, detail="用户名已被占用")
+            raise HTTPException(status_code=409, detail="鐢ㄦ埛鍚嶅凡琚崰鐢?)
         result = db.execute(
             text(
                 "INSERT INTO users (username, password_hash, display_name, email, "
@@ -614,7 +614,7 @@ def create_user(
             detail={"new_username": body.username, "is_admin": body.is_admin},
         )
 
-    # Re-query the created user (outside transaction — auto-begin new implicit tx)
+    # Re-query the created user (outside transaction 鈥?auto-begin new implicit tx)
     row = db.execute(text(_USER_BY_ID_SQL), {"uid": uid}).fetchone()
     return _build_user_item(row)
 
@@ -633,11 +633,11 @@ def set_user_status(
     if body.is_active is False:
         # Cannot disable yourself
         if user_id == current_user["id"]:
-            raise HTTPException(status_code=400, detail="不能禁用当前登录账号")
+            raise HTTPException(status_code=400, detail="涓嶈兘绂佺敤褰撳墠鐧诲綍璐﹀彿")
         # Cannot disable the last active super_admin
         if _user_has_role(db, user_id, SUPER_ADMIN_ROLE):
             if _count_active_super_admins(db) <= 1:
-                raise HTTPException(status_code=400, detail="不能禁用最后一名超级管理员")
+                raise HTTPException(status_code=400, detail="涓嶈兘绂佺敤鏈€鍚庝竴鍚嶈秴绾х鐞嗗憳")
 
     # Commit any implicit transaction from pre-checks above
     db.commit()
@@ -653,7 +653,7 @@ def set_user_status(
         if not body.is_active:
             revoke_all_user_sessions(db, user_id)
 
-        # Audit log (inside transaction) — includes before/after summary
+        # Audit log (inside transaction) 鈥?includes before/after summary
         audit_log(
             db, action="admin.user." + ("enable" if body.is_active else "disable"),
             user_id=current_user["id"], resource_type="user", resource_id=str(user_id),
@@ -690,18 +690,18 @@ def set_user_roles(
         }
         for code in body.role_codes:
             if code not in found:
-                raise HTTPException(status_code=400, detail=f"角色 '{code}' 不存在")
+                raise HTTPException(status_code=400, detail=f"瑙掕壊 '{code}' 涓嶅瓨鍦?)
 
     # Guard: cannot remove super_admin from yourself
     is_self = user_id == current_user["id"]
     if is_self and SUPER_ADMIN_ROLE not in body.role_codes:
-        raise HTTPException(status_code=400, detail="不能撤销自己的超级管理员角色")
+        raise HTTPException(status_code=400, detail="涓嶈兘鎾ら攢鑷繁鐨勮秴绾х鐞嗗憳瑙掕壊")
 
     # Guard: cannot remove the last active super_admin
     currently_has_super = _user_has_role(db, user_id, SUPER_ADMIN_ROLE)
     if currently_has_super and SUPER_ADMIN_ROLE not in body.role_codes:
         if _count_active_super_admins(db) <= 1:
-            raise HTTPException(status_code=400, detail="不能移除最后一名超级管理员")
+            raise HTTPException(status_code=400, detail="涓嶈兘绉婚櫎鏈€鍚庝竴鍚嶈秴绾х鐞嗗憳")
 
     # Commit any implicit transaction from pre-checks above
     db.commit()
@@ -742,13 +742,13 @@ def set_user_roles(
             detail={"target_username": user["username"], "new_roles": body.role_codes},
         )
 
-    # Notify target user of role change (T7 — Phase 1 notification hook)
-    role_names = ", ".join(body.role_codes) if body.role_codes else "无角色"
+    # Notify target user of role change (T7 鈥?Phase 1 notification hook)
+    role_names = ", ".join(body.role_codes) if body.role_codes else "鏃犺鑹?
     try:
         store.create_notification(
             user_id=user_id,
-            title="角色已更新",
-            content=f"管理员已将你的角色更新为：{role_names}",
+            title="瑙掕壊宸叉洿鏂?,
+            content=f"绠＄悊鍛樺凡灏嗕綘鐨勮鑹叉洿鏂颁负锛歿role_names}",
             type_="system",
             reference_type="user",
             reference_id=str(user_id),
@@ -778,7 +778,7 @@ def reset_user_password(
 
     # Guard: cannot reset own password via admin panel
     if user_id == current_user["id"]:
-        raise HTTPException(status_code=400, detail="不能重置当前登录账号的密码，请使用修改密码功能")
+        raise HTTPException(status_code=400, detail="涓嶈兘閲嶇疆褰撳墠鐧诲綍璐﹀彿鐨勫瘑鐮侊紝璇蜂娇鐢ㄤ慨鏀瑰瘑鐮佸姛鑳?)
 
     # Determine the new password
     new_password: str = body.password or secrets.token_urlsafe(12)
@@ -818,9 +818,9 @@ def reset_user_password(
     )
 
 
-# ═════════════════════════════════════════════════════════════════════
+# 鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺?
 # Phase 6: Audit log viewing
-# ═════════════════════════════════════════════════════════════════════
+# 鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺?
 
 
 @router.get("/audit", response_model=AuditLogListResponse)
@@ -852,7 +852,7 @@ def list_audit_logs(
     conditions: list[str] = []
     params: dict[str, Any] = {}
 
-    # ── Org-scoping: super_admin sees all; org_admin sees own org ──
+    # 鈹€鈹€ Org-scoping: super_admin sees all; org_admin sees own org 鈹€鈹€
     _apply_org_scope(conditions, params, current_user)
 
     if action and action.strip():
@@ -916,7 +916,7 @@ def list_ai_query_logs(
 ) -> dict[str, Any]:
     """List AI query logs (requires audit:view permission).
 
-    These records contain only SHA-256 hashes and truncated snippets —
+    These records contain only SHA-256 hashes and truncated snippets 鈥?
     full query text and full AI responses are never stored.
     """
     page_size = max(1, min(page_size, 100))
@@ -974,9 +974,9 @@ def list_ai_query_logs(
     return {"items": items, "total": total}
 
 
-# ═════════════════════════════════════════════════════════════════════
+# 鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺?
 # Phase 6: Session management
-# ═════════════════════════════════════════════════════════════════════
+# 鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺?
 
 
 @router.get("/sessions", response_model=AdminSessionListResponse)
@@ -999,7 +999,7 @@ def list_sessions(
     conditions: list[str] = []
     params: dict[str, Any] = {}
 
-    # ── Org-scoping: non-super_admin only sees sessions of users in their org ──
+    # 鈹€鈹€ Org-scoping: non-super_admin only sees sessions of users in their org 鈹€鈹€
     if SUPER_ADMIN_ROLE not in current_user.get("roles", []):
         admin_org = current_user.get("default_org_id")
         if admin_org:
@@ -1061,7 +1061,7 @@ def revoke_session_endpoint(
     """
     now_ts = _ts()
 
-    # ── Org-scoping check ──────────────────────────────────────────
+    # 鈹€鈹€ Org-scoping check 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
     if SUPER_ADMIN_ROLE not in current_user.get("roles", []):
         admin_org = current_user.get("default_org_id")
         if admin_org:
@@ -1075,7 +1075,7 @@ def revoke_session_endpoint(
             ).fetchone()
             if session_org is None:
                 raise HTTPException(
-                    status_code=404, detail="会话不存在或已撤销"
+                    status_code=404, detail="浼氳瘽涓嶅瓨鍦ㄦ垨宸叉挙閿€"
                 )
 
     result = db.execute(
@@ -1086,7 +1086,7 @@ def revoke_session_endpoint(
         {"now": now_ts, "sid": session_id},
     )
     if result.rowcount == 0:
-        raise HTTPException(status_code=404, detail="会话不存在或已撤销")
+        raise HTTPException(status_code=404, detail="浼氳瘽涓嶅瓨鍦ㄦ垨宸叉挙閿€")
 
     audit_log(
         db, action="admin.session.revoke",
@@ -1111,8 +1111,8 @@ def revoke_user_sessions(
     user = _load_user_or_404(db, user_id)
     now_ts = _ts()
 
-    # ── Org-scoping: non-super_admin can only revoke sessions for users
-    #    in their own org ──────────────────────────────────────────────
+    # 鈹€鈹€ Org-scoping: non-super_admin can only revoke sessions for users
+    #    in their own org 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
     if SUPER_ADMIN_ROLE not in current_user.get("roles", []):
         admin_org = current_user.get("default_org_id")
         if admin_org:
@@ -1126,7 +1126,7 @@ def revoke_user_sessions(
             if membership is None:
                 raise HTTPException(
                     status_code=403,
-                    detail="无权操作其他组织的用户会话",
+                    detail="鏃犳潈鎿嶄綔鍏朵粬缁勭粐鐨勭敤鎴蜂細璇?,
                 )
 
     result = db.execute(
@@ -1170,12 +1170,12 @@ def delete_user(
     user = _load_user_or_404(db, user_id)
 
     if user_id == current_user["id"]:
-        raise HTTPException(status_code=400, detail="不能删除自己的账号")
+        raise HTTPException(status_code=400, detail="涓嶈兘鍒犻櫎鑷繁鐨勮处鍙?)
 
     if _user_has_role(db, user_id, SUPER_ADMIN_ROLE):
         active_super_count = _count_active_super_admins(db)
         if active_super_count <= 1:
-            raise HTTPException(status_code=400, detail="不能删除唯一的超级管理员")
+            raise HTTPException(status_code=400, detail="涓嶈兘鍒犻櫎鍞竴鐨勮秴绾х鐞嗗憳")
 
     ts = _ts()
 
@@ -1225,9 +1225,9 @@ def delete_user(
     return {"ok": True}
 
 
-# ═════════════════════════════════════════════════════════════════════
+# 鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺?
 # Phase 6: Anomaly statistics
-# ═════════════════════════════════════════════════════════════════════
+# 鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺?
 
 
 @router.get("/anomalies", response_model=AnomalyStats)
@@ -1242,7 +1242,7 @@ def get_anomaly_stats(
     _24h_ago = (datetime.now(timezone.utc) - timedelta(hours=24)).isoformat()
     _now = datetime.now(timezone.utc).isoformat()
 
-    # ── User counts ─────────────────────────────────────────────
+    # 鈹€鈹€ User counts 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
     user_condition, user_params = _user_org_condition(current_user)
     _user_where = f" WHERE {user_condition}" if user_condition.strip() else ""
 
@@ -1260,7 +1260,7 @@ def get_anomaly_stats(
         user_params,
     ).fetchone()[0]
 
-    # ── Session counts ──────────────────────────────────────────
+    # 鈹€鈹€ Session counts 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
     total_sessions = db.execute(
         text("SELECT COUNT(*) FROM auth_sessions")
     ).fetchone()[0]
@@ -1273,7 +1273,7 @@ def get_anomaly_stats(
         {"now": _now},
     ).fetchone()[0]
 
-    # ── Recent failed logins (24h) ──────────────────────────────
+    # 鈹€鈹€ Recent failed logins (24h) 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
     audit_condition, audit_params = _org_count_condition(current_user)
     recent_failed = db.execute(
         text(
@@ -1284,7 +1284,7 @@ def get_anomaly_stats(
         {"since": _24h_ago, **audit_params},
     ).fetchone()[0]
 
-    # ── Recent 403 responses (24h) ──────────────────────────────
+    # 鈹€鈹€ Recent 403 responses (24h) 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
     recent_403 = db.execute(
         text(
             f"SELECT COUNT(*) FROM audit_logs "
@@ -1294,7 +1294,7 @@ def get_anomaly_stats(
         {"since": _24h_ago, **audit_params},
     ).fetchone()[0]
 
-    # ── Recent AI blocks (24h) ──────────────────────────────────
+    # 鈹€鈹€ Recent AI blocks (24h) 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
     recent_ai_blocks = db.execute(
         text(
             f"SELECT COUNT(*) FROM ai_query_logs "
@@ -1304,7 +1304,7 @@ def get_anomaly_stats(
         {"since": _24h_ago, **audit_params},
     ).fetchone()[0]
 
-    # ── Recent injection blocks (24h) ───────────────────────────
+    # 鈹€鈹€ Recent injection blocks (24h) 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
     recent_injections = db.execute(
         text(
             f"SELECT COUNT(*) FROM ai_query_logs "
@@ -1327,9 +1327,9 @@ def get_anomaly_stats(
     }
 
 
-# ═════════════════════════════════════════════════════════════════════
+# 鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺?
 # Phase 6: Org-scoping helpers
-# ═════════════════════════════════════════════════════════════════════
+# 鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺?
 
 
 def _apply_org_scope(
@@ -1364,7 +1364,7 @@ def _org_count_condition(current_user: dict[str, Any]) -> tuple[str, dict[str, A
     to stay consistent with ``_apply_org_scope``.
 
     Use ``_user_org_condition`` for counting users (the ``users`` table does
-    not carry ``org_id`` directly — it is modelled via
+    not carry ``org_id`` directly 鈥?it is modelled via
     ``user_org_memberships``).
     """
     if SUPER_ADMIN_ROLE in current_user.get("roles", []):
@@ -1404,9 +1404,9 @@ def _prefix_and(condition: str) -> str:
     return (" AND " + condition.lstrip()) if condition.strip() else ""
 
 
-# ═════════════════════════════════════════════════════════════════════
+# 鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺?
 # T5: Organization management
-# ═════════════════════════════════════════════════════════════════════
+# 鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺?
 
 
 @router.get("/orgs", response_model=AdminOrgListResponse)
@@ -1442,7 +1442,7 @@ def create_org(
         text("SELECT id FROM orgs WHERE id = :oid"), {"oid": body.id}
     ).fetchone()
     if existing:
-        raise HTTPException(status_code=409, detail="组织ID已被占用")
+        raise HTTPException(status_code=409, detail="缁勭粐ID宸茶鍗犵敤")
 
     db.commit()
     with db.begin():
@@ -1477,7 +1477,7 @@ def update_org(
         {"oid": org_id},
     ).fetchone()
     if row is None:
-        raise HTTPException(status_code=404, detail="组织不存在")
+        raise HTTPException(status_code=404, detail="缁勭粐涓嶅瓨鍦?)
 
     ts = _ts()
     updates: list[str] = []
@@ -1529,13 +1529,13 @@ def delete_org(
 ) -> dict[str, bool]:
     """Soft-delete an organization (set is_active=0). Refuse to delete 'default' org."""
     if org_id == "default":
-        raise HTTPException(status_code=400, detail="不能注销默认组织")
+        raise HTTPException(status_code=400, detail="涓嶈兘娉ㄩ攢榛樿缁勭粐")
 
     row = db.execute(
         text("SELECT id FROM orgs WHERE id = :oid"), {"oid": org_id}
     ).fetchone()
     if row is None:
-        raise HTTPException(status_code=404, detail="组织不存在")
+        raise HTTPException(status_code=404, detail="缁勭粐涓嶅瓨鍦?)
 
     ts = _ts()
     db.commit()
@@ -1553,9 +1553,9 @@ def delete_org(
     return {"ok": True}
 
 
-# ═════════════════════════════════════════════════════════════════════
+# 鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺?
 # T5: Department management
-# ═════════════════════════════════════════════════════════════════════
+# 鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺?
 
 
 def _build_dept_item(row: Any) -> AdminDeptItem:
@@ -1638,14 +1638,14 @@ def create_department(
         {"oid": body.org_id},
     ).fetchone()
     if org_row is None:
-        raise HTTPException(status_code=400, detail="组织不存在或已停用")
+        raise HTTPException(status_code=400, detail="缁勭粐涓嶅瓨鍦ㄦ垨宸插仠鐢?)
 
     # Uniqueness check
     existing = db.execute(
         text("SELECT id FROM departments WHERE id = :did"), {"did": body.id}
     ).fetchone()
     if existing:
-        raise HTTPException(status_code=409, detail="部门ID已被占用")
+        raise HTTPException(status_code=409, detail="閮ㄩ棬ID宸茶鍗犵敤")
 
     # Compute path and level from parent
     path = body.id
@@ -1659,7 +1659,7 @@ def create_department(
             {"pid": body.parent_id, "oid": body.org_id},
         ).fetchone()
         if parent is None:
-            raise HTTPException(status_code=400, detail="父部门不存在")
+            raise HTTPException(status_code=400, detail="鐖堕儴闂ㄤ笉瀛樺湪")
         path = parent[1] + "/" + body.id if parent[1] else body.id
         level = (parent[2] or 0) + 1
 
@@ -1735,7 +1735,7 @@ def update_department(
         {"did": dept_id},
     ).fetchone()
     if row is None:
-        raise HTTPException(status_code=404, detail="部门不存在")
+        raise HTTPException(status_code=404, detail="閮ㄩ棬涓嶅瓨鍦?)
 
     ts = _ts()
     new_name = body.name if body.name is not None else row[2]
@@ -1755,7 +1755,7 @@ def update_department(
                 {"pid": body.parent_id, "oid": row[1]},
             ).fetchone()
             if parent is None:
-                raise HTTPException(status_code=400, detail="父部门不存在")
+                raise HTTPException(status_code=400, detail="鐖堕儴闂ㄤ笉瀛樺湪")
             new_path = (parent[1] + "/" + dept_id) if parent[1] else dept_id
             new_level = (parent[2] or 0) + 1
         else:
@@ -1815,7 +1815,7 @@ def delete_department(
         text("SELECT id FROM departments WHERE id = :did"), {"did": dept_id}
     ).fetchone()
     if row is None:
-        raise HTTPException(status_code=404, detail="部门不存在")
+        raise HTTPException(status_code=404, detail="閮ㄩ棬涓嶅瓨鍦?)
 
     ts = _ts()
     db.commit()
@@ -1833,16 +1833,16 @@ def delete_department(
     return {"ok": True}
 
 
-# ═════════════════════════════════════════════════════════════════════
+# 鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺?
 # T5: Notice management
-# ═════════════════════════════════════════════════════════════════════
+# 鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺?
 
 
 def _build_notice_item(row: Any) -> AdminNoticeItem:
     """Build an AdminNoticeItem from a portal_notices row (mapping or tuple)."""
     from collections.abc import Mapping as _Mapping
 
-    # SQLAlchemy RowMapping, plain dict, or Row._mapping → named access
+    # SQLAlchemy RowMapping, plain dict, or Row._mapping 鈫?named access
     if isinstance(row, _Mapping):
         return AdminNoticeItem(
             id=row["id"], title=row["title"], source=row["source"], category=row["category"],
@@ -1852,7 +1852,7 @@ def _build_notice_item(row: Any) -> AdminNoticeItem:
             visibility=row.get("visibility", "org"),
             created_at=row.get("created_at"), updated_at=row.get("updated_at"),
         )
-    # SQLAlchemy Row — use _mapping for named access
+    # SQLAlchemy Row 鈥?use _mapping for named access
     if hasattr(row, "_mapping"):
         return _build_notice_item(row._mapping)
     # Fallback: positional tuple (legacy compatibility)
@@ -1992,14 +1992,14 @@ def update_notice(
         {"nid": notice_id},
     ).mappings().fetchone()
     if row is None:
-        raise HTTPException(status_code=404, detail="公告不存在")
+        raise HTTPException(status_code=404, detail="鍏憡涓嶅瓨鍦?)
 
     # Scope guard: non-super_admins can only update their own org/dept notices
     if not is_super:
         user_org = current_user.get("default_org_id") or "default"
         user_dept = current_user.get("default_dept_id") or "HQ"
         if row.get("org_id") != user_org or row.get("department_id") != user_dept:
-            raise HTTPException(status_code=404, detail="公告不存在")
+            raise HTTPException(status_code=404, detail="鍏憡涓嶅瓨鍦?)
 
     ts = _ts()
     updates: list[str] = []
@@ -2034,7 +2034,7 @@ def update_notice(
                 detail={"before": {"title": row["title"]}, "after": {"title": body.title or row["title"]}},
             )
 
-    # Re-query using fetchone (Row) — _build_notice_item handles both
+    # Re-query using fetchone (Row) 鈥?_build_notice_item handles both
     # Row (with _mapping) and RowMapping objects safely
     row2 = db.execute(
         text(
@@ -2062,14 +2062,14 @@ def delete_notice(
         {"nid": notice_id},
     ).fetchone()
     if row is None:
-        raise HTTPException(status_code=404, detail="公告不存在")
+        raise HTTPException(status_code=404, detail="鍏憡涓嶅瓨鍦?)
 
     # Scope guard: non-super_admins can only delete their own org/dept notices
     if not is_super:
         user_org = current_user.get("default_org_id") or "default"
         user_dept = current_user.get("default_dept_id") or "HQ"
         if row[2] != user_org or row[3] != user_dept:
-            raise HTTPException(status_code=404, detail="公告不存在")
+            raise HTTPException(status_code=404, detail="鍏憡涓嶅瓨鍦?)
 
     ts = _ts()
     db.commit()
@@ -2087,9 +2087,9 @@ def delete_notice(
     return {"ok": True}
 
 
-# ═════════════════════════════════════════════════════════════════════
+# 鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺?
 # T: News management (admin)
-# ═════════════════════════════════════════════════════════════════════
+# 鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺?
 
 
 def _build_news_item(row: Any) -> AdminNewsItem:
@@ -2215,7 +2215,7 @@ def update_news(
         {"nid": news_id},
     ).mappings().fetchone()
     if row is None:
-        raise HTTPException(status_code=404, detail="资讯不存在")
+        raise HTTPException(status_code=404, detail="璧勮涓嶅瓨鍦?)
 
     ts = _ts()
     updates: list[str] = []
@@ -2273,7 +2273,7 @@ def delete_news(
         {"nid": news_id},
     ).fetchone()
     if row is None:
-        raise HTTPException(status_code=404, detail="资讯不存在")
+        raise HTTPException(status_code=404, detail="璧勮涓嶅瓨鍦?)
 
     db.commit()
     with db.begin():
@@ -2290,9 +2290,9 @@ def delete_news(
     return {"ok": True}
 
 
-# ═════════════════════════════════════════════════════════════════════
+# 鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺?
 # T5: Audit CSV export
-# ═════════════════════════════════════════════════════════════════════
+# 鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺?
 
 
 @router.get("/audit/export")
@@ -2341,7 +2341,7 @@ def export_audit_csv(
     ).fetchall()
 
     output = io.StringIO()
-    output.write("﻿")  # UTF-8 BOM
+    output.write("锘?)  # UTF-8 BOM
     writer = csv.writer(output)
     writer.writerow([
         "ID", "Request ID", "User ID", "Org ID", "Department ID",

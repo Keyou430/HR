@@ -1,4 +1,10 @@
-"""Phase 4 T17: Website, Estate, Employment store mixins.
+"""DEPRECATED: Phase 4 T17 Website, Estate, Employment store mixins.
+
+These subsystems were removed from the enterprise catalog in migration 014
+(STALE_CODES). The corresponding frontend views (asset.js, employment.js,
+estate.js, website.js) have been deleted. Backend routes and tables remain
+only to avoid breaking existing data — they will be removed in a future
+cleanup migration after data migration is complete.
 
 Each mixin provides thin CRUD + stats over the corresponding enterprise table.
 All methods delegate to the BaseStore enterprise primitives for scope-aware access.

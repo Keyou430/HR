@@ -10,7 +10,7 @@ export default defineConfig({
       },
     },
     watch: {
-      // Exclude backend directory — APScheduler writes to SQLite WAL every 2s,
+      // Exclude backend directory 鈥?APScheduler writes to SQLite WAL every 2s,
       // which would otherwise trigger spurious HMR full-page reloads.
       ignored: ['**/../backend/**', '**/*.db', '**/*.db-*'],
     },

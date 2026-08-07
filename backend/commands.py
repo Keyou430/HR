@@ -239,18 +239,11 @@ def _handle_create_task(params: dict, reply: str) -> dict:
     return {"answer": response, "mode": "command", "action": "create_task", "result": task}
 
 
-def _handle_update_task(params: dict, reply: str) -> dict:
-    title_keyword = str(params.get("title") or "").strip()
-    task_id_val = params.get("id") or params.get("task_id")
-    task_id_str = str(task_id_val).strip() if task_id_val is not None else ""
+def _find_task_by_keyword(title_keyword: str, task_id_str: str, all_tasks: list[dict], action: str) -> tuple[dict | None, dict | None]:
+    """3-strategy task matching: numeric ID → exact title → substring.
 
-    if not title_keyword and not task_id_str:
-        return {"answer": "❌ 请提供要更新的任务标题或 ID。", "mode": "command", "action": "update_task", "result": None}
-
-    tasks_data = store.list_tasks()
-    all_tasks: list[dict] = tasks_data.get("items", [])
-
-    # 策略 0：纯数字当 ID 查找
+    Returns (task, None) on match, or (None, error_response) when no match found.
+    """
     matched: list[dict] = []
     if title_keyword.isdigit():
         task_id = int(title_keyword)
@@ -270,15 +263,31 @@ def _handle_update_task(params: dict, reply: str) -> dict:
     if not matched:
         task_list = "、".join(f"「{t['title']}」(ID:{t['id']})" for t in all_tasks[:10])
         task_hint = f"\n当前任务：{task_list}" if task_list else ""
-        return {
+        return None, {
             "answer": f"❌ 未找到匹配的任务。关键词：「{title_keyword}」{task_hint}",
             "mode": "command",
-            "action": "update_task",
+            "action": action,
             "result": None,
         }
 
-    # 取第一个匹配项
-    task = matched[0]
+    return matched[0], None
+
+
+def _handle_update_task(params: dict, reply: str) -> dict:
+    title_keyword = str(params.get("title") or "").strip()
+    task_id_val = params.get("id") or params.get("task_id")
+    task_id_str = str(task_id_val).strip() if task_id_val is not None else ""
+
+    if not title_keyword and not task_id_str:
+        return {"answer": "❌ 请提供要更新的任务标题或 ID。", "mode": "command", "action": "update_task", "result": None}
+
+    tasks_data = store.list_tasks()
+    all_tasks: list[dict] = tasks_data.get("items", [])
+
+    task, error = _find_task_by_keyword(title_keyword, task_id_str, all_tasks, "update_task")
+    if error:
+        return error
+
     task_id = task["id"]
 
     # 构建更新 payload
@@ -319,34 +328,10 @@ def _handle_delete_task(params: dict, reply: str) -> dict:
     tasks_data = store.list_tasks()
     all_tasks: list[dict] = tasks_data.get("items", [])
 
-    # 策略 0：如果 title 看起来像纯数字，当做 ID 精确查找
-    matched: list[dict] = []
-    if title_keyword.isdigit():
-        task_id = int(title_keyword)
-        matched = [t for t in all_tasks if t.get("id") == task_id]
-    elif task_id_str.isdigit():
-        task_id = int(task_id_str)
-        matched = [t for t in all_tasks if t.get("id") == task_id]
+    task, error = _find_task_by_keyword(title_keyword, task_id_str, all_tasks, "delete_task")
+    if error:
+        return error
 
-    # 策略 1：标题精确匹配
-    if not matched and title_keyword:
-        matched = [t for t in all_tasks if t.get("title") == title_keyword]
-
-    # 策略 2：标题包含匹配
-    if not matched and title_keyword:
-        matched = [t for t in all_tasks if title_keyword in (t.get("title") or "")]
-
-    if not matched:
-        task_list = "、".join(f"「{t['title']}」(ID:{t['id']})" for t in all_tasks[:10])
-        task_hint = f"\n当前任务：{task_list}" if task_list else ""
-        return {
-            "answer": f"❌ 未找到匹配的任务。关键词：「{title_keyword}」{task_hint}",
-            "mode": "command",
-            "action": "delete_task",
-            "result": None,
-        }
-
-    task = matched[0]
     task_title = task["title"]
     deleted = store.delete_task(task["id"])
 

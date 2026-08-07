@@ -10,101 +10,101 @@ from typing import Any
 
 from utils import _ts
 
-# ──────────────────────────────────────────────────────────────────
-# Permission codes (53 total — Phase 1 expansion)
-# ──────────────────────────────────────────────────────────────────
+# 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
+# Permission codes (53 total 鈥?Phase 1 expansion)
+# 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
 
 PERMISSIONS: list[dict[str, str]] = [
     # user management
-    {"code": "user:view",        "name": "查看用户",       "resource": "user",     "action": "view"},
-    {"code": "user:create",      "name": "创建用户",       "resource": "user",     "action": "create"},
-    {"code": "user:update",      "name": "更新用户",       "resource": "user",     "action": "update"},
-    {"code": "user:disable",     "name": "禁用用户",       "resource": "user",     "action": "disable"},
-    {"code": "user:assign_role", "name": "分配角色",       "resource": "user",     "action": "assign_role"},
+    {"code": "user:view",        "name": "鏌ョ湅鐢ㄦ埛",       "resource": "user",     "action": "view"},
+    {"code": "user:create",      "name": "鍒涘缓鐢ㄦ埛",       "resource": "user",     "action": "create"},
+    {"code": "user:update",      "name": "鏇存柊鐢ㄦ埛",       "resource": "user",     "action": "update"},
+    {"code": "user:disable",     "name": "绂佺敤鐢ㄦ埛",       "resource": "user",     "action": "disable"},
+    {"code": "user:assign_role", "name": "鍒嗛厤瑙掕壊",       "resource": "user",     "action": "assign_role"},
     # org
-    {"code": "org:view",         "name": "查看组织",       "resource": "org",      "action": "view"},
-    {"code": "org:update",       "name": "更新组织",       "resource": "org",      "action": "update"},
+    {"code": "org:view",         "name": "鏌ョ湅缁勭粐",       "resource": "org",      "action": "view"},
+    {"code": "org:update",       "name": "鏇存柊缁勭粐",       "resource": "org",      "action": "update"},
     # dept
-    {"code": "dept:view",        "name": "查看部门",       "resource": "dept",     "action": "view"},
-    {"code": "dept:update",      "name": "更新部门",       "resource": "dept",     "action": "update"},
+    {"code": "dept:view",        "name": "鏌ョ湅閮ㄩ棬",       "resource": "dept",     "action": "view"},
+    {"code": "dept:update",      "name": "鏇存柊閮ㄩ棬",       "resource": "dept",     "action": "update"},
     # system
-    {"code": "system:config",    "name": "系统配置",       "resource": "system",   "action": "config"},
+    {"code": "system:config",    "name": "绯荤粺閰嶇疆",       "resource": "system",   "action": "config"},
     # audit
-    {"code": "audit:view",       "name": "查看审计",       "resource": "audit",    "action": "view"},
+    {"code": "audit:view",       "name": "鏌ョ湅瀹¤",       "resource": "audit",    "action": "view"},
     # tasks
-    {"code": "task:view",        "name": "查看任务",       "resource": "task",     "action": "view"},
-    {"code": "task:create",      "name": "创建任务",       "resource": "task",     "action": "create"},
-    {"code": "task:update",      "name": "更新任务",       "resource": "task",     "action": "update"},
-    {"code": "task:delete",      "name": "删除任务",       "resource": "task",     "action": "delete"},
+    {"code": "task:view",        "name": "鏌ョ湅浠诲姟",       "resource": "task",     "action": "view"},
+    {"code": "task:create",      "name": "鍒涘缓浠诲姟",       "resource": "task",     "action": "create"},
+    {"code": "task:update",      "name": "鏇存柊浠诲姟",       "resource": "task",     "action": "update"},
+    {"code": "task:delete",      "name": "鍒犻櫎浠诲姟",       "resource": "task",     "action": "delete"},
     # calendar
-    {"code": "calendar:view",    "name": "查看日历",       "resource": "calendar", "action": "view"},
-    {"code": "calendar:create",  "name": "创建日历",       "resource": "calendar", "action": "create"},
-    {"code": "calendar:update",  "name": "更新日历",       "resource": "calendar", "action": "update"},
-    {"code": "calendar:delete",  "name": "删除日历",       "resource": "calendar", "action": "delete"},
+    {"code": "calendar:view",    "name": "鏌ョ湅鏃ュ巻",       "resource": "calendar", "action": "view"},
+    {"code": "calendar:create",  "name": "鍒涘缓鏃ュ巻",       "resource": "calendar", "action": "create"},
+    {"code": "calendar:update",  "name": "鏇存柊鏃ュ巻",       "resource": "calendar", "action": "update"},
+    {"code": "calendar:delete",  "name": "鍒犻櫎鏃ュ巻",       "resource": "calendar", "action": "delete"},
     # knowledge
-    {"code": "kb:view",          "name": "查看知识库",     "resource": "kb",       "action": "view"},
-    {"code": "kb:create",        "name": "创建知识库",     "resource": "kb",       "action": "create"},
-    {"code": "kb:update",        "name": "更新知识库",     "resource": "kb",       "action": "update"},
-    {"code": "kb:delete",        "name": "删除知识库",     "resource": "kb",       "action": "delete"},
-    {"code": "kb:import",        "name": "导入知识库",     "resource": "kb",       "action": "import"},
-    {"code": "kb:chat",          "name": "知识库问答",     "resource": "kb",       "action": "chat"},
-    {"code": "kb:chat_sensitive","name": "敏感知识问答",   "resource": "kb",       "action": "chat_sensitive"},
+    {"code": "kb:view",          "name": "鏌ョ湅鐭ヨ瘑搴?,     "resource": "kb",       "action": "view"},
+    {"code": "kb:create",        "name": "鍒涘缓鐭ヨ瘑搴?,     "resource": "kb",       "action": "create"},
+    {"code": "kb:update",        "name": "鏇存柊鐭ヨ瘑搴?,     "resource": "kb",       "action": "update"},
+    {"code": "kb:delete",        "name": "鍒犻櫎鐭ヨ瘑搴?,     "resource": "kb",       "action": "delete"},
+    {"code": "kb:import",        "name": "瀵煎叆鐭ヨ瘑搴?,     "resource": "kb",       "action": "import"},
+    {"code": "kb:chat",          "name": "鐭ヨ瘑搴撻棶绛?,     "resource": "kb",       "action": "chat"},
+    {"code": "kb:chat_sensitive","name": "鏁忔劅鐭ヨ瘑闂瓟",   "resource": "kb",       "action": "chat_sensitive"},
     # search
-    {"code": "search:view",      "name": "搜索",           "resource": "search",   "action": "view"},
+    {"code": "search:view",      "name": "鎼滅储",           "resource": "search",   "action": "view"},
     # notices
-    {"code": "notice:view",      "name": "查看通知",       "resource": "notice",   "action": "view"},
-    {"code": "notice:create",    "name": "创建通知",       "resource": "notice",   "action": "create"},
-    {"code": "notice:update",    "name": "更新通知",       "resource": "notice",   "action": "update"},
-    {"code": "notice:delete",    "name": "删除通知",       "resource": "notice",   "action": "delete"},
-    {"code": "notice:publish",   "name": "发布通知",       "resource": "notice",   "action": "publish"},
-    # ── Phase 1: enterprise module permissions (22 new) ──────────
-    # repair (报修)
-    {"code": "repair:view",      "name": "查看报修",       "resource": "repair",   "action": "view"},
-    {"code": "repair:create",    "name": "创建报修",       "resource": "repair",   "action": "create"},
-    {"code": "repair:assign",    "name": "派单",           "resource": "repair",   "action": "assign"},
-    {"code": "repair:update",    "name": "更新报修",       "resource": "repair",   "action": "update"},
-    {"code": "repair:close",     "name": "关闭报修",       "resource": "repair",   "action": "close"},
-    # asset (资产)
-    {"code": "asset:view",       "name": "查看资产",       "resource": "asset",    "action": "view"},
-    {"code": "asset:create",     "name": "创建资产",       "resource": "asset",    "action": "create"},
-    {"code": "asset:update",     "name": "更新资产",       "resource": "asset",    "action": "update"},
-    {"code": "asset:borrow",     "name": "借用资产",       "resource": "asset",    "action": "borrow"},
-    # oa (OA 审批)
-    {"code": "oa:view",          "name": "查看OA",         "resource": "oa",       "action": "view"},
-    {"code": "oa:create",        "name": "创建OA",         "resource": "oa",       "action": "create"},
-    {"code": "oa:update",        "name": "更新OA",         "resource": "oa",       "action": "update"},
-    # hr (人事)
-    {"code": "hr:view",          "name": "查看人事",       "resource": "hr",       "action": "view"},
-    {"code": "hr:create",        "name": "创建人事",       "resource": "hr",       "action": "create"},
-    {"code": "hr:update",        "name": "更新人事",       "resource": "hr",       "action": "update"},
-    # finance (财务)
-    {"code": "finance:view",     "name": "查看财务",       "resource": "finance",  "action": "view"},
-    {"code": "finance:create",   "name": "创建财务",       "resource": "finance",  "action": "create"},
-    {"code": "finance:approve",  "name": "审批财务",       "resource": "finance",  "action": "approve"},
-    # subsystem (子系统管理)
-    {"code": "subsystem:view",   "name": "查看子系统",     "resource": "subsystem","action": "view"},
-    {"code": "subsystem:manage", "name": "管理子系统",     "resource": "subsystem","action": "manage"},
-    # dashboard (仪表板)
-    {"code": "dashboard:view",   "name": "查看仪表板",     "resource": "dashboard","action": "view"},
-    # enterprise records (企业记录总览)
-    {"code": "enterprise:records:view", "name": "查看企业记录", "resource": "enterprise", "action": "records:view"},
+    {"code": "notice:view",      "name": "鏌ョ湅閫氱煡",       "resource": "notice",   "action": "view"},
+    {"code": "notice:create",    "name": "鍒涘缓閫氱煡",       "resource": "notice",   "action": "create"},
+    {"code": "notice:update",    "name": "鏇存柊閫氱煡",       "resource": "notice",   "action": "update"},
+    {"code": "notice:delete",    "name": "鍒犻櫎閫氱煡",       "resource": "notice",   "action": "delete"},
+    {"code": "notice:publish",   "name": "鍙戝竷閫氱煡",       "resource": "notice",   "action": "publish"},
+    # 鈹€鈹€ Phase 1: enterprise module permissions (22 new) 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
+    # repair (鎶ヤ慨)
+    {"code": "repair:view",      "name": "鏌ョ湅鎶ヤ慨",       "resource": "repair",   "action": "view"},
+    {"code": "repair:create",    "name": "鍒涘缓鎶ヤ慨",       "resource": "repair",   "action": "create"},
+    {"code": "repair:assign",    "name": "娲惧崟",           "resource": "repair",   "action": "assign"},
+    {"code": "repair:update",    "name": "鏇存柊鎶ヤ慨",       "resource": "repair",   "action": "update"},
+    {"code": "repair:close",     "name": "鍏抽棴鎶ヤ慨",       "resource": "repair",   "action": "close"},
+    # asset (璧勪骇)
+    {"code": "asset:view",       "name": "鏌ョ湅璧勪骇",       "resource": "asset",    "action": "view"},
+    {"code": "asset:create",     "name": "鍒涘缓璧勪骇",       "resource": "asset",    "action": "create"},
+    {"code": "asset:update",     "name": "鏇存柊璧勪骇",       "resource": "asset",    "action": "update"},
+    {"code": "asset:borrow",     "name": "鍊熺敤璧勪骇",       "resource": "asset",    "action": "borrow"},
+    # oa (OA 瀹℃壒)
+    {"code": "oa:view",          "name": "鏌ョ湅OA",         "resource": "oa",       "action": "view"},
+    {"code": "oa:create",        "name": "鍒涘缓OA",         "resource": "oa",       "action": "create"},
+    {"code": "oa:update",        "name": "鏇存柊OA",         "resource": "oa",       "action": "update"},
+    # hr (浜轰簨)
+    {"code": "hr:view",          "name": "鏌ョ湅浜轰簨",       "resource": "hr",       "action": "view"},
+    {"code": "hr:create",        "name": "鍒涘缓浜轰簨",       "resource": "hr",       "action": "create"},
+    {"code": "hr:update",        "name": "鏇存柊浜轰簨",       "resource": "hr",       "action": "update"},
+    # finance (璐㈠姟)
+    {"code": "finance:view",     "name": "鏌ョ湅璐㈠姟",       "resource": "finance",  "action": "view"},
+    {"code": "finance:create",   "name": "鍒涘缓璐㈠姟",       "resource": "finance",  "action": "create"},
+    {"code": "finance:approve",  "name": "瀹℃壒璐㈠姟",       "resource": "finance",  "action": "approve"},
+    # subsystem (瀛愮郴缁熺鐞?
+    {"code": "subsystem:view",   "name": "鏌ョ湅瀛愮郴缁?,     "resource": "subsystem","action": "view"},
+    {"code": "subsystem:manage", "name": "绠＄悊瀛愮郴缁?,     "resource": "subsystem","action": "manage"},
+    # dashboard (浠〃鏉?
+    {"code": "dashboard:view",   "name": "鏌ョ湅浠〃鏉?,     "resource": "dashboard","action": "view"},
+    # enterprise records (浼佷笟璁板綍鎬昏)
+    {"code": "enterprise:records:view", "name": "鏌ョ湅浼佷笟璁板綍", "resource": "enterprise", "action": "records:view"},
 ]
 
-# ──────────────────────────────────────────────────────────────────
-# System roles (matching rbac-design-v2.md §5.2)
-# ──────────────────────────────────────────────────────────────────
+# 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
+# System roles (matching rbac-design-v2.md 搂5.2)
+# 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
 
 ROLES: list[dict[str, Any]] = [
-    {"code": "super_admin", "name": "超级管理员", "description": "平台级管理员，拥有所有权限",              "is_system": True},
-    {"code": "org_admin",   "name": "组织管理员", "description": "管理本组织配置和业务数据",                "is_system": True},
-    {"code": "dept_leader", "name": "部门负责人", "description": "管理本部门及下级部门业务数据",            "is_system": True},
-    {"code": "dept_staff",  "name": "部门员工",   "description": "管理个人任务、日程和知识",                "is_system": True},
-    {"code": "external",    "name": "外部用户",   "description": "仅可访问公开内容",                        "is_system": True},
+    {"code": "super_admin", "name": "瓒呯骇绠＄悊鍛?, "description": "骞冲彴绾х鐞嗗憳锛屾嫢鏈夋墍鏈夋潈闄?,              "is_system": True},
+    {"code": "org_admin",   "name": "缁勭粐绠＄悊鍛?, "description": "绠＄悊鏈粍缁囬厤缃拰涓氬姟鏁版嵁",                "is_system": True},
+    {"code": "dept_leader", "name": "閮ㄩ棬璐熻矗浜?, "description": "绠＄悊鏈儴闂ㄥ強涓嬬骇閮ㄩ棬涓氬姟鏁版嵁",            "is_system": True},
+    {"code": "dept_staff",  "name": "閮ㄩ棬鍛樺伐",   "description": "绠＄悊涓汉浠诲姟銆佹棩绋嬪拰鐭ヨ瘑",                "is_system": True},
+    {"code": "external",    "name": "澶栭儴鐢ㄦ埛",   "description": "浠呭彲璁块棶鍏紑鍐呭",                        "is_system": True},
 ]
 
-# ──────────────────────────────────────────────────────────────────
-# Role → permission mapping (matching rbac-permission-matrix.md §2.2)
-# ──────────────────────────────────────────────────────────────────
+# 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
+# Role 鈫?permission mapping (matching rbac-permission-matrix.md 搂2.2)
+# 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
 
 ROLE_PERMISSION_MAP: dict[str, list[str]] = {
     "super_admin": [p["code"] for p in PERMISSIONS],  # all 53
@@ -178,177 +178,177 @@ ROLE_PERMISSION_MAP: dict[str, list[str]] = {
     ],
 }
 
-# ──────────────────────────────────────────────────────────────────
+# 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
 # Permission groups for admin UI checkbox grid
-# ──────────────────────────────────────────────────────────────────
+# 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
 
 PERMISSION_GROUPS: dict[str, dict[str, str | list[dict[str, str]]]] = {
-    "用户管理": {
+    "鐢ㄦ埛绠＄悊": {
         "resource": "user",
         "permissions": [
-            {"code": "user:view",        "name": "查看用户"},
-            {"code": "user:create",      "name": "创建用户"},
-            {"code": "user:update",      "name": "更新用户"},
-            {"code": "user:disable",     "name": "禁用用户"},
-            {"code": "user:assign_role", "name": "分配角色"},
+            {"code": "user:view",        "name": "鏌ョ湅鐢ㄦ埛"},
+            {"code": "user:create",      "name": "鍒涘缓鐢ㄦ埛"},
+            {"code": "user:update",      "name": "鏇存柊鐢ㄦ埛"},
+            {"code": "user:disable",     "name": "绂佺敤鐢ㄦ埛"},
+            {"code": "user:assign_role", "name": "鍒嗛厤瑙掕壊"},
         ],
     },
-    "组织管理": {
+    "缁勭粐绠＄悊": {
         "resource": "org",
         "permissions": [
-            {"code": "org:view",   "name": "查看组织"},
-            {"code": "org:update", "name": "更新组织"},
+            {"code": "org:view",   "name": "鏌ョ湅缁勭粐"},
+            {"code": "org:update", "name": "鏇存柊缁勭粐"},
         ],
     },
-    "部门管理": {
+    "閮ㄩ棬绠＄悊": {
         "resource": "dept",
         "permissions": [
-            {"code": "dept:view",   "name": "查看部门"},
-            {"code": "dept:update", "name": "更新部门"},
+            {"code": "dept:view",   "name": "鏌ョ湅閮ㄩ棬"},
+            {"code": "dept:update", "name": "鏇存柊閮ㄩ棬"},
         ],
     },
-    "系统配置": {
+    "绯荤粺閰嶇疆": {
         "resource": "system",
         "permissions": [
-            {"code": "system:config", "name": "系统配置"},
+            {"code": "system:config", "name": "绯荤粺閰嶇疆"},
         ],
     },
-    "操作审计": {
+    "鎿嶄綔瀹¤": {
         "resource": "audit",
         "permissions": [
-            {"code": "audit:view", "name": "查看审计"},
+            {"code": "audit:view", "name": "鏌ョ湅瀹¤"},
         ],
     },
-    "任务": {
+    "浠诲姟": {
         "resource": "task",
         "permissions": [
-            {"code": "task:view",   "name": "查看任务"},
-            {"code": "task:create", "name": "创建任务"},
-            {"code": "task:update", "name": "更新任务"},
-            {"code": "task:delete", "name": "删除任务"},
+            {"code": "task:view",   "name": "鏌ョ湅浠诲姟"},
+            {"code": "task:create", "name": "鍒涘缓浠诲姟"},
+            {"code": "task:update", "name": "鏇存柊浠诲姟"},
+            {"code": "task:delete", "name": "鍒犻櫎浠诲姟"},
         ],
     },
-    "日历": {
+    "鏃ュ巻": {
         "resource": "calendar",
         "permissions": [
-            {"code": "calendar:view",   "name": "查看日历"},
-            {"code": "calendar:create", "name": "创建日历"},
-            {"code": "calendar:update", "name": "更新日历"},
-            {"code": "calendar:delete", "name": "删除日历"},
+            {"code": "calendar:view",   "name": "鏌ョ湅鏃ュ巻"},
+            {"code": "calendar:create", "name": "鍒涘缓鏃ュ巻"},
+            {"code": "calendar:update", "name": "鏇存柊鏃ュ巻"},
+            {"code": "calendar:delete", "name": "鍒犻櫎鏃ュ巻"},
         ],
     },
-    "知识库": {
+    "鐭ヨ瘑搴?: {
         "resource": "kb",
         "permissions": [
-            {"code": "kb:view",           "name": "查看知识库"},
-            {"code": "kb:create",         "name": "创建知识库"},
-            {"code": "kb:update",         "name": "更新知识库"},
-            {"code": "kb:delete",         "name": "删除知识库"},
-            {"code": "kb:import",         "name": "导入知识库"},
-            {"code": "kb:chat",           "name": "知识库问答"},
-            {"code": "kb:chat_sensitive", "name": "敏感知识问答"},
+            {"code": "kb:view",           "name": "鏌ョ湅鐭ヨ瘑搴?},
+            {"code": "kb:create",         "name": "鍒涘缓鐭ヨ瘑搴?},
+            {"code": "kb:update",         "name": "鏇存柊鐭ヨ瘑搴?},
+            {"code": "kb:delete",         "name": "鍒犻櫎鐭ヨ瘑搴?},
+            {"code": "kb:import",         "name": "瀵煎叆鐭ヨ瘑搴?},
+            {"code": "kb:chat",           "name": "鐭ヨ瘑搴撻棶绛?},
+            {"code": "kb:chat_sensitive", "name": "鏁忔劅鐭ヨ瘑闂瓟"},
         ],
     },
-    "搜索": {
+    "鎼滅储": {
         "resource": "search",
         "permissions": [
-            {"code": "search:view", "name": "搜索"},
+            {"code": "search:view", "name": "鎼滅储"},
         ],
     },
-    "通知公告": {
+    "閫氱煡鍏憡": {
         "resource": "notice",
         "permissions": [
-            {"code": "notice:view",   "name": "查看通知"},
-            {"code": "notice:create", "name": "创建通知"},
-            {"code": "notice:update", "name": "更新通知"},
-            {"code": "notice:delete", "name": "删除通知"},
-            {"code": "notice:publish", "name": "发布通知"},
+            {"code": "notice:view",   "name": "鏌ョ湅閫氱煡"},
+            {"code": "notice:create", "name": "鍒涘缓閫氱煡"},
+            {"code": "notice:update", "name": "鏇存柊閫氱煡"},
+            {"code": "notice:delete", "name": "鍒犻櫎閫氱煡"},
+            {"code": "notice:publish", "name": "鍙戝竷閫氱煡"},
         ],
     },
-    "报修系统": {
+    "鎶ヤ慨绯荤粺": {
         "resource": "repair",
         "permissions": [
-            {"code": "repair:view",   "name": "查看报修"},
-            {"code": "repair:create", "name": "创建报修"},
-            {"code": "repair:assign", "name": "派单"},
-            {"code": "repair:update", "name": "更新报修"},
-            {"code": "repair:close",  "name": "关闭报修"},
+            {"code": "repair:view",   "name": "鏌ョ湅鎶ヤ慨"},
+            {"code": "repair:create", "name": "鍒涘缓鎶ヤ慨"},
+            {"code": "repair:assign", "name": "娲惧崟"},
+            {"code": "repair:update", "name": "鏇存柊鎶ヤ慨"},
+            {"code": "repair:close",  "name": "鍏抽棴鎶ヤ慨"},
         ],
     },
-    "资产系统": {
+    "璧勪骇绯荤粺": {
         "resource": "asset",
         "permissions": [
-            {"code": "asset:view",   "name": "查看资产"},
-            {"code": "asset:create", "name": "创建资产"},
-            {"code": "asset:update", "name": "更新资产"},
-            {"code": "asset:borrow", "name": "借用资产"},
+            {"code": "asset:view",   "name": "鏌ョ湅璧勪骇"},
+            {"code": "asset:create", "name": "鍒涘缓璧勪骇"},
+            {"code": "asset:update", "name": "鏇存柊璧勪骇"},
+            {"code": "asset:borrow", "name": "鍊熺敤璧勪骇"},
         ],
     },
-    "OA 系统": {
+    "OA 绯荤粺": {
         "resource": "oa",
         "permissions": [
-            {"code": "oa:view",   "name": "查看OA"},
-            {"code": "oa:create", "name": "创建OA"},
-            {"code": "oa:update", "name": "更新OA"},
+            {"code": "oa:view",   "name": "鏌ョ湅OA"},
+            {"code": "oa:create", "name": "鍒涘缓OA"},
+            {"code": "oa:update", "name": "鏇存柊OA"},
         ],
     },
-    "人事系统": {
+    "浜轰簨绯荤粺": {
         "resource": "hr",
         "permissions": [
-            {"code": "hr:view",   "name": "查看人事"},
-            {"code": "hr:create", "name": "创建人事"},
-            {"code": "hr:update", "name": "更新人事"},
+            {"code": "hr:view",   "name": "鏌ョ湅浜轰簨"},
+            {"code": "hr:create", "name": "鍒涘缓浜轰簨"},
+            {"code": "hr:update", "name": "鏇存柊浜轰簨"},
         ],
     },
-    "财务系统": {
+    "璐㈠姟绯荤粺": {
         "resource": "finance",
         "permissions": [
-            {"code": "finance:view",    "name": "查看财务"},
-            {"code": "finance:create",  "name": "创建财务"},
-            {"code": "finance:approve", "name": "审批财务"},
+            {"code": "finance:view",    "name": "鏌ョ湅璐㈠姟"},
+            {"code": "finance:create",  "name": "鍒涘缓璐㈠姟"},
+            {"code": "finance:approve", "name": "瀹℃壒璐㈠姟"},
         ],
     },
-    "子系统管理": {
+    "瀛愮郴缁熺鐞?: {
         "resource": "subsystem",
         "permissions": [
-            {"code": "subsystem:view",   "name": "查看子系统"},
-            {"code": "subsystem:manage", "name": "管理子系统"},
+            {"code": "subsystem:view",   "name": "鏌ョ湅瀛愮郴缁?},
+            {"code": "subsystem:manage", "name": "绠＄悊瀛愮郴缁?},
         ],
     },
-    "仪表板": {
+    "浠〃鏉?: {
         "resource": "dashboard",
         "permissions": [
-            {"code": "dashboard:view", "name": "查看仪表板"},
+            {"code": "dashboard:view", "name": "鏌ョ湅浠〃鏉?},
         ],
     },
-    "企业记录": {
+    "浼佷笟璁板綍": {
         "resource": "enterprise",
         "permissions": [
-            {"code": "enterprise:records:view", "name": "查看企业记录"},
+            {"code": "enterprise:records:view", "name": "鏌ョ湅浼佷笟璁板綍"},
         ],
     },
 }
 
 
-# ──────────────────────────────────────────────────────────────────
+# 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
 # Default seed data
-# ──────────────────────────────────────────────────────────────────
+# 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
 
 DEFAULT_ORG_ID = "default"
 DEFAULT_DEPT_ID = "HQ"
-DEFAULT_DEPT_NAME = "总部"
+DEFAULT_DEPT_NAME = "鎬婚儴"
 SYSTEM_SEED_USERNAME = "system_seed"
-SYSTEM_SEED_DISPLAY = "系统种子用户"
+SYSTEM_SEED_DISPLAY = "绯荤粺绉嶅瓙鐢ㄦ埛"
 
-# bcrypt hash of a mandatory-change password — the account is disabled
+# bcrypt hash of a mandatory-change password 鈥?the account is disabled
 # (is_active=0) by default.  Phase 2 will enforce a forced password change
 # on first successful authentication.
 SYSTEM_SEED_PASSWORD_HASH = "$2b$12$MeUrwDTjryFVbkrtQPTU1.4pmwZX0qcvZbGUguk9bdMl7Yqjy6ey6"
 
 
-# ──────────────────────────────────────────────────────────────────
+# 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
 # Seed helpers (called from migration)
-# ──────────────────────────────────────────────────────────────────
+# 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
 
 def seed_org_and_dept(conn: Any) -> None:
     """Insert default org and HQ department if they do not exist."""
@@ -358,7 +358,7 @@ def seed_org_and_dept(conn: Any) -> None:
     if org_exists is None:
         conn.exec_driver_sql(
             "INSERT INTO orgs (id, name, is_active, created_at, updated_at) "
-            "VALUES ('default', '默认组织', 1, :ts, :ts)",
+            "VALUES ('default', '榛樿缁勭粐', 1, :ts, :ts)",
             {"ts": _ts()},
         )
 
@@ -386,13 +386,13 @@ def seed_users(conn: Any) -> None:
             "VALUES ('system_seed', :pw, :dn, NULL, 0, 1, :ts, :ts)",
             {"pw": SYSTEM_SEED_PASSWORD_HASH, "dn": SYSTEM_SEED_DISPLAY, "ts": _ts()},
         )
-        # Membership: system_seed → default org
+        # Membership: system_seed 鈫?default org
         conn.exec_driver_sql(
             "INSERT INTO user_org_memberships (user_id, org_id, is_default, created_at) "
             "VALUES (1, 'default', 1, :ts)",
             {"ts": _ts()},
         )
-        # Membership: system_seed → HQ dept
+        # Membership: system_seed 鈫?HQ dept
         conn.exec_driver_sql(
             "INSERT INTO user_department_memberships (user_id, org_id, department_id, "
             "is_primary, created_at) "

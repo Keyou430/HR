@@ -15,7 +15,7 @@ class Settings(BaseSettings):
         env_file_encoding="utf-8",
     )
 
-    # ── Hermes Gateway ──────────────────────────────────────────
+    # 鈹€鈹€ Hermes Gateway 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
     HERMES_MODE: Literal["mock", "real"] = "mock"
     HERMES_BASE_URL: str = "http://localhost:8001"
     HERMES_API_KEY: str | None = None
@@ -24,7 +24,7 @@ class Settings(BaseSettings):
     HERMES_API_STYLE: Literal["chat_completions", "responses"] = "chat_completions"
     HERMES_TIMEOUT_SECONDS: int = Field(default=60, gt=0)
 
-    # ── FastGPT Gateway ─────────────────────────────────────────
+    # 鈹€鈹€ FastGPT Gateway 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
     FASTGPT_MODE: Literal["mock", "real"] = "mock"
     FASTGPT_BASE_URL: str = "http://127.0.0.1:3100/api"
     FASTGPT_API_KEY: str | None = None
@@ -35,20 +35,20 @@ class Settings(BaseSettings):
     FASTGPT_DEFAULT_TEAM_ID: str | None = "team-default"
     FASTGPT_DEFAULT_APP_ID: str | None = None
     FASTGPT_DEFAULT_DATASET_ID: str | None = None
-    FASTGPT_DEFAULT_DISPLAY_NAME: str = "FastGPT 本地知识库"
+    FASTGPT_DEFAULT_DISPLAY_NAME: str = "FastGPT 鏈湴鐭ヨ瘑搴?
 
-    # ── Integration Embed URLs ───────────────────────────────────
+    # 鈹€鈹€ Integration Embed URLs 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
     FEISHU_EMBED_URL: str | None = "https://www.feishu.cn/"
     DINGTALK_EMBED_URL: str | None = "https://www.dingtalk.com/"
 
-    # ── AI Security (Phase 5) ────────────────────────────────────
+    # 鈹€鈹€ AI Security (Phase 5) 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
     AI_SECURITY_MAX_QUERY_LENGTH: int = Field(default=2000, gt=0)
     AI_SECURITY_MAX_RETRIEVAL_CHUNKS: int = Field(default=20, gt=0)
     AI_SECURITY_RATE_LIMIT_PER_MINUTE: int = Field(default=10, gt=0)
     AI_SECURITY_ENABLE_INJECTION_DETECTION: bool = True
     AI_SECURITY_LOG_SNIPPET_LENGTH: int = Field(default=256, gt=0)
 
-    # ── Auth & Security ─────────────────────────────────────────
+    # 鈹€鈹€ Auth & Security 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
     JWT_SECRET_KEY: str = ""  # MUST be set via env var; no hardcoded default
     JWT_ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(default=15, gt=0)
@@ -58,17 +58,17 @@ class Settings(BaseSettings):
     LOGIN_WINDOW_SECONDS: int = Field(default=300, gt=0)
     BCRYPT_ROUNDS: int = Field(default=12, gt=0)
 
-    # ── Audit (Phase 6) ──────────────────────────────────────────
+    # 鈹€鈹€ Audit (Phase 6) 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
     AUDIT_ENABLED: bool = True
     AUDIT_RECORD_AUTH_DENIED: bool = True
     AUDIT_RETENTION_DAYS: int = Field(default=90, gt=0)
 
-    # ── Deployment / Environment ──────────────────────────────────
+    # 鈹€鈹€ Deployment / Environment 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
     ENVIRONMENT: Literal["development", "staging", "production"] = "development"
     DEBUG: bool = True
     CORS_ORIGINS: str = "http://localhost:5173,http://127.0.0.1:5173"
 
-    # ── PostgreSQL ─────────────────────────────────────────────────
+    # 鈹€鈹€ PostgreSQL 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
     POSTGRES_HOST: str = "localhost"
     POSTGRES_PORT: int = 5432
     POSTGRES_DB: str = "replica"
@@ -77,12 +77,12 @@ class Settings(BaseSettings):
     POOL_SIZE: int = 10
     MAX_OVERFLOW: int = 20
 
-    # ── Admin Bootstrap ────────────────────────────────────────────
+    # 鈹€鈹€ Admin Bootstrap 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
     ADMIN_USERNAME: str = ""
     ADMIN_PASSWORD: str = ""
     ADMIN_EMAIL: str = ""
 
-    # ── Backup ─────────────────────────────────────────────────────
+    # 鈹€鈹€ Backup 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
     BACKUP_RETENTION_DAYS: int = 14
 
     @property
@@ -92,7 +92,7 @@ class Settings(BaseSettings):
         # Prevent null origin (security risk per rbac-design-v2.md)
         if "null" in origins:
             import logging
-            logging.getLogger("replica").warning("CORS_ORIGINS contains 'null' — removed for security.")
+            logging.getLogger("replica").warning("CORS_ORIGINS contains 'null' 鈥?removed for security.")
             origins.remove("null")
         return origins
 
@@ -104,7 +104,7 @@ class Settings(BaseSettings):
     def is_production(self) -> bool:
         return self.ENVIRONMENT == "production"
 
-    # ── Database ────────────────────────────────────────────────
+    # 鈹€鈹€ Database 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
     # Default to SQLite for safe local development.
     # For production, set DATABASE_URL to a PostgreSQL connection string.
     DATABASE_URL: str = "sqlite:///./replica_platform.db"

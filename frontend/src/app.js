@@ -2166,6 +2166,7 @@
     }
 
     async function savePortalPreferences(nextPreferences = state.portalPreferences) {
+      if (!isLoggedIn()) return;
       // Fire-and-forget persistence — never clobber in-memory state with the
       // server response, because concurrent saves would race and lose data.
       await apiJson("/api/v1/portal/preferences", { method: "PUT", body: JSON.stringify(nextPreferences) });
@@ -3059,9 +3060,8 @@
 
     async function fetchChatSessionsFromBackend() {
       try {
-        const resp = await fetch(`${apiBaseUrl}/api/v1/chat/sessions`);
-        if (!resp.ok) return;
-        const data = await resp.json();
+        if (!isLoggedIn()) return;
+        const data = await apiJson("/api/v1/chat/sessions");
         if (!data.items || data.items.length === 0) return;
 
         for (const s of data.items) {
@@ -3069,9 +3069,7 @@
           if (state.chatSessions.sessions.find((ls) => ls.id === s.id)) continue;
 
           // 拉取消息
-          const msgResp = await fetch(`${apiBaseUrl}/api/v1/chat/sessions/${encodeURIComponent(s.id)}/messages`);
-          if (!msgResp.ok) continue;
-          const msgData = await msgResp.json();
+          const msgData = await apiJson(`/api/v1/chat/sessions/${encodeURIComponent(s.id)}/messages`);
           const messages = (msgData.items || []).map((m) => ({
             id: "m_bk_" + m.id,
             role: m.role,

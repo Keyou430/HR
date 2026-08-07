@@ -157,8 +157,25 @@ async def _lifespan(_app: FastAPI) -> AsyncIterator[None]:
                 logger.exception("Overdue scanner failed for task %d", task.get("id"))
 
     _scheduler.add_job(_scan_overdue_tasks, "interval", seconds=2, id="overdue_scanner")
+
+    # ── Audit retention cleanup (daily) ──────────────────────────
+    async def _purge_audit_retention():
+        """Purge audit logs older than AUDIT_RETENTION_DAYS."""
+        try:
+            from audit.logger import purge_expired_audit_logs
+            from session import get_session_local
+
+            retention_days = settings.AUDIT_RETENTION_DAYS
+            with get_session_local()() as db:
+                deleted = purge_expired_audit_logs(db, retention_days)
+            if deleted:
+                logger.info("Audit retention purge: %d records deleted (retention=%d days)", deleted, retention_days)
+        except Exception:
+            logger.exception("Audit retention purge failed")
+
+    _scheduler.add_job(_purge_audit_retention, "interval", hours=24, id="audit_retention_purge")
     _scheduler.start()
-    logger.info("APScheduler overdue scanner started (interval=2s)")
+    logger.info("APScheduler started (overdue scanner + audit retention purge)")
 
     try:
         yield

@@ -36,7 +36,7 @@ class PortalBootstrapResponse(BaseModel):
 
 class TaskCreate(BaseModel):
     title: str = Field(min_length=1, max_length=255)
-    tag: str = Field(default="今天", min_length=1, max_length=32)
+    tag: str = Field(default="浠婂ぉ", min_length=1, max_length=32)
     deadline: str | None = Field(default=None, max_length=32)
 
 
@@ -65,11 +65,11 @@ class EmbedUrlsUpdate(BaseModel):
 class KnowledgeChatRequest(BaseModel):
     question: str = Field(min_length=1)
     scope: str = "all"
-    mode: str = "auto"  # "auto" | "rag" | "chat" — auto 由 Hermes 判断，rag/chat 强制指定
+    mode: str = "auto"  # "auto" | "rag" | "chat" 鈥?auto 鐢?Hermes 鍒ゆ柇锛宺ag/chat 寮哄埗鎸囧畾
     web_search: bool = False
     deep_thinking: bool = False
-    command_mode: bool = True  # 是否启用指令识别模式
-    session_id: str | None = None  # 会话 ID，用于加载对话历史上下文
+    command_mode: bool = True  # 鏄惁鍚敤鎸囦护璇嗗埆妯″紡
+    session_id: str | None = None  # 浼氳瘽 ID锛岀敤浜庡姞杞藉璇濆巻鍙蹭笂涓嬫枃
 
 
 class KnowledgeMappingUpdate(BaseModel):
@@ -88,9 +88,9 @@ class ChatMessageSave(BaseModel):
     created_at: str | None = Field(default=None, max_length=32)
 
 
-# ──────────────────────────────────────────────────────────────────
+# 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
 # Auth schemas (Phase 2)
-# ──────────────────────────────────────────────────────────────────
+# 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
 
 
 class LoginRequest(BaseModel):
@@ -136,7 +136,7 @@ class RegisterRequest(BaseModel):
     email: str | None = Field(default=None, max_length=128)
 
 
-# ── Admin schemas (account management) ────────────────────────────
+# 鈹€鈹€ Admin schemas (account management) 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
 
 
 class AdminUserItem(BaseModel):
@@ -207,23 +207,23 @@ class AdminSetRolesRequest(BaseModel):
 
 
 class AdminResetPasswordRequest(BaseModel):
-    """管理员重置用户密码 — 可指定新密码或自动生成"""
+    """绠＄悊鍛橀噸缃敤鎴峰瘑鐮?鈥?鍙寚瀹氭柊瀵嗙爜鎴栬嚜鍔ㄧ敓鎴?""
     password: str | None = Field(
         default=None, min_length=8, max_length=72,
-        description="自定义新密码；不传则自动生成随机密码"
+        description="鑷畾涔夋柊瀵嗙爜锛涗笉浼犲垯鑷姩鐢熸垚闅忔満瀵嗙爜"
     )
 
 
 class AdminResetPasswordResponse(BaseModel):
-    """返回一次性明文密码 — 仅此响应中包含，不存日志/数据库"""
+    """杩斿洖涓€娆℃€ф槑鏂囧瘑鐮?鈥?浠呮鍝嶅簲涓寘鍚紝涓嶅瓨鏃ュ織/鏁版嵁搴?""
     user_id: int
     username: str
     display_name: str
-    password: str          # 明文，仅本次返回
-    must_change_password: bool  # 始终为 True
+    password: str          # 鏄庢枃锛屼粎鏈杩斿洖
+    must_change_password: bool  # 濮嬬粓涓?True
 
 
-# ── Phase 6: Audit & Session schemas ──────────────────────────────
+# 鈹€鈹€ Phase 6: Audit & Session schemas 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
 
 
 class AuditLogItem(BaseModel):
@@ -304,7 +304,7 @@ class AnomalyStats(BaseModel):
     recent_injections_24h: int
 
 
-# ── T5: Admin org/department schemas ───────────────────────────────
+# 鈹€鈹€ T5: Admin org/department schemas 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
 
 
 class AdminOrgItem(BaseModel):
@@ -371,7 +371,7 @@ class AdminDeptListResponse(BaseModel):
     total: int
 
 
-# ── T5: Admin notice schemas ────────────────────────────────────────
+# 鈹€鈹€ T5: Admin notice schemas 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
 
 
 class AdminNoticeCreateRequest(BaseModel):
@@ -418,10 +418,10 @@ class AdminNoticeListResponse(BaseModel):
     total: int
 
 
-# ── T5: Admin service schemas ───────────────────────────────────────
+# 鈹€鈹€ T5: Admin service schemas 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
 
 
-# ── T: Admin news schemas ───────────────────────────────────────────────
+# 鈹€鈹€ T: Admin news schemas 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
 
 class AdminNewsCreateRequest(BaseModel):
     title: str = Field(min_length=1, max_length=255)
@@ -462,7 +462,7 @@ class AdminNewsListResponse(BaseModel):
     total: int
 
 
-# ── T7: Notification schemas ───────────────────────────────────────────
+# 鈹€鈹€ T7: Notification schemas 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
 
 class NotificationItem(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -488,7 +488,7 @@ class NotificationUnreadCount(BaseModel):
     unread_count: int
 
 
-# ── Phase 2: Repair schemas ──────────────────────────────────────────
+# 鈹€鈹€ Phase 2: Repair schemas 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
 
 
 class RepairTicketCreate(BaseModel):
@@ -544,7 +544,7 @@ class RepairStatsResponse(BaseModel):
     by_priority: dict[str, int]
 
 
-# ── Phase 2: Asset schemas ───────────────────────────────────────────
+# 鈹€鈹€ Phase 2: Asset schemas 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
 
 
 class AssetItemCreate(BaseModel):
@@ -607,7 +607,7 @@ class AssetStatsResponse(BaseModel):
     borrowed_count: int
 
 
-# ── Phase 2: OA schemas ──────────────────────────────────────────────
+# 鈹€鈹€ Phase 2: OA schemas 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
 
 
 class OaFlowCreate(BaseModel):
@@ -671,7 +671,7 @@ class OaStatsResponse(BaseModel):
     by_type: dict[str, int]
 
 
-# ── Phase 2: Enterprise subsystem workbench schemas ──────────────────
+# 鈹€鈹€ Phase 2: Enterprise subsystem workbench schemas 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
 
 
 class EnterpriseSubsystemRecordsResponse(BaseModel):
@@ -682,7 +682,7 @@ class EnterpriseSubsystemRecordsResponse(BaseModel):
     columns: list[str]
 
 
-# ── Phase 3: HR schemas ──────────────────────────────────────────────
+# 鈹€鈹€ Phase 3: HR schemas 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
 
 
 class HrRequestCreate(BaseModel):
@@ -748,7 +748,7 @@ class HrStatsResponse(BaseModel):
     by_type: dict[str, int]
 
 
-# ── Phase 3: Finance schemas ──────────────────────────────────────────
+# 鈹€鈹€ Phase 3: Finance schemas 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
 
 
 class FinanceClaimCreate(BaseModel):
@@ -859,9 +859,9 @@ class FinanceBudgetStatsResponse(BaseModel):
     by_category: dict[str, int]
 
 
-# ═══════════════════════════════════════════════════════════════════════════
-# Phase 4: Website (网站群) schemas
-# ═══════════════════════════════════════════════════════════════════════════
+# 鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺?
+# Phase 4: Website (缃戠珯缇? schemas
+# 鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺?
 
 
 class CmsSiteCreate(BaseModel):
@@ -911,9 +911,9 @@ class CmsSiteStatsResponse(BaseModel):
     by_category: dict[str, int]
 
 
-# ═══════════════════════════════════════════════════════════════════════════
-# Phase 4: Estate (房产管理) schemas
-# ═══════════════════════════════════════════════════════════════════════════
+# 鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺?
+# Phase 4: Estate (鎴夸骇绠＄悊) schemas
+# 鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺?
 
 
 class EstateSpaceCreate(BaseModel):
@@ -971,9 +971,9 @@ class EstateSpaceStatsResponse(BaseModel):
     by_status: dict[str, int]
 
 
-# ═══════════════════════════════════════════════════════════════════════════
-# Phase 4: Employment (就业系统) schemas
-# ═══════════════════════════════════════════════════════════════════════════
+# 鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺?
+# Phase 4: Employment (灏变笟绯荤粺) schemas
+# 鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺?
 
 
 class JobPostingCreate(BaseModel):

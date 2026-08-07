@@ -1,4 +1,4 @@
-from copy import deepcopy
+﻿from copy import deepcopy
 from contextlib import contextmanager
 from datetime import datetime, timezone
 import json
@@ -36,7 +36,7 @@ tasks_table = Table(
     Column("overdue_notified_at", String(32), nullable=True),
     Column("created_at", String(32), nullable=True),
     Column("updated_at", String(32), nullable=True),
-    # ── RBAC data-attribution columns ────────────────────────────
+    # 閳光偓閳光偓 RBAC data-attribution columns 閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓
     Column("org_id", String(64), nullable=True),
     Column("department_id", String(64), nullable=True),
     Column("owner_id", Integer, nullable=True),
@@ -56,7 +56,7 @@ events_table = Table(
     Column("status", String(32), nullable=True),
     Column("created_at", String(32), nullable=True),
     Column("updated_at", String(32), nullable=True),
-    # ── RBAC data-attribution columns ────────────────────────────
+    # 閳光偓閳光偓 RBAC data-attribution columns 閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓
     Column("org_id", String(64), nullable=True),
     Column("department_id", String(64), nullable=True),
     Column("owner_id", Integer, nullable=True),
@@ -90,7 +90,7 @@ knowledge_mappings_table = Table(
     Column("last_imported_at", String(32), nullable=True),
     Column("stale", Boolean, nullable=False, default=False),
     Column("updated_at", String(32), nullable=False),
-    # ── Phase 4: RBAC data-attribution columns ──────────────────
+    # 閳光偓閳光偓 Phase 4: RBAC data-attribution columns 閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓
     Column("org_id", String(64), nullable=True),
     Column("department_id", String(64), nullable=True),
     Column("owner_id", Integer, nullable=True),
@@ -120,7 +120,7 @@ chat_sessions_table = Table(
     metadata,
     Column("id", String(64), primary_key=True),
     Column("title", String(255), nullable=False, default=""),
-    # ── Phase 4: user-level data isolation ─────────────────────
+    # 閳光偓閳光偓 Phase 4: user-level data isolation 閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓
     Column("user_id", Integer, nullable=True),
     Column("status", String(32), nullable=True),
     Column("created_at", String(32), nullable=False),
@@ -384,7 +384,7 @@ oa_approval_records_table = Table(
     Column("created_at", String(32), nullable=False),
 )
 
-# ── Phase 3: HR & Finance ───────────────────────────────────────────
+# 閳光偓閳光偓 Phase 3: HR & Finance 閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓
 
 hr_requests_table = Table(
     "hr_requests",
@@ -463,7 +463,7 @@ finance_approval_records_table = Table(
     Column("created_at", String(32), nullable=False),
 )
 
-# ── Phase 4 T17: Website, Estate, Employment ───────────────────────────
+# 閳光偓閳光偓 Phase 4 T17: Website, Estate, Employment 閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓
 
 cms_sites_table = Table(
     "cms_sites",
@@ -589,39 +589,39 @@ DEFAULT_TASKS: list[dict[str, Any]] = []  # No hardcoded seed tasks
 DEFAULT_EVENTS: list[dict[str, Any]] = []  # No hardcoded seed events
 
 DEFAULT_SHORTCUTS = [
-    ["公告", "通知中心", "app-orange"],
-    ["智能问答", "AI 助手", "app-purple"],
-    ["会议", "会议管理", "app-blue"],
-    ["表单", "流程申请", "app-cyan"],
-    ["轻审批", "审批中心", "app-red"],
-    ["笔记", "我的笔记", "app-orange"],
-    ["汇报", "工作汇报", "app-blue"],
-    ["日历", "日程管理", "app-blue"],
-    ["待办中心", "任务管理", "app-green"],
-    ["融合门户", "门户首页", "app-red"],
+    ["閸忣剙鎲?, "闁氨鐓℃稉顓炵妇", "app-orange"],
+    ["閺呴缚鍏橀梻顔剧摕", "AI 閸斺晜澧?, "app-purple"],
+    ["娴兼俺顔?, "娴兼俺顔呯粻锛勬倞", "app-blue"],
+    ["鐞涖劌宕?, "濞翠胶鈻奸悽瀹狀嚞", "app-cyan"],
+    ["鏉炶顓搁幍?, "鐎光剝澹掓稉顓炵妇", "app-red"],
+    ["缁楁棁顔?, "閹存垹娈戠粭鏃囶唶", "app-orange"],
+    ["濮瑰洦濮?, "瀹搞儰缍斿Ч鍥ㄥГ", "app-blue"],
+    ["閺冦儱宸?, "閺冦儳鈻肩粻锛勬倞", "app-blue"],
+    ["瀵板懎濮欐稉顓炵妇", "娴犺濮熺粻锛勬倞", "app-green"],
+    ["閾诲秴鎮庨梻銊﹀煕", "闂傘劍鍩涙＃鏍€?, "app-red"],
 ]
 
 DEFAULT_SYSTEMS = [
-    # 办公行政类
-    "OA 系统",
-    "督办系统",
-    # 人力组织类
-    "HR 人事",
-    "招聘",
-    "培训",
-    "员工关怀",
-    # 经营业务类
+    # 閸旂偛鍙曠悰灞炬杺缁?
+    "OA 缁崵绮?,
+    "閻絽濮欑化鑽ょ埠",
+    # 娴滃搫濮忕紒鍕矏缁?
+    "HR 娴滆桨绨?,
+    "閹锋稖浠?,
+    "閸╃顔?,
+    "閸涙ê浼愰崗铏偓鈧?,
+    # 缂佸繗鎯€娑撴艾濮熺猾?
     "CRM",
     "ERP",
-    "售后工单",
-    "供应链生产",
-    # 财资后勤 & 支撑类
-    "财务",
-    "固定资产",
-    "厂区物业",
-    "报修",
-    "数据中台",
-    "党建风控",
+    "閸烆喖鎮楀銉ュ礋",
+    "娓氭稑绨查柧鍓ф晸娴?,
+    # 鐠愩垼绁崥搴″珶 & 閺€顖涙嫼缁?
+    "鐠愩垹濮?,
+    "閸ュ搫鐣剧挧鍕獓",
+    "閸樺倸灏悧鈺€绗?,
+    "閹躲儰鎱?,
+    "閺佺増宓佹稉顓炲酱",
+    "閸忔艾缂撴搴㈠付",
 ]
 
 DEFAULT_NEWS: list[dict[str, Any]] = []  # No hardcoded seed news
@@ -647,206 +647,206 @@ _PORTAL_BASE = {
 }
 
 DEFAULT_SUBSYSTEMS = [
-    # 办公行政类
-    ("oa", "OA", "办公行政类", "公文流转、流程审批、通知公告等协同办公一体化平台", "行政管理部", "OA 支持", "app-blue"),
-    ("supervision", "督办", "办公行政类", "重点工作任务分解、进度追踪、责任落实的闭环管理系统", "行政管理部", "综合服务台", "app-blue"),
-    # 人力组织类
-    ("hr", "HR 人事", "人力组织类", "组织架构、入转调离、合同档案、人事基础数据中心", "人力资源部", "人事服务台", "app-green"),
-    ("recruitment", "招聘", "人力组织类", "需求发布、简历筛选、面试安排、录用审批全流程管理", "人力资源部", "招聘服务台", "app-green"),
-    ("training", "培训", "人力组织类", "课程管理、培训计划、学分统计、在线学习与考试", "人力资源部", "培训服务台", "app-green"),
-    ("wellness", "员工关怀", "人力组织类", "生日祝福、节日福利、健康关怀、员工帮助与意见反馈", "人力资源部", "关怀服务台", "app-green"),
-    # 经营业务类
-    ("crm", "CRM", "经营业务类", "客户信息管理、商机追踪、合同管理、销售漏斗分析", "运营管理部", "CRM 支持", "app-orange"),
-    ("erp", "ERP", "经营业务类", "采购、库存、生产计划、质检等企业资源一体化管理", "运营管理部", "ERP 支持", "app-orange"),
-    ("service-desk", "售后工单", "经营业务类", "客户报修、工单分配、服务跟踪、满意度回访闭环", "运营管理部", "售后支持", "app-orange"),
-    ("supply-chain", "供应链生产", "经营业务类", "供应商协同、物料需求、排产调度、物流跟踪管理", "运营管理部", "供应链支持", "app-orange"),
-    # 财资后勤 & 支撑类
-    ("finance", "财务", "财资后勤 & 支撑类", "总账、应收应付、预算管控、财务报表与分析", "后勤保障部", "财务服务台", "app-purple"),
-    ("fixed-assets", "固定资产", "财资后勤 & 支撑类", "资产入库、领用、调拨、盘点、报废全生命周期管理", "后勤保障部", "资产服务台", "app-purple"),
-    ("facility", "厂区物业", "财资后勤 & 支撑类", "厂区空间、设备设施、安保巡查、绿化保洁管理", "后勤保障部", "物业服务台", "app-purple"),
-    ("repair", "报修", "财资后勤 & 支撑类", "设备故障报修、派工、维修记录、备件管理的统一平台", "后勤保障部", "报修服务台", "app-purple"),
-    ("data-portal", "数据中台", "财资后勤 & 支撑类", "数据汇聚、治理、开发、服务的统一数据底座", "后勤保障部", "数据服务台", "app-purple"),
-    ("party", "党建风控", "财资后勤 & 支撑类", "组织生活、党费管理、廉政教育、合规审计与风险预警", "行政管理部", "党建支持", "app-purple"),
+    # 閸旂偛鍙曠悰灞炬杺缁?
+    ("oa", "OA", "閸旂偛鍙曠悰灞炬杺缁?, "閸忣剚鏋冨ù浣芥祮閵嗕焦绁︾粙瀣吀閹靛箍鈧線鈧氨鐓￠崗顒€鎲＄粵澶婂礂閸氬苯濮欓崗顑跨娴ｆ挸瀵查獮鍐插酱", "鐞涘本鏂傜粻锛勬倞闁?, "OA 閺€顖涘瘮", "app-blue"),
+    ("supervision", "閻絽濮?, "閸旂偛鍙曠悰灞炬杺缁?, "闁插秶鍋ｅ銉ょ稊娴犺濮熼崚鍡毿掗妴浣界箻鎼达箒鎷烽煪顏傗偓浣界煑娴犳槒鎯ょ€圭偟娈戦梻顓犲箚缁狅紕鎮婄化鑽ょ埠", "鐞涘本鏂傜粻锛勬倞闁?, "缂佺厧鎮庨張宥呭閸?, "app-blue"),
+    # 娴滃搫濮忕紒鍕矏缁?
+    ("hr", "HR 娴滆桨绨?, "娴滃搫濮忕紒鍕矏缁?, "缂佸嫮绮愰弸鑸电€妴浣稿弳鏉烆剝鐨熺粋姹団偓浣告値閸氬本銆傚鍫涒偓浣锋眽娴滃鐔€绾偓閺佺増宓佹稉顓炵妇", "娴滃搫濮忕挧鍕爱闁?, "娴滆桨绨ㄩ張宥呭閸?, "app-green"),
+    ("recruitment", "閹锋稖浠?, "娴滃搫濮忕紒鍕矏缁?, "闂団偓濮瑰倸褰傜敮鍐︹偓浣虹暆閸樺棛鐡柅澶堚偓渚€娼扮拠鏇炵暔閹烘帇鈧礁缍嶉悽銊ヮ吀閹电懓鍙忓ù浣衡柤缁狅紕鎮?, "娴滃搫濮忕挧鍕爱闁?, "閹锋稖浠掗張宥呭閸?, "app-green"),
+    ("training", "閸╃顔?, "娴滃搫濮忕紒鍕矏缁?, "鐠囧墽鈻肩粻锛勬倞閵嗕礁鐓跨拋顓☆吀閸掓帇鈧礁顒熼崚鍡欑埠鐠伮扳偓浣告躬缁惧灝顒熸稊鐘辩瑢閼板啳鐦?, "娴滃搫濮忕挧鍕爱闁?, "閸╃顔勯張宥呭閸?, "app-green"),
+    ("wellness", "閸涙ê浼愰崗铏偓鈧?, "娴滃搫濮忕紒鍕矏缁?, "閻㈢喐妫╃粊婵堫洿閵嗕浇濡弮銉ь洿閸掆斂鈧礁浠存惔宄板彠閹偓閵嗕礁鎲冲銉ュ簻閸斺晙绗岄幇蹇氼潌閸欏秹顩?, "娴滃搫濮忕挧鍕爱闁?, "閸忚櫕鈧偓閺堝秴濮熼崣?, "app-green"),
+    # 缂佸繗鎯€娑撴艾濮熺猾?
+    ("crm", "CRM", "缂佸繗鎯€娑撴艾濮熺猾?, "鐎广垺鍩涙穱鈩冧紖缁狅紕鎮婇妴浣告櫌閺堥缚鎷烽煪顏傗偓浣告値閸氬瞼顓搁悶鍡愨偓渚€鏀㈤崬顔界础閺傛鍨庨弸?, "鏉╂劘鎯€缁狅紕鎮婇柈?, "CRM 閺€顖涘瘮", "app-orange"),
+    ("erp", "ERP", "缂佸繗鎯€娑撴艾濮熺猾?, "闁插洩鍠橀妴浣哥氨鐎涙ǜ鈧胶鏁撴禍褑顓搁崚鎺嬧偓浣藉窛濡偓缁涘绱掓稉姘崇カ濠ф劒绔存担鎾冲缁狅紕鎮?, "鏉╂劘鎯€缁狅紕鎮婇柈?, "ERP 閺€顖涘瘮", "app-orange"),
+    ("service-desk", "閸烆喖鎮楀銉ュ礋", "缂佸繗鎯€娑撴艾濮熺猾?, "鐎广垺鍩涢幎銉ゆ叏閵嗕礁浼愰崡鏇炲瀻闁板秲鈧焦婀囬崝陇绐￠煪顏傗偓浣瑰姬閹板繐瀹抽崶鐐额問闂傤厾骞?, "鏉╂劘鎯€缁狅紕鎮婇柈?, "閸烆喖鎮楅弨顖涘瘮", "app-orange"),
+    ("supply-chain", "娓氭稑绨查柧鍓ф晸娴?, "缂佸繗鎯€娑撴艾濮熺猾?, "娓氭稑绨查崯鍡楀礂閸氬被鈧胶澧块弬娆撴付濮瑰倶鈧焦甯撴禍褑鐨熸惔锔衡偓浣哄⒖濞翠浇绐￠煪顏嗩吀閻?, "鏉╂劘鎯€缁狅紕鎮婇柈?, "娓氭稑绨查柧鐐暜閹?, "app-orange"),
+    # 鐠愩垼绁崥搴″珶 & 閺€顖涙嫼缁?
+    ("finance", "鐠愩垹濮?, "鐠愩垼绁崥搴″珶 & 閺€顖涙嫼缁?, "閹槒澶勯妴浣哥安閺€璺虹安娴犳ǜ鈧線顣╃粻妤冾吀閹貉佲偓浣藉偍閸斺剝濮ょ悰銊ょ瑢閸掑棙鐎?, "閸氬骸瀚熸穱婵嬫闁?, "鐠愩垹濮熼張宥呭閸?, "app-purple"),
+    ("fixed-assets", "閸ュ搫鐣剧挧鍕獓", "鐠愩垼绁崥搴″珶 & 閺€顖涙嫼缁?, "鐠у嫪楠囬崗銉ョ氨閵嗕線顣悽銊ｂ偓浣界殶閹枫劊鈧胶娲忛悙骞库偓浣瑰Г鎼寸喎鍙忛悽鐔锋嚒閸涖劍婀＄粻锛勬倞", "閸氬骸瀚熸穱婵嬫闁?, "鐠у嫪楠囬張宥呭閸?, "app-purple"),
+    ("facility", "閸樺倸灏悧鈺€绗?, "鐠愩垼绁崥搴″珶 & 閺€顖涙嫼缁?, "閸樺倸灏粚娲？閵嗕浇顔曟径鍥啎閺傚鈧礁鐣ㄦ穱婵嗚窗閺屻儯鈧胶璞㈤崠鏍︾箽濞蹭胶顓搁悶?, "閸氬骸瀚熸穱婵嬫闁?, "閻椻晙绗熼張宥呭閸?, "app-purple"),
+    ("repair", "閹躲儰鎱?, "鐠愩垼绁崥搴″珶 & 閺€顖涙嫼缁?, "鐠佹儳顦弫鍛存閹躲儰鎱ㄩ妴浣规烦瀹搞儯鈧胶娣穱顔款唶瑜版洏鈧礁顦禒鍓侇吀閻炲棛娈戠紒鐔剁楠炲啿褰?, "閸氬骸瀚熸穱婵嬫闁?, "閹躲儰鎱ㄩ張宥呭閸?, "app-purple"),
+    ("data-portal", "閺佺増宓佹稉顓炲酱", "鐠愩垼绁崥搴″珶 & 閺€顖涙嫼缁?, "閺佺増宓佸Ч鍥粵閵嗕焦涓嶉悶鍡愨偓浣哥磻閸欐垯鈧焦婀囬崝锛勬畱缂佺喍绔撮弫鐗堝祦鎼存洖楠?, "閸氬骸瀚熸穱婵嬫闁?, "閺佺増宓侀張宥呭閸?, "app-purple"),
+    ("party", "閸忔艾缂撴搴㈠付", "鐠愩垼绁崥搴″珶 & 閺€顖涙嫼缁?, "缂佸嫮绮愰悽鐔告た閵嗕礁鍘风拹鍦吀閻炲棎鈧礁绮旈弨鎸庢殌閼插眰鈧礁鎮庣憴鍕吀鐠佲€茬瑢妞嬪酣娅撴０鍕劅", "鐞涘本鏂傜粻锛勬倞闁?, "閸忔艾缂撻弨顖涘瘮", "app-purple"),
 ]
 
 DEFAULT_SUBSYSTEM_ACTIONS = {
     "oa": [
-        {"label": "待办流程", "kind": "records"},
-        {"label": "文件流转", "kind": "documents"},
-        {"label": "办公通知", "kind": "notices"},
+        {"label": "瀵板懎濮欏ù浣衡柤", "kind": "records"},
+        {"label": "閺傚洣娆㈠ù浣芥祮", "kind": "documents"},
+        {"label": "閸旂偛鍙曢柅姘辩叀", "kind": "notices"},
     ],
     "supervision": [
-        {"label": "督办事项", "kind": "records"},
-        {"label": "责任清单", "kind": "records"},
-        {"label": "办理进度", "kind": "dashboard"},
+        {"label": "閻絽濮欐禍瀣€?, "kind": "records"},
+        {"label": "鐠愶絼鎹㈠〒鍛礋", "kind": "records"},
+        {"label": "閸旂偟鎮婃潻娑樺", "kind": "dashboard"},
     ],
     "hr": [
-        {"label": "人员档案", "kind": "records"},
-        {"label": "请假考勤", "kind": "records"},
-        {"label": "证明申请", "kind": "records"},
+        {"label": "娴滃搫鎲冲锝嗩攳", "kind": "records"},
+        {"label": "鐠囧嘲浜ｉ懓鍐ㄥ珶", "kind": "records"},
+        {"label": "鐠囦焦妲戦悽瀹狀嚞", "kind": "records"},
     ],
     "recruitment": [
-        {"label": "招聘需求", "kind": "records"},
-        {"label": "简历筛选", "kind": "records"},
-        {"label": "录用审批", "kind": "records"},
+        {"label": "閹锋稖浠掗棁鈧Ч?, "kind": "records"},
+        {"label": "缁犫偓閸樺棛鐡柅?, "kind": "records"},
+        {"label": "瑜版洜鏁ょ€光剝澹?, "kind": "records"},
     ],
     "training": [
-        {"label": "培训计划", "kind": "records"},
-        {"label": "在线学习", "kind": "records"},
-        {"label": "学分统计", "kind": "dashboard"},
+        {"label": "閸╃顔勭拋鈥冲灊", "kind": "records"},
+        {"label": "閸︺劎鍤庣€涳缚绡?, "kind": "records"},
+        {"label": "鐎涳箑鍨庣紒鐔活吀", "kind": "dashboard"},
     ],
     "wellness": [
-        {"label": "活动管理", "kind": "records"},
-        {"label": "福利发放", "kind": "records"},
-        {"label": "意见反馈", "kind": "records"},
+        {"label": "濞茶濮╃粻锛勬倞", "kind": "records"},
+        {"label": "缁傚繐鍩勯崣鎴炴杹", "kind": "records"},
+        {"label": "閹板繗顫嗛崣宥夘洯", "kind": "records"},
     ],
     "crm": [
-        {"label": "客户管理", "kind": "records"},
-        {"label": "商机追踪", "kind": "records"},
-        {"label": "销售分析", "kind": "dashboard"},
+        {"label": "鐎广垺鍩涚粻锛勬倞", "kind": "records"},
+        {"label": "閸熷棙婧€鏉╁€熼嚋", "kind": "records"},
+        {"label": "闁库偓閸烆喖鍨庨弸?, "kind": "dashboard"},
     ],
     "erp": [
-        {"label": "采购管理", "kind": "records"},
-        {"label": "库存管理", "kind": "records"},
-        {"label": "生产计划", "kind": "records"},
+        {"label": "闁插洩鍠樼粻锛勬倞", "kind": "records"},
+        {"label": "鎼存挸鐡ㄧ粻锛勬倞", "kind": "records"},
+        {"label": "閻㈢喍楠囩拋鈥冲灊", "kind": "records"},
     ],
     "service-desk": [
-        {"label": "工单列表", "kind": "records"},
-        {"label": "服务跟踪", "kind": "records"},
-        {"label": "满意度评价", "kind": "dashboard"},
+        {"label": "瀹搞儱宕熼崚妤勩€?, "kind": "records"},
+        {"label": "閺堝秴濮熺捄鐔婚嚋", "kind": "records"},
+        {"label": "濠娾剝鍓版惔锕佺槑娴?, "kind": "dashboard"},
     ],
     "supply-chain": [
-        {"label": "供应商管理", "kind": "records"},
-        {"label": "物料需求", "kind": "records"},
-        {"label": "物流跟踪", "kind": "records"},
+        {"label": "娓氭稑绨查崯鍡欘吀閻?, "kind": "records"},
+        {"label": "閻椻晜鏋￠棁鈧Ч?, "kind": "records"},
+        {"label": "閻椻晜绁︾捄鐔婚嚋", "kind": "records"},
     ],
     "finance": [
-        {"label": "报销管理", "kind": "records"},
-        {"label": "预算管控", "kind": "records"},
-        {"label": "财务报表", "kind": "dashboard"},
+        {"label": "閹躲儵鏀㈢粻锛勬倞", "kind": "records"},
+        {"label": "妫板嫮鐣荤粻鈩冨付", "kind": "records"},
+        {"label": "鐠愩垹濮熼幎銉ㄣ€?, "kind": "dashboard"},
     ],
     "fixed-assets": [
-        {"label": "资产台账", "kind": "records"},
-        {"label": "领用调拨", "kind": "records"},
-        {"label": "盘点管理", "kind": "records"},
+        {"label": "鐠у嫪楠囬崣鎷屽", "kind": "records"},
+        {"label": "妫板棛鏁ょ拫鍐╁", "kind": "records"},
+        {"label": "閻╂鍋ｇ粻锛勬倞", "kind": "records"},
     ],
     "facility": [
-        {"label": "空间管理", "kind": "records"},
-        {"label": "设备设施", "kind": "records"},
-        {"label": "巡查记录", "kind": "records"},
+        {"label": "缁屾椽妫跨粻锛勬倞", "kind": "records"},
+        {"label": "鐠佹儳顦拋鐐煢", "kind": "records"},
+        {"label": "瀹糕剝鐓＄拋鏉跨秿", "kind": "records"},
     ],
     "repair": [
-        {"label": "新建报修", "kind": "records"},
-        {"label": "工单列表", "kind": "records"},
-        {"label": "服务评价", "kind": "dashboard"},
+        {"label": "閺傛澘缂撻幎銉ゆ叏", "kind": "records"},
+        {"label": "瀹搞儱宕熼崚妤勩€?, "kind": "records"},
+        {"label": "閺堝秴濮熺拠鍕幆", "kind": "dashboard"},
     ],
     "data-portal": [
-        {"label": "指标看板", "kind": "dashboard"},
-        {"label": "专题数据", "kind": "records"},
-        {"label": "数据资源", "kind": "resources"},
+        {"label": "閹稿洦鐖ｉ惇瀣緲", "kind": "dashboard"},
+        {"label": "娑撴捇顣介弫鐗堝祦", "kind": "records"},
+        {"label": "閺佺増宓佺挧鍕爱", "kind": "resources"},
     ],
     "party": [
-        {"label": "组织生活", "kind": "records"},
-        {"label": "党费管理", "kind": "records"},
-        {"label": "风控审计", "kind": "records"},
+        {"label": "缂佸嫮绮愰悽鐔告た", "kind": "records"},
+        {"label": "閸忔俺鍨傜粻锛勬倞", "kind": "records"},
+        {"label": "妞嬪孩甯剁€孤ゎ吀", "kind": "records"},
     ],
 }
 
 DEFAULT_MENU_ITEMS: dict[str, list[dict[str, Any]]] = {
-    # ── 办公行政类 ──────────────────────────────────────────────
+    # 閳光偓閳光偓 閸旂偛鍙曠悰灞炬杺缁?閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓
     "oa": [
-        {"section": "流程中心", "items": [
-            {"code": "todo", "label": "待办流程", "icon": "i-clock", "href": "#/subsystem/oa/flows/todo"},
-            {"code": "done", "label": "已办流程", "icon": "i-check", "href": "#/subsystem/oa/flows/done"},
-            {"code": "my-flows", "label": "我发起的", "icon": "i-user", "href": "#/subsystem/oa/flows/my"},
+        {"section": "濞翠胶鈻兼稉顓炵妇", "items": [
+            {"code": "todo", "label": "瀵板懎濮欏ù浣衡柤", "icon": "i-clock", "href": "#/subsystem/oa/flows/todo"},
+            {"code": "done", "label": "瀹告彃濮欏ù浣衡柤", "icon": "i-check", "href": "#/subsystem/oa/flows/done"},
+            {"code": "my-flows", "label": "閹存垵褰傜挧椋庢畱", "icon": "i-user", "href": "#/subsystem/oa/flows/my"},
         ]},
-        {"section": "文件管理", "items": [
-            {"code": "files", "label": "文件流转", "icon": "i-file", "href": "#/subsystem/oa/files"},
-            {"code": "docs", "label": "公文管理", "icon": "i-doc", "href": "#/subsystem/oa/docs"},
+        {"section": "閺傚洣娆㈢粻锛勬倞", "items": [
+            {"code": "files", "label": "閺傚洣娆㈠ù浣芥祮", "icon": "i-file", "href": "#/subsystem/oa/files"},
+            {"code": "docs", "label": "閸忣剚鏋冪粻锛勬倞", "icon": "i-doc", "href": "#/subsystem/oa/docs"},
         ]},
-        {"section": "办公辅助", "items": [
-            {"code": "meetings", "label": "会议管理", "icon": "i-calendar", "href": "#/subsystem/oa/meetings"},
-            {"code": "notices", "label": "通知公告", "icon": "i-bell", "href": "#/subsystem/oa/notices"},
+        {"section": "閸旂偛鍙曟潏鍛И", "items": [
+            {"code": "meetings", "label": "娴兼俺顔呯粻锛勬倞", "icon": "i-calendar", "href": "#/subsystem/oa/meetings"},
+            {"code": "notices", "label": "闁氨鐓￠崗顒€鎲?, "icon": "i-bell", "href": "#/subsystem/oa/notices"},
         ]},
     ],
     "supervision": [
-        {"section": "督办事项", "items": [
-            {"code": "items", "label": "全部事项", "icon": "i-list", "href": "#/subsystem/supervision/items"},
-            {"code": "new-item", "label": "新建督办", "icon": "i-plus", "href": "#/subsystem/supervision/items/new"},
-            {"code": "my-items", "label": "我的督办", "icon": "i-user", "href": "#/subsystem/supervision/items/my"},
+        {"section": "閻絽濮欐禍瀣€?, "items": [
+            {"code": "items", "label": "閸忋劑鍎存禍瀣€?, "icon": "i-list", "href": "#/subsystem/supervision/items"},
+            {"code": "new-item", "label": "閺傛澘缂撻惈锝呭", "icon": "i-plus", "href": "#/subsystem/supervision/items/new"},
+            {"code": "my-items", "label": "閹存垹娈戦惈锝呭", "icon": "i-user", "href": "#/subsystem/supervision/items/my"},
         ]},
-        {"section": "责任清单", "items": [
-            {"code": "units", "label": "责任单位", "icon": "i-grid", "href": "#/subsystem/supervision/units"},
-            {"code": "progress", "label": "办理进度", "icon": "i-chart", "href": "#/subsystem/supervision/progress"},
+        {"section": "鐠愶絼鎹㈠〒鍛礋", "items": [
+            {"code": "units", "label": "鐠愶絼鎹㈤崡鏇氱秴", "icon": "i-grid", "href": "#/subsystem/supervision/units"},
+            {"code": "progress", "label": "閸旂偟鎮婃潻娑樺", "icon": "i-chart", "href": "#/subsystem/supervision/progress"},
         ]},
-        {"section": "统计分析", "items": [
-            {"code": "stats", "label": "办结统计", "icon": "i-bar-chart", "href": "#/subsystem/supervision/stats"},
-            {"code": "overdue", "label": "逾期分析", "icon": "i-alert", "href": "#/subsystem/supervision/overdue"},
+        {"section": "缂佺喕顓搁崚鍡樼€?, "items": [
+            {"code": "stats", "label": "閸旂偟绮ㄧ紒鐔活吀", "icon": "i-bar-chart", "href": "#/subsystem/supervision/stats"},
+            {"code": "overdue", "label": "闁偓婀￠崚鍡樼€?, "icon": "i-alert", "href": "#/subsystem/supervision/overdue"},
         ]},
     ],
-    # ── 人力组织类 ──────────────────────────────────────────────
+    # 閳光偓閳光偓 娴滃搫濮忕紒鍕矏缁?閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓
     "hr": [
-        {"section": "证明申请", "items": [
-            {"code": "cert-employment", "label": "在职证明", "icon": "i-file", "href": "#/subsystem/hr/certificates/employment"},
-            {"code": "cert-income", "label": "收入证明", "icon": "i-file", "href": "#/subsystem/hr/certificates/income"},
-            {"code": "cert-other", "label": "其他证明", "icon": "i-file", "href": "#/subsystem/hr/certificates/other"},
+        {"section": "鐠囦焦妲戦悽瀹狀嚞", "items": [
+            {"code": "cert-employment", "label": "閸︺劏浜寸拠浣规", "icon": "i-file", "href": "#/subsystem/hr/certificates/employment"},
+            {"code": "cert-income", "label": "閺€璺哄弳鐠囦焦妲?, "icon": "i-file", "href": "#/subsystem/hr/certificates/income"},
+            {"code": "cert-other", "label": "閸忔湹绮拠浣规", "icon": "i-file", "href": "#/subsystem/hr/certificates/other"},
         ]},
-        {"section": "考勤请假", "items": [
-            {"code": "leave", "label": "请假申请", "icon": "i-edit", "href": "#/subsystem/hr/leave"},
-            {"code": "attendance", "label": "考勤记录", "icon": "i-list", "href": "#/subsystem/hr/attendance"},
-            {"code": "overtime", "label": "加班申请", "icon": "i-clock", "href": "#/subsystem/hr/overtime"},
+        {"section": "閼板啫瀚熺拠宄颁海", "items": [
+            {"code": "leave", "label": "鐠囧嘲浜ｉ悽瀹狀嚞", "icon": "i-edit", "href": "#/subsystem/hr/leave"},
+            {"code": "attendance", "label": "閼板啫瀚熺拋鏉跨秿", "icon": "i-list", "href": "#/subsystem/hr/attendance"},
+            {"code": "overtime", "label": "閸旂姷褰悽瀹狀嚞", "icon": "i-clock", "href": "#/subsystem/hr/overtime"},
         ]},
-        {"section": "人员信息", "items": [
-            {"code": "staff", "label": "人员档案", "icon": "i-users", "href": "#/subsystem/hr/staff"},
-            {"code": "dept-info", "label": "部门信息", "icon": "i-grid", "href": "#/subsystem/hr/departments"},
+        {"section": "娴滃搫鎲虫穱鈩冧紖", "items": [
+            {"code": "staff", "label": "娴滃搫鎲冲锝嗩攳", "icon": "i-users", "href": "#/subsystem/hr/staff"},
+            {"code": "dept-info", "label": "闁劑妫穱鈩冧紖", "icon": "i-grid", "href": "#/subsystem/hr/departments"},
         ]},
     ],
-    # recruitment, training, wellness — menu items deferred
-    # ── 财资后勤 & 支撑类 ──────────────────────────────────────
+    # recruitment, training, wellness 閳?menu items deferred
+    # 閳光偓閳光偓 鐠愩垼绁崥搴″珶 & 閺€顖涙嫼缁?閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓
     "finance": [
-        {"section": "报销管理", "items": [
-            {"code": "claims", "label": "报销申请", "icon": "i-edit", "href": "#/subsystem/finance/claims"},
-            {"code": "my-claims", "label": "我的报销", "icon": "i-user", "href": "#/subsystem/finance/claims/my"},
-            {"code": "claim-approve", "label": "报销审批", "icon": "i-check", "href": "#/subsystem/finance/claims/approve"},
+        {"section": "閹躲儵鏀㈢粻锛勬倞", "items": [
+            {"code": "claims", "label": "閹躲儵鏀㈤悽瀹狀嚞", "icon": "i-edit", "href": "#/subsystem/finance/claims"},
+            {"code": "my-claims", "label": "閹存垹娈戦幎銉╂敘", "icon": "i-user", "href": "#/subsystem/finance/claims/my"},
+            {"code": "claim-approve", "label": "閹躲儵鏀㈢€光剝澹?, "icon": "i-check", "href": "#/subsystem/finance/claims/approve"},
         ]},
-        {"section": "预算管理", "items": [
-            {"code": "budget", "label": "预算项目", "icon": "i-list", "href": "#/subsystem/finance/budgets"},
-            {"code": "budget-exec", "label": "预算执行", "icon": "i-chart", "href": "#/subsystem/finance/budgets/exec"},
+        {"section": "妫板嫮鐣荤粻锛勬倞", "items": [
+            {"code": "budget", "label": "妫板嫮鐣绘い鍦窗", "icon": "i-list", "href": "#/subsystem/finance/budgets"},
+            {"code": "budget-exec", "label": "妫板嫮鐣婚幍褑顢?, "icon": "i-chart", "href": "#/subsystem/finance/budgets/exec"},
         ]},
-        {"section": "材料清单", "items": [
-            {"code": "materials", "label": "费用材料", "icon": "i-file", "href": "#/subsystem/finance/materials"},
-            {"code": "receipts", "label": "票据管理", "icon": "i-doc", "href": "#/subsystem/finance/receipts"},
+        {"section": "閺夋劖鏋″〒鍛礋", "items": [
+            {"code": "materials", "label": "鐠愬湱鏁ら弶鎰灐", "icon": "i-file", "href": "#/subsystem/finance/materials"},
+            {"code": "receipts", "label": "缁併劍宓佺粻锛勬倞", "icon": "i-doc", "href": "#/subsystem/finance/receipts"},
         ]},
     ],
     "repair": [
-        {"section": "工单管理", "items": [
-            {"code": "tickets", "label": "全部工单", "icon": "i-list", "href": "#/subsystem/repair/tickets"},
-            {"code": "new-ticket", "label": "新建报修", "icon": "i-plus", "href": "#/subsystem/repair/tickets/new"},
-            {"code": "my-tickets", "label": "我的报修", "icon": "i-user", "href": "#/subsystem/repair/tickets/my"},
+        {"section": "瀹搞儱宕熺粻锛勬倞", "items": [
+            {"code": "tickets", "label": "閸忋劑鍎村銉ュ礋", "icon": "i-list", "href": "#/subsystem/repair/tickets"},
+            {"code": "new-ticket", "label": "閺傛澘缂撻幎銉ゆ叏", "icon": "i-plus", "href": "#/subsystem/repair/tickets/new"},
+            {"code": "my-tickets", "label": "閹存垹娈戦幎銉ゆ叏", "icon": "i-user", "href": "#/subsystem/repair/tickets/my"},
         ]},
-        {"section": "派单处理", "items": [
-            {"code": "assign", "label": "待派工单", "icon": "i-send", "href": "#/subsystem/repair/tickets/assign"},
-            {"code": "processing", "label": "处理中", "icon": "i-clock", "href": "#/subsystem/repair/tickets/processing"},
+        {"section": "濞叉儳宕熸径鍕倞", "items": [
+            {"code": "assign", "label": "瀵板懏娣冲銉ュ礋", "icon": "i-send", "href": "#/subsystem/repair/tickets/assign"},
+            {"code": "processing", "label": "婢跺嫮鎮婃稉?, "icon": "i-clock", "href": "#/subsystem/repair/tickets/processing"},
         ]},
-        {"section": "统计评价", "items": [
-            {"code": "stats", "label": "工单统计", "icon": "i-chart", "href": "#/subsystem/repair/stats"},
-            {"code": "feedback", "label": "服务评价", "icon": "i-star", "href": "#/subsystem/repair/feedback"},
+        {"section": "缂佺喕顓哥拠鍕幆", "items": [
+            {"code": "stats", "label": "瀹搞儱宕熺紒鐔活吀", "icon": "i-chart", "href": "#/subsystem/repair/stats"},
+            {"code": "feedback", "label": "閺堝秴濮熺拠鍕幆", "icon": "i-star", "href": "#/subsystem/repair/feedback"},
         ]},
     ],
     "data-portal": [
-        {"section": "数据看板", "items": [
-            {"code": "overview", "label": "数据概览", "icon": "i-chart", "href": "#/subsystem/data-portal/overview"},
-            {"code": "metrics", "label": "指标详情", "icon": "i-list", "href": "#/subsystem/data-portal/metrics"},
-            {"code": "trends", "label": "趋势分析", "icon": "i-bar-chart", "href": "#/subsystem/data-portal/trends"},
+        {"section": "閺佺増宓侀惇瀣緲", "items": [
+            {"code": "overview", "label": "閺佺増宓佸鍌濐潔", "icon": "i-chart", "href": "#/subsystem/data-portal/overview"},
+            {"code": "metrics", "label": "閹稿洦鐖ｇ拠锔藉剰", "icon": "i-list", "href": "#/subsystem/data-portal/metrics"},
+            {"code": "trends", "label": "鐡掑濞嶉崚鍡樼€?, "icon": "i-bar-chart", "href": "#/subsystem/data-portal/trends"},
         ]},
-        {"section": "专题数据", "items": [
-            {"code": "tickets-data", "label": "工单数据", "icon": "i-file", "href": "#/subsystem/data-portal/tickets"},
-            {"code": "assets-data", "label": "资产数据", "icon": "i-file", "href": "#/subsystem/data-portal/assets"},
-            {"code": "flows-data", "label": "流程数据", "icon": "i-file", "href": "#/subsystem/data-portal/flows"},
+        {"section": "娑撴捇顣介弫鐗堝祦", "items": [
+            {"code": "tickets-data", "label": "瀹搞儱宕熼弫鐗堝祦", "icon": "i-file", "href": "#/subsystem/data-portal/tickets"},
+            {"code": "assets-data", "label": "鐠у嫪楠囬弫鐗堝祦", "icon": "i-file", "href": "#/subsystem/data-portal/assets"},
+            {"code": "flows-data", "label": "濞翠胶鈻奸弫鐗堝祦", "icon": "i-file", "href": "#/subsystem/data-portal/flows"},
         ]},
-        {"section": "数据资源", "items": [
-            {"code": "exports", "label": "数据导出", "icon": "i-download", "href": "#/subsystem/data-portal/exports"},
-            {"code": "reports", "label": "报表配置", "icon": "i-settings", "href": "#/subsystem/data-portal/reports"},
+        {"section": "閺佺増宓佺挧鍕爱", "items": [
+            {"code": "exports", "label": "閺佺増宓佺€电厧鍤?, "icon": "i-download", "href": "#/subsystem/data-portal/exports"},
+            {"code": "reports", "label": "閹躲儴銆冮柊宥囩枂", "icon": "i-settings", "href": "#/subsystem/data-portal/reports"},
         ]},
     ],
 }
@@ -860,7 +860,7 @@ DEFAULT_SUBSYSTEM_APPROVAL_CHAINS: dict[str, list[dict[str, Any]]] = {
     "data-portal": [{"role": "org_admin", "level": 1}],
 }
 
-# Shell subsystems — disabled for not-yet-implemented systems.
+# Shell subsystems 閳?disabled for not-yet-implemented systems.
 # Active internal subsystems: oa, supervision, hr, finance, repair, data-portal
 SHELL_SUBSYSTEM_ENTRY = {
     "recruitment":      ("disabled", None),
@@ -875,12 +875,11 @@ SHELL_SUBSYSTEM_ENTRY = {
     "party":            ("disabled", None),
 }
 
-DEFAULT_NEWS: list[dict[str, Any]] = []  # No hardcoded seed news
 
 
-# ═════════════════════════════════════════════════════════════════════
+# 閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳?
 # Helpers
-# ═════════════════════════════════════════════════════════════════════
+# 閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳?
 
 
 def _alembic_has_run(engine: Any) -> bool:
@@ -899,9 +898,9 @@ def _alembic_has_run(engine: Any) -> bool:
         return False
 
 
-# ═════════════════════════════════════════════════════════════════════
+# 閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳?
 # PortalStore
-# ═════════════════════════════════════════════════════════════════════
+# 閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳?
 
 
 class PortalStore(
@@ -919,7 +918,7 @@ class PortalStore(
     EmploymentMixin,
     NotificationMixin,
 ):
-    """Unified store singleton — Table definitions + metadata live at module level."""
+    """Unified store singleton 閳?Table definitions + metadata live at module level."""
 
     def __init__(self) -> None:
         super().__init__()  # BaseStore sets self._lock
@@ -950,7 +949,7 @@ class PortalStore(
 
     @contextmanager
     def _session(self) -> Iterator[Session]:
-        """Override BaseStore._session — ensure schema before every session."""
+        """Override BaseStore._session 閳?ensure schema before every session."""
         self._ensure_schema()
         db = get_session_local()()
         try:
@@ -1056,10 +1055,10 @@ class PortalStore(
                     "sort_order": index,
                     "is_featured": index < 6,
                     "common_actions_json": json.dumps(
-                        DEFAULT_SUBSYSTEM_ACTIONS.get(code, [{"label": "查看概览", "kind": "overview"}]),
+                        DEFAULT_SUBSYSTEM_ACTIONS.get(code, [{"label": "閺屻儳婀呭鍌濐潔", "kind": "overview"}]),
                         ensure_ascii=False,
                     ),
-                    "related_resources_json": json.dumps(["制度手册", "服务目录"], ensure_ascii=False),
+                    "related_resources_json": json.dumps(["閸掕泛瀹抽幍瀣斀", "閺堝秴濮熼惄顔肩秿"], ensure_ascii=False),
                     "menu_items_json": json.dumps(
                         DEFAULT_MENU_ITEMS.get(code, []), ensure_ascii=False,
                     ),
@@ -1077,7 +1076,7 @@ class PortalStore(
                         .where(portal_subsystems_table.c.code == code)
                         .values(**values)
                     )
-            generic_action_labels = {"查看概览", "查看关联服务", "查看关联资源"}
+            generic_action_labels = {"閺屻儳婀呭鍌濐潔", "閺屻儳婀呴崗瀹犱粓閺堝秴濮?, "閺屻儳婀呴崗瀹犱粓鐠у嫭绨?}
             for code, *_ in DEFAULT_SUBSYSTEMS:
                 desired_actions = DEFAULT_SUBSYSTEM_ACTIONS.get(code)
                 if not desired_actions:
@@ -1125,7 +1124,7 @@ class PortalStore(
                             )
                         )
             except Exception:
-                pass  # column missing — migration 005 not yet applied
+                pass  # column missing 閳?migration 005 not yet applied
 
             # Idempotent: update entry_type/entry_url for shell subsystems on existing DBs.
             try:
@@ -1141,7 +1140,7 @@ class PortalStore(
                             .values(entry_type=entry_type, entry_url=entry_url, updated_at=now)
                         )
             except Exception:
-                pass  # entry_url column missing — migration 005 not yet applied
+                pass  # entry_url column missing 閳?migration 005 not yet applied
 
             # Idempotent: update approval_chain_json for subsystems on existing DBs.
             try:
@@ -1161,7 +1160,7 @@ class PortalStore(
                             )
                         )
             except Exception:
-                pass  # column missing — migration 012 not yet applied
+                pass  # column missing 閳?migration 012 not yet applied
 
             if DEFAULT_NOTICES and db.scalar(select(func.count()).select_from(portal_notices_table)) == 0:
                 db.execute(insert(portal_notices_table), [
@@ -1170,7 +1169,7 @@ class PortalStore(
                         "title": item["title"],
                         "source": item["source"],
                         "category": item["category"],
-                        "body": f"{item['title']}。请相关部门按通知要求完成后续工作，并在统一门户中查看办理进展。",
+                        "body": f"{item['title']}閵嗗倽顕惄绋垮彠闁劑妫幐澶愨偓姘辩叀鐟曚焦鐪扮€瑰本鍨氶崥搴ｇ敾瀹搞儰缍旈敍灞借嫙閸︺劎绮烘稉鈧梻銊﹀煕娑擃厽鐓￠惇瀣閻炲棜绻樼仦鏇樷偓?,
                         "pinned": index == 0,
                         "published_at": f"2026-{item['time'][:2]}-{item['time'][3:5]}T{item['time'][6:]}:00",
                         "read_count": 0,
@@ -1187,7 +1186,7 @@ class PortalStore(
                         "location": item["location"],
                         "owner": item["owner"],
                         "file_type": item["file_type"],
-                        "summary": f"{item['name']}用于门户内协作、查阅和知识沉淀。",
+                        "summary": f"{item['name']}閻劋绨梻銊﹀煕閸愬懎宕楁担婧库偓浣圭叀闂冨懎鎷伴惌銉ㄧ槕濞屽绌╅妴?,
                         "updated_at": f"2026-{item['updated_at'][:2]}-{item['updated_at'][3:]}T09:00:00",
                         "favorite_count": 0,
                         "visit_count": 0,
@@ -1202,7 +1201,7 @@ class PortalStore(
                         "title": item["title"],
                         "source": item["source"],
                         "category": item["category"],
-                        "body": f"{item['title']}。详情将在资讯中心持续更新。",
+                        "body": f"{item['title']}閵嗗倽顕涢幆鍛殺閸︺劏绁拋顖欒厬韫囧啯瀵旂紒顓熸纯閺傝埇鈧?,
                         "pinned": index == 0,
                         "published_at": f"{item['published_at']}T09:00:00",
                         "created_at": now,
@@ -1366,7 +1365,7 @@ class PortalStore(
                     if column_name not in existing:
                         conn.execute(text(f"ALTER TABLE {table_name} ADD COLUMN {column_name} {definition}"))
 
-    # ── Row helpers ───────────────────────────────────────────────
+    # 閳光偓閳光偓 Row helpers 閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓
 
     def _asset_table(self, collection: str) -> Table:
         tables = {
@@ -1393,9 +1392,9 @@ class PortalStore(
                     data[row["key"]] = value
             return data
 
-    # ═════════════════════════════════════════════════════════════
+    # 閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳?
     # Bootstrap
-    # ═════════════════════════════════════════════════════════════
+    # 閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳?
 
     def portal_dashboard(self, user: dict[str, Any] | None = None) -> dict[str, int]:
         with self._session() as db:
@@ -1416,39 +1415,39 @@ class PortalStore(
     def enterprise_workbench(self, code: str, user: dict[str, Any] | None = None) -> dict[str, Any] | None:
         configs = {
             "repair": {
-                "title": "报修工单",
-                "columns": ["工单", "状态", "处理人", "更新时间"],
+                "title": "閹躲儰鎱ㄥ銉ュ礋",
+                "columns": ["瀹搞儱宕?, "閻樿埖鈧?, "婢跺嫮鎮婃禍?, "閺囧瓨鏌婇弮鍫曟？"],
                 "collection": self.list_repair_tickets,
                 "map": lambda item: {
                     "title": item["title"],
                     "status": item["status"],
-                    "owner": item.get("assignee") or "待分派",
+                    "owner": item.get("assignee") or "瀵板懎鍨庡ú?,
                     "updated": item["updated_at"][:10],
                     "detail": item["description"],
                 },
             },
             "assets": {
-                "title": "资产台账",
-                "columns": ["资产", "状态", "保管人", "更新时间"],
+                "title": "鐠у嫪楠囬崣鎷屽",
+                "columns": ["鐠у嫪楠?, "閻樿埖鈧?, "娣囨繄顓告禍?, "閺囧瓨鏌婇弮鍫曟？"],
                 "collection": self.list_asset_items,
                 "map": lambda item: {
                     "title": item["name"],
                     "status": item["status"],
-                    "owner": item.get("custodian") or "未指定",
+                    "owner": item.get("custodian") or "閺堫亝瀵氱€?,
                     "updated": item["updated_at"][:10],
-                    "detail": f"{item['asset_code']} · {item['category']} · {item['location']}",
+                    "detail": f"{item['asset_code']} 璺?{item['category']} 璺?{item['location']}",
                 },
             },
             "oa": {
-                "title": "待办流程",
-                "columns": ["流程", "状态", "当前处理人", "更新时间"],
+                "title": "瀵板懎濮欏ù浣衡柤",
+                "columns": ["濞翠胶鈻?, "閻樿埖鈧?, "瑜版挸澧犳径鍕倞娴?, "閺囧瓨鏌婇弮鍫曟？"],
                 "collection": self.list_oa_flows,
                 "map": lambda item: {
                     "title": item["title"],
                     "status": item["status"],
-                    "owner": item.get("current_handler") or "待分派",
+                    "owner": item.get("current_handler") or "瀵板懎鍨庡ú?,
                     "updated": item["updated_at"][:10],
-                    "detail": f"{item['flow_type']} · 当前节点：{item.get('current_handler') or '待分派'}",
+                    "detail": f"{item['flow_type']} 璺?瑜版挸澧犻懞鍌滃仯閿涙item.get('current_handler') or '瀵板懎鍨庡ú?}",
                 },
             },
         }
@@ -1482,8 +1481,8 @@ class PortalStore(
             },
             "portal": {
                 "profile": {
-                    "name": user.get("display_name") or "郝锐" if user else "郝锐",
-                    "department": user.get("default_dept_id") or "" if user else "应用物理与材料学院",
+                    "name": user.get("display_name") or "闁繈鏀? if user else "闁繈鏀?,
+                    "department": user.get("default_dept_id") or "" if user else "鎼存梻鏁ら悧鈺冩倞娑撳孩娼楅弬娆忣劅闂?,
                     "last_login": user.get("last_login_at") or "" if user else "2026-07-16 10:56",
                 },
                 "systems": self.list_subsystems(user=user),
@@ -1495,9 +1494,9 @@ class PortalStore(
             "knowledge": {"spaces": self.list_knowledge_spaces(user=user)},
         }
 
-    # ═════════════════════════════════════════════════════════════
+    # 閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳?
     # Tasks
-    # ═════════════════════════════════════════════════════════════
+    # 閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳?
 
     def list_tasks(self, user: dict[str, Any] | None = None) -> dict[str, Any]:
         with self._session() as db:
@@ -1516,14 +1515,14 @@ class PortalStore(
             with self._session() as db:
                 values = {
                     "title": payload["title"],
-                    "tag": payload.get("tag") or "今天",
+                    "tag": payload.get("tag") or "娴犲﹤銇?,
                     "deadline": payload.get("deadline") or None,
                     "done": False,
                     "overdue_notified_at": None,
                 }
                 # Phase 4: set attribution from user context.
                 # NEVER trust client-supplied org_id / department_id / owner_id /
-                # visibility / sensitivity — always derive from the server-side
+                # visibility / sensitivity 閳?always derive from the server-side
                 # AccessContext so a user cannot inject attribution columns via
                 # extra JSON fields (defence-in-depth; the Pydantic schema already
                 # strips unknown fields, but the store layer must not rely on that).
@@ -1648,9 +1647,9 @@ class PortalStore(
             )
             db.commit()
 
-    # ═════════════════════════════════════════════════════════════
+    # 閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳?
     # Calendar Events
-    # ═════════════════════════════════════════════════════════════
+    # 閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳?
 
     def list_events(self, user: dict[str, Any] | None = None) -> dict[str, Any]:
         with self._session() as db:
@@ -1667,7 +1666,7 @@ class PortalStore(
     def create_event(self, payload: dict[str, Any], user: dict[str, Any] | None = None) -> dict[str, Any]:
         with self._lock:
             with self._session() as db:
-                # Extract only known-safe fields — never copy the full payload
+                # Extract only known-safe fields 閳?never copy the full payload
                 # into values because that would allow client-supplied attribution
                 # columns (org_id, owner_id, etc.) to leak through if the Pydantic
                 # schema ever adds them.
@@ -1740,9 +1739,9 @@ class PortalStore(
                 db.commit()
                 return result.rowcount > 0
 
-    # ═════════════════════════════════════════════════════════════
+    # 閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳?
     # Embed URLs
-    # ═════════════════════════════════════════════════════════════
+    # 閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳?
 
     def update_embed_urls(self, payload: dict[str, Any]) -> dict[str, str]:
         with self._lock:
@@ -1763,9 +1762,9 @@ class PortalStore(
                 db.commit()
             return self.embed_urls
 
-    # ═════════════════════════════════════════════════════════════
+    # 閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳?
     # Knowledge spaces & mappings
-    # ═════════════════════════════════════════════════════════════
+    # 閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳?
 
     def list_knowledge_spaces(
         self,
@@ -1783,8 +1782,8 @@ class PortalStore(
                 display_name=settings.FASTGPT_DEFAULT_DISPLAY_NAME,
                 mode=settings.FASTGPT_MODE,
             )
-        # filter_: "all" → no filter; "dataset"/"app" → filter by resource_type;
-        # "team"/"org"/"private"/"public" → pass-through for permission_scope values
+        # filter_: "all" 閳?no filter; "dataset"/"app" 閳?filter by resource_type;
+        # "team"/"org"/"private"/"public" 閳?pass-through for permission_scope values
         _resource_types = {"dataset", "app"}
         items = [
             item for item in items
@@ -1887,9 +1886,9 @@ class PortalStore(
                 db.commit()
                 return bool(result.rowcount)
 
-    # ═════════════════════════════════════════════════════════════
+    # 閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳?
     # Knowledge sync & import records
-    # ═════════════════════════════════════════════════════════════
+    # 閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳?
 
     def sync_knowledge_mappings(self, resources: list[dict[str, Any]]) -> dict[str, Any]:
         created = 0
@@ -2020,7 +2019,7 @@ class PortalStore(
         with self._session() as db:
             if user is not None:
                 ctx = self._build_scope_context(user, db)
-                # Join import records ↔ mappings and apply the visibility filter
+                # Join import records 閳?mappings and apply the visibility filter
                 # on the mappings side so we only return imports for datasets the
                 # user is authorised to see.
                 stmt = (
@@ -2037,7 +2036,7 @@ class PortalStore(
                             # Import records linked to a visible mapping
                             self._scope_filter(ctx, knowledge_mappings_table),
                             # Import records with no mapping (mapping_id IS NULL)
-                            # still need to be visible — only super_admin / internal
+                            # still need to be visible 閳?only super_admin / internal
                             # users see unlinked records.
                             and_(
                                 knowledge_import_records_table.c.mapping_id.is_(None),
@@ -2059,7 +2058,7 @@ class PortalStore(
         self, collection_id: str,
         user: dict[str, Any] | None = None,
     ) -> None:
-        """删除指定 collection_id 的导入记录。
+        """閸掔娀娅庨幐鍥х暰 collection_id 閻ㄥ嫬顕遍崗銉唶瑜版洏鈧?
 
         Phase 4 P2-2: when *user* is provided only delete import records
         linked to mappings the user can see.
@@ -2092,9 +2091,9 @@ class PortalStore(
                     )
                 db.commit()
 
-    # ═════════════════════════════════════════════════════════════
+    # 閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳?
     # Chat persistence  (Phase 4: user-level scoping)
-    # ═════════════════════════════════════════════════════════════
+    # 閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳?
 
     def save_chat_message(
         self,
@@ -2107,7 +2106,7 @@ class PortalStore(
         created_at: str | None = None,
         user_id: int | None = None,
     ) -> None:
-        """保存一条聊天消息，同时 upsert 会话。
+        """娣囨繂鐡ㄦ稉鈧弶陇浜版径鈺傜Х閹垽绱濋崥灞炬 upsert 娴兼俺鐦介妴?
 
         When *user_id* is provided the session is scoped to that user:
         new sessions record the owner; existing sessions are validated
@@ -2134,10 +2133,10 @@ class PortalStore(
                     )
                 else:
                     # Ownership check: if the session belongs to a different
-                    # user, reject (silently — don't leak session existence).
+                    # user, reject (silently 閳?don't leak session existence).
                     if user_id is not None and existing_row["user_id"] is not None:
                         if existing_row["user_id"] != user_id:
-                            return  # silently drop — don't write to foreign session
+                            return  # silently drop 閳?don't write to foreign session
                     values: dict[str, Any] = {"updated_at": now}
                     if title:
                         values["title"] = title
@@ -2163,7 +2162,7 @@ class PortalStore(
                 db.commit()
 
     def list_chat_sessions(self, user: dict[str, Any] | None = None) -> dict[str, Any]:
-        """列出当前用户的聊天会话，按更新时间倒序。
+        """閸掓鍤ぐ鎾冲閻劍鍩涢惃鍕喊婢垛晙绱扮拠婵撶礉閹稿娲块弬鐗堟闂傛潙鈧帒绨妴?
 
         When *user* is None the full list is returned (internal / seed path).
         """
@@ -2178,7 +2177,7 @@ class PortalStore(
         self, session_id: str, limit: int = 0,
         user: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
-        """获取指定会话的消息。
+        """閼惧嘲褰囬幐鍥х暰娴兼俺鐦介惃鍕Х閹垬鈧?
 
         When *user* is provided the session must belong to that user or
         the response is empty (uniform with nonexistent sessions to
@@ -2194,7 +2193,7 @@ class PortalStore(
                 if session is None:
                     return self.list_response([])
                 if session["user_id"] is not None and session["user_id"] != user["id"]:
-                    return self.list_response([])  # uniform empty — don't leak existence
+                    return self.list_response([])  # uniform empty 閳?don't leak existence
 
             stmt = (
                 select(chat_messages_table)
@@ -2204,8 +2203,7 @@ class PortalStore(
             if limit > 0:
                 stmt = stmt.limit(limit)
             rows = db.execute(stmt).mappings().all()
-            # 按 id 升序返回（时间顺序），因为我们用 desc 查询
-            result = [dict(row) for row in rows]
+            # 閹?id 閸楀洤绨潻鏂挎礀閿涘牊妞傞梻鎾€庢惔蹇ョ礆閿涘苯娲滄稉鐑樺灉娴狀剛鏁?desc 閺屻儴顕?            result = [dict(row) for row in rows]
             result.reverse()
             return self.list_response(result)
 
@@ -2213,7 +2211,7 @@ class PortalStore(
         self, session_id: str,
         user: dict[str, Any] | None = None,
     ) -> bool:
-        """删除会话及其所有消息。
+        """閸掔娀娅庢导姘崇樈閸欏﹤鍙鹃幍鈧張澶嬬Х閹垬鈧?
 
         When *user* is provided the session must belong to that user.
         Returns False when the session doesn't exist or isn't owned by
@@ -2229,7 +2227,7 @@ class PortalStore(
                     if session is None:
                         return False
                     if session["user_id"] is not None and session["user_id"] != user["id"]:
-                        return False  # uniform — don't leak existence
+                        return False  # uniform 閳?don't leak existence
 
                 db.execute(
                     delete(chat_messages_table).where(chat_messages_table.c.session_id == session_id)
@@ -2241,9 +2239,9 @@ class PortalStore(
                 return result.rowcount > 0
 
 
-# ═════════════════════════════════════════════════════════════════════
+# 閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳?
 # Module-level helpers (unchanged signatures)
-# ═════════════════════════════════════════════════════════════════════
+# 閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳?
 
 
 def configured_knowledge_spaces(
@@ -2260,9 +2258,9 @@ def configured_knowledge_spaces(
             "id": dataset_id,
             "title": display_name or dataset_id,
             "owner": "FastGPT",
-            "desc": "来自 FastGPT 配置的真实知识库，可用于文件导入、嵌入和向量检索。",
+            "desc": "閺夈儴鍤?FastGPT 闁板秶鐤嗛惃鍕埂鐎圭偟鐓＄拠鍡楃氨閿涘苯褰查悽銊ょ艾閺傚洣娆㈢€电厧鍙嗛妴浣哥サ閸忋儱鎷伴崥鎴﹀櫤濡偓缁鳖潿鈧?,
             "type": "public",
-            "meta": f"{dataset_id} · {mode}",
+            "meta": f"{dataset_id} 璺?{mode}",
             "tone": "app-purple",
             "fastgpt_dataset_id": dataset_id,
             "fastgpt_app_id": app_id,
@@ -2277,10 +2275,10 @@ def knowledge_space_from_mapping(row: Any) -> dict[str, Any]:
     return {
         "id": row["id"],
         "title": row["display_name"],
-        "owner": "FastGPT 数据集" if is_dataset else "FastGPT 应用",
-        "desc": "可导入文件并由 FastGPT 完成嵌入和向量检索。" if is_dataset else "可用于 FastGPT 问答或检索应用。",
+        "owner": "FastGPT 閺佺増宓侀梿? if is_dataset else "FastGPT 鎼存梻鏁?,
+        "desc": "閸欘垰顕遍崗銉︽瀮娴犺泛鑻熼悽?FastGPT 鐎瑰本鍨氬畵灞藉弳閸滃苯鎮滈柌蹇旑梾缁鳖潿鈧? if is_dataset else "閸欘垳鏁ゆ禍?FastGPT 闂傤喚鐡熼幋鏍梾缁便垹绨查悽銊ｂ偓?,
         "type": "public",
-        "meta": f"{resource_id} · synced",
+        "meta": f"{resource_id} 璺?synced",
         "tone": "app-purple" if is_dataset else "app-blue",
         "fastgpt_dataset_id": row["fastgpt_dataset_id"],
         "fastgpt_app_id": row["fastgpt_app_id"],
@@ -2290,7 +2288,7 @@ def knowledge_space_from_mapping(row: Any) -> dict[str, Any]:
         "last_synced_at": row["last_synced_at"],
         "last_imported_at": row["last_imported_at"],
         "stale": bool(row["stale"]),
-        # ── Phase 5: attribution fields for retrieval_policy ─────
+        # 閳光偓閳光偓 Phase 5: attribution fields for retrieval_policy 閳光偓閳光偓閳光偓閳光偓閳光偓
         "org_id": row.get("org_id"),
         "department_id": row.get("department_id"),
         "owner_id": row.get("owner_id"),

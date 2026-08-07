@@ -10,10 +10,14 @@ from ai_security.firewall import ai_security_pipeline
 from auth.dependencies import get_current_user, require_permission
 from commands import classify_command, execute_command
 from config import Settings, get_settings
+from gateway_errors import GatewayError, map_httpx_errors
 from hermes import HermesGatewayError, hermes_chat
 from schemas import KnowledgeChatRequest, KnowledgeMappingUpdate
 from session import get_db
 from store import store
+
+# Backward-compatible alias — prefer GatewayError for new code
+KnowledgeGatewayError = GatewayError
 
 logger = logging.getLogger("replica.knowledge")
 logger.setLevel(logging.DEBUG)
@@ -92,7 +96,7 @@ async def sync_knowledge_mappings() -> dict[str, Any]:
 
 
 async def _build_search_queries(settings: Settings, question: str) -> list[str]:
-    """将复杂问题拆分为 2-3 个独立搜索查询，覆盖问题的不同方面。短问题直接返回原文。"""
+    """灏嗗鏉傞棶棰樻媶鍒嗕负 2-3 涓嫭绔嬫悳绱㈡煡璇紝瑕嗙洊闂鐨勪笉鍚屾柟闈€傜煭闂鐩存帴杩斿洖鍘熸枃銆?""
     if len(question) <= 40:
         return [question]
     try:
@@ -102,9 +106,9 @@ async def _build_search_queries(settings: Settings, question: str) -> list[str]:
                 {
                     "role": "system",
                     "content": (
-                        "将用户问题拆分为2-3个独立的搜索查询，每个查询聚焦问题的一个核心概念或方面。"
-                        "规则：每行一个查询，用换行分隔，不要编号、不要解释、不要任何其他文字。"
-                        "每个查询应简洁（5-15字），使用问题中的关键术语。"
+                        "灏嗙敤鎴烽棶棰樻媶鍒嗕负2-3涓嫭绔嬬殑鎼滅储鏌ヨ锛屾瘡涓煡璇㈣仛鐒﹂棶棰樼殑涓€涓牳蹇冩蹇垫垨鏂归潰銆?
+                        "瑙勫垯锛氭瘡琛屼竴涓煡璇紝鐢ㄦ崲琛屽垎闅旓紝涓嶈缂栧彿銆佷笉瑕佽В閲娿€佷笉瑕佷换浣曞叾浠栨枃瀛椼€?
+                        "姣忎釜鏌ヨ搴旂畝娲侊紙5-15瀛楋級锛屼娇鐢ㄩ棶棰樹腑鐨勫叧閿湳璇€?
                     ),
                 },
                 {"role": "user", "content": question},
@@ -120,9 +124,9 @@ async def _build_search_queries(settings: Settings, question: str) -> list[str]:
 
 
 def _extract_score(score: Any) -> float:
-    """从 FastGPT 返回的 score 字段中安全提取相似度数值。
+    """浠?FastGPT 杩斿洖鐨?score 瀛楁涓畨鍏ㄦ彁鍙栫浉浼煎害鏁板€笺€?
 
-    FastGPT 不同版本可能返回: 裸 float (0.85)、list ([{"value": 0.85}])、或 None。
+    FastGPT 涓嶅悓鐗堟湰鍙兘杩斿洖: 瑁?float (0.85)銆乴ist ([{"value": 0.85}])銆佹垨 None銆?
     """
     if score is None:
         return 0.0
@@ -146,9 +150,9 @@ def _load_chat_history(
     max_messages: int = 12,
     user: dict[str, Any] | None = None,
 ) -> list[dict[str, str]]:
-    """加载最近的对话历史，转换为 Hermes API 消息格式。相邻重复消息去重。
+    """鍔犺浇鏈€杩戠殑瀵硅瘽鍘嗗彶锛岃浆鎹负 Hermes API 娑堟伅鏍煎紡銆傜浉閭婚噸澶嶆秷鎭幓閲嶃€?
 
-    When *user* is provided the store enforces session ownership — only the
+    When *user* is provided the store enforces session ownership 鈥?only the
     session owner can load the history (Phase 4 security fix).
     """
     if not session_id:
@@ -158,7 +162,7 @@ def _load_chat_history(
         messages = data.get("items", [])
         if not messages:
             return []
-        # store 已经按 id DESC + LIMIT 返回最近 N 条（升序排列）
+        # store 宸茬粡鎸?id DESC + LIMIT 杩斿洖鏈€杩?N 鏉★紙鍗囧簭鎺掑垪锛?
         recent = messages
         history: list[dict[str, str]] = []
         prev_content = ""
@@ -166,7 +170,7 @@ def _load_chat_history(
             if m.get("role") not in ("user", "assistant"):
                 continue
             content = m["content"]
-            # 跳过相邻重复（修复期间可能产生的双份数据）
+            # 璺宠繃鐩搁偦閲嶅锛堜慨澶嶆湡闂村彲鑳戒骇鐢熺殑鍙屼唤鏁版嵁锛?
             if content == prev_content and m["role"] == (history[-1]["role"] if history else ""):
                 continue
             prev_content = content
@@ -184,9 +188,9 @@ def _save_chat_turn(
     action: str | None = None,
     user_id: int | None = None,
 ) -> None:
-    """在服务端保存一轮对话（用户问题 + 助手回答）。同步写入，确保下一轮请求能加载到历史。
+    """鍦ㄦ湇鍔＄淇濆瓨涓€杞璇濓紙鐢ㄦ埛闂 + 鍔╂墜鍥炵瓟锛夈€傚悓姝ュ啓鍏ワ紝纭繚涓嬩竴杞姹傝兘鍔犺浇鍒板巻鍙层€?
 
-    When *user_id* is provided the store enforces session ownership — only the
+    When *user_id* is provided the store enforces session ownership 鈥?only the
     session owner can write messages (Phase 4 security fix).
     """
     if not session_id:
@@ -196,7 +200,7 @@ def _save_chat_turn(
         store.save_chat_message(session_id, "assistant", answer, action=action, user_id=user_id)
     except Exception:
         logger.warning("Failed to save chat turn for session %s", session_id, exc_info=True)
-        # 持久化失败不影响对话功能
+        # 鎸佷箙鍖栧け璐ヤ笉褰卞搷瀵硅瘽鍔熻兘
 
 
 @router.post("/chat", dependencies=[Depends(require_permission("kb:chat"))])
@@ -207,7 +211,7 @@ async def knowledge_chat(
 ) -> dict:
     settings = get_settings()
 
-    # ── 解析问题：支持 /rag 和 /chat 斜杠命令强制指定模式 ──
+    # 鈹€鈹€ 瑙ｆ瀽闂锛氭敮鎸?/rag 鍜?/chat 鏂滄潬鍛戒护寮哄埗鎸囧畾妯″紡 鈹€鈹€
     question = payload.question.strip()
     forced_mode: str | None = None
     for prefix in ("/rag", "/RAG", "/chat", "/CHAT"):
@@ -216,14 +220,14 @@ async def knowledge_chat(
             question = question[len(prefix):].strip()
             break
 
-    # ── 指令模式：尝试识别并执行操作指令 ──
-    # 长文本（>200字）几乎不可能是操作指令，跳过分类以节省 LLM 调用并避免误判
+    # 鈹€鈹€ 鎸囦护妯″紡锛氬皾璇曡瘑鍒苟鎵ц鎿嶄綔鎸囦护 鈹€鈹€
+    # 闀挎枃鏈紙>200瀛楋級鍑犱箮涓嶅彲鑳芥槸鎿嶄綔鎸囦护锛岃烦杩囧垎绫讳互鑺傜渷 LLM 璋冪敤骞堕伩鍏嶈鍒?
     if payload.command_mode and not forced_mode:
         if len(question) <= 200:
             cmd = await classify_command(settings, question)
             if cmd.get("action") not in ("chat", None, ""):
                 logger.info(
-                    "knowledge_chat — COMMAND mode action=%s params=%s",
+                    "knowledge_chat 鈥?COMMAND mode action=%s params=%s",
                     cmd.get("action"), cmd.get("params"),
                 )
                 result = execute_command(cmd)
@@ -231,12 +235,12 @@ async def knowledge_chat(
                                 user_id=current_user["id"])
                 return result
         else:
-            logger.info("knowledge_chat — skipping command classification: question too long (%d chars)", len(question))
+            logger.info("knowledge_chat 鈥?skipping command classification: question too long (%d chars)", len(question))
 
-    # ── 加载对话历史上下文（传入 current_user 以强制会话所有权检查）──
+    # 鈹€鈹€ 鍔犺浇瀵硅瘽鍘嗗彶涓婁笅鏂囷紙浼犲叆 current_user 浠ュ己鍒朵細璇濇墍鏈夋潈妫€鏌ワ級鈹€鈹€
     history = _load_chat_history(payload.session_id, user=current_user)
 
-    # ── 确定请求模式 ──
+    # 鈹€鈹€ 纭畾璇锋眰妯″紡 鈹€鈹€
     if forced_mode:
         requested_mode = forced_mode
     elif payload.mode in ("rag", "chat"):
@@ -245,12 +249,12 @@ async def knowledge_chat(
         requested_mode = "auto"
 
     logger.info(
-        "knowledge_chat — mode=%s question=%r",
+        "knowledge_chat 鈥?mode=%s question=%r",
         requested_mode, question[:120],
     )
 
-    # ── Phase 5: AI 安全防火墙管线 ──
-    # 处理顺序: 认证 → kb:chat 权限 → 数据范围 → 风险分类 → 授权检索 → LLM 生成 → 输出检查 → 审计
+    # 鈹€鈹€ Phase 5: AI 瀹夊叏闃茬伀澧欑绾?鈹€鈹€
+    # 澶勭悊椤哄簭: 璁よ瘉 鈫?kb:chat 鏉冮檺 鈫?鏁版嵁鑼冨洿 鈫?椋庨櫓鍒嗙被 鈫?鎺堟潈妫€绱?鈫?LLM 鐢熸垚 鈫?杈撳嚭妫€鏌?鈫?瀹¤
     fw_result = await ai_security_pipeline(
         settings=settings,
         user=current_user,
@@ -282,7 +286,7 @@ async def search_fastgpt_dataset(
     top_k: int = 5,
     similarity: float = 0.3,
 ) -> list[dict[str, Any]]:
-    """调用 FastGPT searchTest API 检索数据集中的相关文档片段。"""
+    """璋冪敤 FastGPT searchTest API 妫€绱㈡暟鎹泦涓殑鐩稿叧鏂囨。鐗囨銆?""
     if settings.FASTGPT_MODE != "real":
         return []
     if not settings.FASTGPT_API_KEY:
@@ -313,7 +317,7 @@ async def import_knowledge_file(
 ) -> dict[str, Any]:
     content = await file.read()
     if not content:
-        raise HTTPException(status_code=422, detail="上传文件不能为空")
+        raise HTTPException(status_code=422, detail="涓婁紶鏂囦欢涓嶈兘涓虹┖")
 
     settings = get_settings()
     try:
@@ -339,19 +343,11 @@ async def import_knowledge_file(
         ) from exc
 
 
-class KnowledgeGatewayError(Exception):
-    def __init__(self, status_code: int, code: str, message: str) -> None:
-        super().__init__(message)
-        self.status_code = status_code
-        self.code = code
-        self.message = message
-
-
 async def list_fastgpt_resources(settings: Settings) -> list[dict[str, Any]]:
     if settings.FASTGPT_MODE != "real":
-        raise KnowledgeGatewayError(409, "FASTGPT_REAL_MODE_REQUIRED", "请先启用 FastGPT real 模式")
+        raise KnowledgeGatewayError(409, "FASTGPT_REAL_MODE_REQUIRED", "璇峰厛鍚敤 FastGPT real 妯″紡")
     if not settings.FASTGPT_API_KEY:
-        raise KnowledgeGatewayError(409, "FASTGPT_NOT_CONFIGURED", "FastGPT API Key 未配置")
+        raise KnowledgeGatewayError(409, "FASTGPT_NOT_CONFIGURED", "FastGPT API Key 鏈厤缃?)
 
     dataset_payload, _ = await request_fastgpt_json(
         settings=settings,
@@ -372,9 +368,9 @@ async def import_file_to_fastgpt(
     content_type: str,
 ) -> dict[str, Any]:
     if settings.FASTGPT_MODE != "real":
-        raise KnowledgeGatewayError(409, "FASTGPT_REAL_MODE_REQUIRED", "请先启用 FastGPT real 模式")
+        raise KnowledgeGatewayError(409, "FASTGPT_REAL_MODE_REQUIRED", "璇峰厛鍚敤 FastGPT real 妯″紡")
     if not settings.FASTGPT_API_KEY:
-        raise KnowledgeGatewayError(409, "FASTGPT_NOT_CONFIGURED", "FastGPT API Key 未配置")
+        raise KnowledgeGatewayError(409, "FASTGPT_NOT_CONFIGURED", "FastGPT API Key 鏈厤缃?)
 
     data = {
         "datasetId": dataset_id,
@@ -425,17 +421,8 @@ async def request_fastgpt_file_import(
         if isinstance(payload, dict):
             return payload
         return {"data": payload}
-    except httpx.ConnectError as exc:
-        raise KnowledgeGatewayError(503, "FASTGPT_NOT_STARTED", "FastGPT 服务未启动或不可达") from exc
-    except httpx.TimeoutException as exc:
-        raise KnowledgeGatewayError(504, "FASTGPT_TIMEOUT", "FastGPT 文件导入超时") from exc
-    except httpx.HTTPStatusError as exc:
-        status_code = exc.response.status_code
-        if status_code in {401, 403}:
-            raise KnowledgeGatewayError(401, "FASTGPT_UNAUTHORIZED", "FastGPT 鉴权失败或 API Key 无效") from exc
-        raise KnowledgeGatewayError(502, "FASTGPT_UPSTREAM_ERROR", f"FastGPT API 返回 HTTP {status_code}") from exc
-    except ValueError as exc:
-        raise KnowledgeGatewayError(502, "FASTGPT_INVALID_RESPONSE", "FastGPT 返回了无法解析的响应") from exc
+    except (httpx.ConnectError, httpx.TimeoutException, httpx.HTTPStatusError, ValueError) as exc:
+        raise map_httpx_errors(exc, "FASTGPT", "FastGPT") from exc
 
 
 def extract_collection_id(payload: Any) -> str | None:
@@ -481,17 +468,8 @@ async def request_fastgpt_json(
         if isinstance(payload, dict):
             return payload, trace_id
         return {"data": payload}, trace_id
-    except httpx.ConnectError as exc:
-        raise KnowledgeGatewayError(503, "FASTGPT_NOT_STARTED", "FastGPT 服务未启动或不可达") from exc
-    except httpx.TimeoutException as exc:
-        raise KnowledgeGatewayError(504, "FASTGPT_TIMEOUT", "FastGPT 调用超时") from exc
-    except httpx.HTTPStatusError as exc:
-        status_code = exc.response.status_code
-        if status_code in {401, 403}:
-            raise KnowledgeGatewayError(401, "FASTGPT_UNAUTHORIZED", "FastGPT 鉴权失败或 API Key 无效") from exc
-        raise KnowledgeGatewayError(502, "FASTGPT_UPSTREAM_ERROR", f"FastGPT API 返回 HTTP {status_code}") from exc
-    except ValueError as exc:
-        raise KnowledgeGatewayError(502, "FASTGPT_INVALID_RESPONSE", "FastGPT 返回了无法解析的响应") from exc
+    except (httpx.ConnectError, httpx.TimeoutException, httpx.HTTPStatusError, ValueError) as exc:
+        raise map_httpx_errors(exc, "FASTGPT", "FastGPT") from exc
 
 
 def normalize_fastgpt_resources(payload: dict[str, Any], resource_type: str) -> list[dict[str, Any]]:
@@ -542,12 +520,12 @@ async def list_dataset_files(
     dataset_id: str,
     current_user: dict[str, Any] = Depends(get_current_user),
 ) -> dict[str, Any]:
-    """列出 FastGPT 知识库中的文件（collection）。
+    """鍒楀嚭 FastGPT 鐭ヨ瘑搴撲腑鐨勬枃浠讹紙collection锛夈€?
 
     Verifies that the user is authorised to access the dataset's knowledge
     mapping before forwarding the request to FastGPT (Phase 4 security fix).
     """
-    # ── Authorisation: user must have access to the dataset's mapping ──
+    # 鈹€鈹€ Authorisation: user must have access to the dataset's mapping 鈹€鈹€
     mappings = store.list_knowledge_mappings(user=current_user)["items"]
     authorized_ids = {m.get("fastgpt_dataset_id") for m in mappings if m.get("fastgpt_dataset_id")}
     if dataset_id not in authorized_ids:
@@ -597,10 +575,10 @@ async def delete_dataset_file(
     dataset_id: str, file_id: str,
     current_user: dict[str, Any] = Depends(get_current_user),
 ) -> dict[str, Any]:
-    """删除 FastGPT 知识库中的文件（collection）。"""
+    """鍒犻櫎 FastGPT 鐭ヨ瘑搴撲腑鐨勬枃浠讹紙collection锛夈€?""
     settings = get_settings()
     if settings.FASTGPT_MODE != "real":
-        raise HTTPException(status_code=409, detail="请先启用 FastGPT real 模式")
+        raise HTTPException(status_code=409, detail="璇峰厛鍚敤 FastGPT real 妯″紡")
     try:
         payload, _ = await request_fastgpt_json(
             settings=settings,
