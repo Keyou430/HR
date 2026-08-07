@@ -1251,7 +1251,7 @@
     var _adminAuditPage = 1;
     var _adminAIQueryPage = 1;
     var _adminNewsPage = 1;
-    var _serviceCategory = "人事服务";
+    var _serviceCategory = null;
     var _adminSessionPage = 1;
 
     function switchAdminSubTab(tab) {
@@ -2707,18 +2707,39 @@
 
     function renderPortalServices() {
       const container = $("#serviceItems");
+      const menu = $("#serviceMenu");
       if (!container) return;
       const subscribed = new Set(state.serviceSubscriptions);
       const services = state.services.map(normalizeService);
-      var filtered = services.filter(function (service) {
-        return !subscribed.size || subscribed.has(service.code) || subscribed.has(service.title);
-      });
-      // Filter by active service category
-      if (_serviceCategory) {
-        filtered = filtered.filter(function (service) {
-          return service.category === _serviceCategory;
+
+      // ── Data-driven category menu ──────────────────────────────
+      if (menu) {
+        var categories = [];
+        var seen = {};
+        services.forEach(function (s) {
+          var cat = (s.category || "").trim();
+          if (cat && !seen[cat]) { seen[cat] = true; categories.push(cat); }
         });
+        // Fall back to seed categories if no services exist yet
+        if (!categories.length) categories = ["人事服务", "学生服务", "信息服务", "财务资产", "教学科研"];
+        // Default to first available category
+        if (!_serviceCategory || !seen[_serviceCategory]) {
+          _serviceCategory = categories[0];
+        }
+        menu.innerHTML = categories.map(function (cat) {
+          var active = cat === _serviceCategory ? ' class="active"' : "";
+          return "<button" + active + ">" + escapeHTML(cat) + "</button>";
+        }).join("");
       }
+
+      // ── Subscription + category filter ─────────────────────────
+      var filtered = services.filter(function (service) {
+        if (subscribed.size && !subscribed.has(service.code) && !subscribed.has(service.title)) return false;
+        if (_serviceCategory) {
+          return (service.category || "").trim() === _serviceCategory;
+        }
+        return true;
+      });
       container.innerHTML = (filtered.length ? filtered : []).map(function (service, index) {
         return '<button class="service-item" data-open-asset="services:' + escapeHTML(service.code) + '">' +
           '<span class="app-icon ' + (service.icon_tone || ["app-green","app-orange","app-blue"][index % 3]) + '">' + escapeHTML((service.title || "").slice(0, 1)) + '</span>' +
@@ -2729,14 +2750,16 @@
     }
 
     function bindServiceMenu() {
-      $$(".service-menu button").forEach(function (btn) {
-        btn.onclick = function () {
-          $$(".service-menu button").forEach(function (b) { b.classList.remove("active"); });
-          btn.classList.add("active");
-          _serviceCategory = btn.textContent.trim();
-          renderPortalServices();
-        };
-      });
+      var menu = $("#serviceMenu");
+      if (!menu) return;
+      menu.onclick = function (e) {
+        var btn = e.target.closest("button");
+        if (!btn) return;
+        $$("#serviceMenu button").forEach(function (b) { b.classList.remove("active"); });
+        btn.classList.add("active");
+        _serviceCategory = btn.textContent.trim();
+        renderPortalServices();
+      };
     }
 
     function renderNewsSubModal() {
