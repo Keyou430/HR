@@ -1,7 +1,7 @@
 # HR Platform — Development Dockerfile
 # Used by docker/compose.dev.yml for hot-reload development
 
-FROM python:3.12-slim
+FROM python:3.14-slim
 WORKDIR /app
 
 # Install system dependencies
