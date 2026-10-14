@@ -13,11 +13,12 @@ def test_store_persists_frontend_writes_in_sqlite(tmp_path, monkeypatch) -> None
     monkeypatch.setenv("DATABASE_URL", f"sqlite:///{db_path.as_posix()}")
     get_settings.cache_clear()
 
+    user = {"id": 1, "roles": ["dept_staff"], "default_org_id": "default"}
     first = PortalStore()
-    task = first.create_task({"title": "重启后仍然存在", "tag": "今天"})
+    task = first.create_task({"title": "重启后仍然存在", "tag": "今天"}, user=user)
     first.update_embed_urls({"feishu": "https://example.com/feishu"})
 
     second = PortalStore()
 
-    assert any(item["id"] == task["id"] and item["title"] == "重启后仍然存在" for item in second.list_tasks()["items"])
+    assert any(item["id"] == task["id"] and item["title"] == "重启后仍然存在" for item in second.list_tasks(user=user)["items"])
     assert second.embed_urls["feishu"] == "https://example.com/feishu"

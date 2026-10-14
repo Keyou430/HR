@@ -1,12 +1,16 @@
-﻿from copy import deepcopy
+from copy import deepcopy
 from contextlib import contextmanager
 from datetime import datetime, timezone
 import json
 from typing import Any, Iterator
 
+from fastapi import HTTPException
+
 from sqlalchemy import Boolean, Column, Float, Integer, MetaData, String, Table, Text, and_, delete, func, insert, or_, select, text, update
 from sqlalchemy.orm import Session
 
+from authorization.scope import KNOWN_SENSITIVITIES, KNOWN_VISIBILITIES
+from authorization.system import SystemActor, require_system_actor
 from config import get_settings
 from session import get_engine, get_session_local
 from stores.base import BaseStore
@@ -589,37 +593,37 @@ DEFAULT_TASKS: list[dict[str, Any]] = []  # No hardcoded seed tasks
 DEFAULT_EVENTS: list[dict[str, Any]] = []  # No hardcoded seed events
 
 DEFAULT_SHORTCUTS = [
-    ["閸忣剙鎲?, "闁氨鐓℃稉顓炵妇", "app-orange"],
-    ["閺呴缚鍏橀梻顔剧摕", "AI 閸斺晜澧?, "app-purple"],
-    ["娴兼俺顔?, "娴兼俺顔呯粻锛勬倞", "app-blue"],
-    ["鐞涖劌宕?, "濞翠胶鈻奸悽瀹狀嚞", "app-cyan"],
-    ["鏉炶顓搁幍?, "鐎光剝澹掓稉顓炵妇", "app-red"],
-    ["缁楁棁顔?, "閹存垹娈戠粭鏃囶唶", "app-orange"],
-    ["濮瑰洦濮?, "瀹搞儰缍斿Ч鍥ㄥГ", "app-blue"],
-    ["閺冦儱宸?, "閺冦儳鈻肩粻锛勬倞", "app-blue"],
-    ["瀵板懎濮欐稉顓炵妇", "娴犺濮熺粻锛勬倞", "app-green"],
-    ["閾诲秴鎮庨梻銊﹀煕", "闂傘劍鍩涙＃鏍€?, "app-red"],
+    ["閸忣剙鎲", "闁氨鐓稉顓炵妇", "app-orange"],
+    ["閺呴缚鍏橀梻顔剧摕", "AI 閸斺晜澧", "app-purple"],
+    ["娴兼俺顔", "娴兼俺顔呯粻锛勬倞", "app-blue"],
+    ["鐞涖劌宕", "濞翠胶鈻奸悽瀹狀嚞", "app-cyan"],
+    ["鏉炶顓搁幍", "鐎光剝澹掓稉顓炵妇", "app-red"],
+    ["缁楁棁顔", "閹存垹娈戠粭鏃囶唶", "app-orange"],
+    ["濮瑰洦濮", "瀹搞儰缍斿鍥", "app-blue"],
+    ["閺冦儱宸", "閺冦儳鈻肩粻锛勬倞", "app-blue"],
+    ["瀵板懎濮欐稉顓炵妇", "娴犺濮熺粻锛勬倞", "app-green"],
+    ["閾诲秴鎮庨梻銊煕", "闂傘劍鍩涙＃鏍", "app-red"],
 ]
 
 DEFAULT_SYSTEMS = [
-    # 閸旂偛鍙曠悰灞炬杺缁?
-    "OA 缁崵绮?,
-    "閻絽濮欑化鑽ょ埠",
-    # 娴滃搫濮忕紒鍕矏缁?
-    "HR 娴滆桨绨?,
-    "閹锋稖浠?,
-    "閸╃顔?,
-    "閸涙ê浼愰崗铏偓鈧?,
-    # 缂佸繗鎯€娑撴艾濮熺猾?
+    # 閸旂偛鍙曠悰灞炬杺缁""
+    "OA 缁崵绮",
+    "閻絽濮欑化鑽埠",
+    # 娴滃搫濮忕紒鍕矏缁""
+    "HR 娴滆桨绨",
+    "閹锋稖浠",
+    "閸顔",
+    "閸涙浼愰崗铏偓鈧",
+    # 缂佸繗鎯娑撴艾濮熺猾""
     "CRM",
     "ERP",
-    "閸烆喖鎮楀銉ュ礋",
-    "娓氭稑绨查柧鍓ф晸娴?,
-    # 鐠愩垼绁崥搴″珶 & 閺€顖涙嫼缁?
-    "鐠愩垹濮?,
-    "閸ュ搫鐣剧挧鍕獓",
-    "閸樺倸灏悧鈺€绗?,
-    "閹躲儰鎱?,
+    "閸烆喖鎮楀銉礋",
+    "娓氭稑绨查柧鍓晸娴",
+    # 鐠愩垼绁崥搴珶 & 閺顖涙嫼缁""
+    "鐠愩垹濮",
+    "閸搫鐣剧挧鍕獓",
+    "閸樺倸灏悧鈺绗",
+    "閹躲儰鎱",
     "閺佺増宓佹稉顓炲酱",
     "閸忔艾缂撴搴㈠付",
 ]
@@ -647,26 +651,26 @@ _PORTAL_BASE = {
 }
 
 DEFAULT_SUBSYSTEMS = [
-    # 閸旂偛鍙曠悰灞炬杺缁?
-    ("oa", "OA", "閸旂偛鍙曠悰灞炬杺缁?, "閸忣剚鏋冨ù浣芥祮閵嗕焦绁︾粙瀣吀閹靛箍鈧線鈧氨鐓￠崗顒€鎲＄粵澶婂礂閸氬苯濮欓崗顑跨娴ｆ挸瀵查獮鍐插酱", "鐞涘本鏂傜粻锛勬倞闁?, "OA 閺€顖涘瘮", "app-blue"),
-    ("supervision", "閻絽濮?, "閸旂偛鍙曠悰灞炬杺缁?, "闁插秶鍋ｅ銉ょ稊娴犺濮熼崚鍡毿掗妴浣界箻鎼达箒鎷烽煪顏傗偓浣界煑娴犳槒鎯ょ€圭偟娈戦梻顓犲箚缁狅紕鎮婄化鑽ょ埠", "鐞涘本鏂傜粻锛勬倞闁?, "缂佺厧鎮庨張宥呭閸?, "app-blue"),
-    # 娴滃搫濮忕紒鍕矏缁?
-    ("hr", "HR 娴滆桨绨?, "娴滃搫濮忕紒鍕矏缁?, "缂佸嫮绮愰弸鑸电€妴浣稿弳鏉烆剝鐨熺粋姹団偓浣告値閸氬本銆傚鍫涒偓浣锋眽娴滃鐔€绾偓閺佺増宓佹稉顓炵妇", "娴滃搫濮忕挧鍕爱闁?, "娴滆桨绨ㄩ張宥呭閸?, "app-green"),
-    ("recruitment", "閹锋稖浠?, "娴滃搫濮忕紒鍕矏缁?, "闂団偓濮瑰倸褰傜敮鍐︹偓浣虹暆閸樺棛鐡柅澶堚偓渚€娼扮拠鏇炵暔閹烘帇鈧礁缍嶉悽銊ヮ吀閹电懓鍙忓ù浣衡柤缁狅紕鎮?, "娴滃搫濮忕挧鍕爱闁?, "閹锋稖浠掗張宥呭閸?, "app-green"),
-    ("training", "閸╃顔?, "娴滃搫濮忕紒鍕矏缁?, "鐠囧墽鈻肩粻锛勬倞閵嗕礁鐓跨拋顓☆吀閸掓帇鈧礁顒熼崚鍡欑埠鐠伮扳偓浣告躬缁惧灝顒熸稊鐘辩瑢閼板啳鐦?, "娴滃搫濮忕挧鍕爱闁?, "閸╃顔勯張宥呭閸?, "app-green"),
-    ("wellness", "閸涙ê浼愰崗铏偓鈧?, "娴滃搫濮忕紒鍕矏缁?, "閻㈢喐妫╃粊婵堫洿閵嗕浇濡弮銉ь洿閸掆斂鈧礁浠存惔宄板彠閹偓閵嗕礁鎲冲銉ュ簻閸斺晙绗岄幇蹇氼潌閸欏秹顩?, "娴滃搫濮忕挧鍕爱闁?, "閸忚櫕鈧偓閺堝秴濮熼崣?, "app-green"),
-    # 缂佸繗鎯€娑撴艾濮熺猾?
-    ("crm", "CRM", "缂佸繗鎯€娑撴艾濮熺猾?, "鐎广垺鍩涙穱鈩冧紖缁狅紕鎮婇妴浣告櫌閺堥缚鎷烽煪顏傗偓浣告値閸氬瞼顓搁悶鍡愨偓渚€鏀㈤崬顔界础閺傛鍨庨弸?, "鏉╂劘鎯€缁狅紕鎮婇柈?, "CRM 閺€顖涘瘮", "app-orange"),
-    ("erp", "ERP", "缂佸繗鎯€娑撴艾濮熺猾?, "闁插洩鍠橀妴浣哥氨鐎涙ǜ鈧胶鏁撴禍褑顓搁崚鎺嬧偓浣藉窛濡偓缁涘绱掓稉姘崇カ濠ф劒绔存担鎾冲缁狅紕鎮?, "鏉╂劘鎯€缁狅紕鎮婇柈?, "ERP 閺€顖涘瘮", "app-orange"),
-    ("service-desk", "閸烆喖鎮楀銉ュ礋", "缂佸繗鎯€娑撴艾濮熺猾?, "鐎广垺鍩涢幎銉ゆ叏閵嗕礁浼愰崡鏇炲瀻闁板秲鈧焦婀囬崝陇绐￠煪顏傗偓浣瑰姬閹板繐瀹抽崶鐐额問闂傤厾骞?, "鏉╂劘鎯€缁狅紕鎮婇柈?, "閸烆喖鎮楅弨顖涘瘮", "app-orange"),
-    ("supply-chain", "娓氭稑绨查柧鍓ф晸娴?, "缂佸繗鎯€娑撴艾濮熺猾?, "娓氭稑绨查崯鍡楀礂閸氬被鈧胶澧块弬娆撴付濮瑰倶鈧焦甯撴禍褑鐨熸惔锔衡偓浣哄⒖濞翠浇绐￠煪顏嗩吀閻?, "鏉╂劘鎯€缁狅紕鎮婇柈?, "娓氭稑绨查柧鐐暜閹?, "app-orange"),
-    # 鐠愩垼绁崥搴″珶 & 閺€顖涙嫼缁?
-    ("finance", "鐠愩垹濮?, "鐠愩垼绁崥搴″珶 & 閺€顖涙嫼缁?, "閹槒澶勯妴浣哥安閺€璺虹安娴犳ǜ鈧線顣╃粻妤冾吀閹貉佲偓浣藉偍閸斺剝濮ょ悰銊ょ瑢閸掑棙鐎?, "閸氬骸瀚熸穱婵嬫闁?, "鐠愩垹濮熼張宥呭閸?, "app-purple"),
-    ("fixed-assets", "閸ュ搫鐣剧挧鍕獓", "鐠愩垼绁崥搴″珶 & 閺€顖涙嫼缁?, "鐠у嫪楠囬崗銉ョ氨閵嗕線顣悽銊ｂ偓浣界殶閹枫劊鈧胶娲忛悙骞库偓浣瑰Г鎼寸喎鍙忛悽鐔锋嚒閸涖劍婀＄粻锛勬倞", "閸氬骸瀚熸穱婵嬫闁?, "鐠у嫪楠囬張宥呭閸?, "app-purple"),
-    ("facility", "閸樺倸灏悧鈺€绗?, "鐠愩垼绁崥搴″珶 & 閺€顖涙嫼缁?, "閸樺倸灏粚娲？閵嗕浇顔曟径鍥啎閺傚鈧礁鐣ㄦ穱婵嗚窗閺屻儯鈧胶璞㈤崠鏍︾箽濞蹭胶顓搁悶?, "閸氬骸瀚熸穱婵嬫闁?, "閻椻晙绗熼張宥呭閸?, "app-purple"),
-    ("repair", "閹躲儰鎱?, "鐠愩垼绁崥搴″珶 & 閺€顖涙嫼缁?, "鐠佹儳顦弫鍛存閹躲儰鎱ㄩ妴浣规烦瀹搞儯鈧胶娣穱顔款唶瑜版洏鈧礁顦禒鍓侇吀閻炲棛娈戠紒鐔剁楠炲啿褰?, "閸氬骸瀚熸穱婵嬫闁?, "閹躲儰鎱ㄩ張宥呭閸?, "app-purple"),
-    ("data-portal", "閺佺増宓佹稉顓炲酱", "鐠愩垼绁崥搴″珶 & 閺€顖涙嫼缁?, "閺佺増宓佸Ч鍥粵閵嗕焦涓嶉悶鍡愨偓浣哥磻閸欐垯鈧焦婀囬崝锛勬畱缂佺喍绔撮弫鐗堝祦鎼存洖楠?, "閸氬骸瀚熸穱婵嬫闁?, "閺佺増宓侀張宥呭閸?, "app-purple"),
-    ("party", "閸忔艾缂撴搴㈠付", "鐠愩垼绁崥搴″珶 & 閺€顖涙嫼缁?, "缂佸嫮绮愰悽鐔告た閵嗕礁鍘风拹鍦吀閻炲棎鈧礁绮旈弨鎸庢殌閼插眰鈧礁鎮庣憴鍕吀鐠佲€茬瑢妞嬪酣娅撴０鍕劅", "鐞涘本鏂傜粻锛勬倞闁?, "閸忔艾缂撻弨顖涘瘮", "app-purple"),
+    # 閸旂偛鍙曠悰灞炬杺缁""
+    ("oa", "OA", "閸旂偛鍙曠悰灞炬杺缁", "閸忣剚鏋冨浣芥祮閵嗕焦绁粙瀣吀閹靛箍鈧線鈧氨鐓￠崗顒鎲＄粵澶婂礂閸氬苯濮欓崗顑跨娴ｆ挸瀵查獮鍐插酱", "鐞涘本鏂傜粻锛勬倞闁", "OA 閺顖涘瘮", "app-blue"),
+    ("supervision", "閻絽濮", "閸旂偛鍙曠悰灞炬杺缁", "闁插秶鍋ｅ銉稊娴犺濮熼崚鍡毿掗妴浣界箻鎼达箒鎷烽煪顏傗偓浣界煑娴犳槒鎯圭偟娈戦梻顓犲箚缁狅紕鎮婄化鑽埠", "鐞涘本鏂傜粻锛勬倞闁", "缂佺厧鎮庨張宥呭閸", "app-blue"),
+    # 娴滃搫濮忕紒鍕矏缁""
+    ("hr", "HR 娴滆桨绨", "娴滃搫濮忕紒鍕矏缁", "缂佸嫮绮愰弸鑸电妴浣稿弳鏉烆剝鐨熺粋姹団偓浣告値閸氬本銆傚鍫涒偓浣锋眽娴滃鐔绾偓閺佺増宓佹稉顓炵妇", "娴滃搫濮忕挧鍕爱闁", "娴滆桨绨張宥呭閸", "app-green"),
+    ("recruitment", "閹锋稖浠", "娴滃搫濮忕紒鍕矏缁", "闂団偓濮瑰倸褰傜敮鍐偓浣虹暆閸樺棛鐡柅澶堚偓渚娼扮拠鏇炵暔閹烘帇鈧礁缍嶉悽銊吀閹电懓鍙忓浣衡柤缁狅紕鎮", "娴滃搫濮忕挧鍕爱闁", "閹锋稖浠掗張宥呭閸", "app-green"),
+    ("training", "閸顔", "娴滃搫濮忕紒鍕矏缁", "鐠囧墽鈻肩粻锛勬倞閵嗕礁鐓跨拋顓吀閸掓帇鈧礁顒熼崚鍡欑埠鐠伮扳偓浣告躬缁惧灝顒熸稊鐘辩瑢閼板啳鐦", "娴滃搫濮忕挧鍕爱闁", "閸顔勯張宥呭閸", "app-green"),
+    ("wellness", "閸涙浼愰崗铏偓鈧", "娴滃搫濮忕紒鍕矏缁", "閻喐妫粊婵堫洿閵嗕浇濡弮銉洿閸掆斂鈧礁浠存惔宄板彠閹偓閵嗕礁鎲冲銉簻閸斺晙绗岄幇蹇氼潌閸欏秹顩", "娴滃搫濮忕挧鍕爱闁", "閸忚櫕鈧偓閺堝秴濮熼崣", "app-green"),
+    # 缂佸繗鎯娑撴艾濮熺猾""
+    ("crm", "CRM", "缂佸繗鎯娑撴艾濮熺猾", "鐎广垺鍩涙穱鈩冧紖缁狅紕鎮婇妴浣告櫌閺堥缚鎷烽煪顏傗偓浣告値閸氬瞼顓搁悶鍡愨偓渚鏀崬顔界础閺傛鍨庨弸", "鏉劘鎯缁狅紕鎮婇柈", "CRM 閺顖涘瘮", "app-orange"),
+    ("erp", "ERP", "缂佸繗鎯娑撴艾濮熺猾", "闁插洩鍠橀妴浣哥氨鐎涙鈧胶鏁撴禍褑顓搁崚鎺嬧偓浣藉窛濡偓缁涘绱掓稉姘崇濠劒绔存担鎾冲缁狅紕鎮", "鏉劘鎯缁狅紕鎮婇柈", "ERP 閺顖涘瘮", "app-orange"),
+    ("service-desk", "閸烆喖鎮楀銉礋", "缂佸繗鎯娑撴艾濮熺猾", "鐎广垺鍩涢幎銉叏閵嗕礁浼愰崡鏇炲瀻闁板秲鈧焦婀囬崝陇绐￠煪顏傗偓浣瑰姬閹板繐瀹抽崶鐐额問闂傤厾骞", "鏉劘鎯缁狅紕鎮婇柈", "閸烆喖鎮楅弨顖涘瘮", "app-orange"),
+    ("supply-chain", "娓氭稑绨查柧鍓晸娴", "缂佸繗鎯娑撴艾濮熺猾", "娓氭稑绨查崯鍡楀礂閸氬被鈧胶澧块弬娆撴付濮瑰倶鈧焦甯撴禍褑鐨熸惔锔衡偓浣哄濞翠浇绐￠煪顏嗩吀閻", "鏉劘鎯缁狅紕鎮婇柈", "娓氭稑绨查柧鐐暜閹", "app-orange"),
+    # 鐠愩垼绁崥搴珶 & 閺顖涙嫼缁""
+    ("finance", "鐠愩垹濮", "鐠愩垼绁崥搴珶 & 閺顖涙嫼缁", "閹槒澶勯妴浣哥安閺璺虹安娴犳鈧線顣粻妤冾吀閹貉佲偓浣藉偍閸斺剝濮悰銊瑢閸掑棙鐎", "閸氬骸瀚熸穱婵嬫闁", "鐠愩垹濮熼張宥呭閸", "app-purple"),
+    ("fixed-assets", "閸搫鐣剧挧鍕獓", "鐠愩垼绁崥搴珶 & 閺顖涙嫼缁", "鐠嫪楠囬崗銉氨閵嗕線顣悽銊ｂ偓浣界殶閹枫劊鈧胶娲忛悙骞库偓浣瑰鎼寸喎鍙忛悽鐔锋嚒閸涖劍婀＄粻锛勬倞", "閸氬骸瀚熸穱婵嬫闁", "鐠嫪楠囬張宥呭閸", "app-purple"),
+    ("facility", "閸樺倸灏悧鈺绗", "鐠愩垼绁崥搴珶 & 閺顖涙嫼缁", "閸樺倸灏粚娲？閵嗕浇顔曟径鍥啎閺傚鈧礁鐣穱婵嗚窗閺屻儯鈧胶璞崠鏍箽濞蹭胶顓搁悶", "閸氬骸瀚熸穱婵嬫闁", "閻椻晙绗熼張宥呭閸", "app-purple"),
+    ("repair", "閹躲儰鎱", "鐠愩垼绁崥搴珶 & 閺顖涙嫼缁", "鐠佹儳顦弫鍛存閹躲儰鎱妴浣规烦瀹搞儯鈧胶娣穱顔款唶瑜版洏鈧礁顦禒鍓侇吀閻炲棛娈戠紒鐔剁楠炲啿褰", "閸氬骸瀚熸穱婵嬫闁", "閹躲儰鎱張宥呭閸", "app-purple"),
+    ("data-portal", "閺佺増宓佹稉顓炲酱", "鐠愩垼绁崥搴珶 & 閺顖涙嫼缁", "閺佺増宓佸鍥粵閵嗕焦涓嶉悶鍡愨偓浣哥磻閸欐垯鈧焦婀囬崝锛勬畱缂佺喍绔撮弫鐗堝祦鎼存洖楠", "閸氬骸瀚熸穱婵嬫闁", "閺佺増宓侀張宥呭閸", "app-purple"),
+    ("party", "閸忔艾缂撴搴付", "鐠愩垼绁崥搴珶 & 閺顖涙嫼缁", "缂佸嫮绮愰悽鐔告閵嗕礁鍘风拹鍦吀閻炲棎鈧礁绮旈弨鎸庢殌閼插眰鈧礁鎮庣憴鍕吀鐠佲茬瑢妞嬪酣娅撴０鍕劅", "鐞涘本鏂傜粻锛勬倞闁", "閸忔艾缂撻弨顖涘瘮", "app-purple"),
 ]
 
 DEFAULT_SUBSYSTEM_ACTIONS = {
@@ -676,9 +680,9 @@ DEFAULT_SUBSYSTEM_ACTIONS = {
         {"label": "閸旂偛鍙曢柅姘辩叀", "kind": "notices"},
     ],
     "supervision": [
-        {"label": "閻絽濮欐禍瀣€?, "kind": "records"},
-        {"label": "鐠愶絼鎹㈠〒鍛礋", "kind": "records"},
-        {"label": "閸旂偟鎮婃潻娑樺", "kind": "dashboard"},
+        {"label": "閻絽濮欐禍瀣", "kind": "records"},
+        {"label": "鐠愶絼鎹〒鍛礋", "kind": "records"},
+        {"label": "閸旂偟鎮婃潻娑樺", "kind": "dashboard"},
     ],
     "hr": [
         {"label": "娴滃搫鎲冲锝嗩攳", "kind": "records"},
@@ -686,13 +690,13 @@ DEFAULT_SUBSYSTEM_ACTIONS = {
         {"label": "鐠囦焦妲戦悽瀹狀嚞", "kind": "records"},
     ],
     "recruitment": [
-        {"label": "閹锋稖浠掗棁鈧Ч?, "kind": "records"},
-        {"label": "缁犫偓閸樺棛鐡柅?, "kind": "records"},
-        {"label": "瑜版洜鏁ょ€光剝澹?, "kind": "records"},
+        {"label": "閹锋稖浠掗棁鈧", "kind": "records"},
+        {"label": "缁犫偓閸樺棛鐡柅", "kind": "records"},
+        {"label": "瑜版洜鏁光剝澹", "kind": "records"},
     ],
     "training": [
-        {"label": "閸╃顔勭拋鈥冲灊", "kind": "records"},
-        {"label": "閸︺劎鍤庣€涳缚绡?, "kind": "records"},
+        {"label": "閸顔勭拋鈥冲灊", "kind": "records"},
+        {"label": "閸劎鍤庣涳缚绡", "kind": "records"},
         {"label": "鐎涳箑鍨庣紒鐔活吀", "kind": "dashboard"},
     ],
     "wellness": [
@@ -702,8 +706,8 @@ DEFAULT_SUBSYSTEM_ACTIONS = {
     ],
     "crm": [
         {"label": "鐎广垺鍩涚粻锛勬倞", "kind": "records"},
-        {"label": "閸熷棙婧€鏉╁€熼嚋", "kind": "records"},
-        {"label": "闁库偓閸烆喖鍨庨弸?, "kind": "dashboard"},
+        {"label": "閸熷棙婧鏉熼嚋", "kind": "records"},
+        {"label": "闁库偓閸烆喖鍨庨弸", "kind": "dashboard"},
     ],
     "erp": [
         {"label": "闁插洩鍠樼粻锛勬倞", "kind": "records"},
@@ -711,19 +715,19 @@ DEFAULT_SUBSYSTEM_ACTIONS = {
         {"label": "閻㈢喍楠囩拋鈥冲灊", "kind": "records"},
     ],
     "service-desk": [
-        {"label": "瀹搞儱宕熼崚妤勩€?, "kind": "records"},
+        {"label": "瀹搞儱宕熼崚妤勩", "kind": "records"},
         {"label": "閺堝秴濮熺捄鐔婚嚋", "kind": "records"},
-        {"label": "濠娾剝鍓版惔锕佺槑娴?, "kind": "dashboard"},
+        {"label": "濠娾剝鍓版惔锕佺槑娴", "kind": "dashboard"},
     ],
     "supply-chain": [
-        {"label": "娓氭稑绨查崯鍡欘吀閻?, "kind": "records"},
-        {"label": "閻椻晜鏋￠棁鈧Ч?, "kind": "records"},
-        {"label": "閻椻晜绁︾捄鐔婚嚋", "kind": "records"},
+        {"label": "娓氭稑绨查崯鍡欘吀閻", "kind": "records"},
+        {"label": "閻椻晜鏋￠棁鈧", "kind": "records"},
+        {"label": "閻椻晜绁捄鐔婚嚋", "kind": "records"},
     ],
     "finance": [
         {"label": "閹躲儵鏀㈢粻锛勬倞", "kind": "records"},
         {"label": "妫板嫮鐣荤粻鈩冨付", "kind": "records"},
-        {"label": "鐠愩垹濮熼幎銉ㄣ€?, "kind": "dashboard"},
+        {"label": "鐠愩垹濮熼幎銉", "kind": "dashboard"},
     ],
     "fixed-assets": [
         {"label": "鐠у嫪楠囬崣鎷屽", "kind": "records"},
@@ -736,9 +740,9 @@ DEFAULT_SUBSYSTEM_ACTIONS = {
         {"label": "瀹糕剝鐓＄拋鏉跨秿", "kind": "records"},
     ],
     "repair": [
-        {"label": "閺傛澘缂撻幎銉ゆ叏", "kind": "records"},
-        {"label": "瀹搞儱宕熼崚妤勩€?, "kind": "records"},
-        {"label": "閺堝秴濮熺拠鍕幆", "kind": "dashboard"},
+        {"label": "閺傛澘缂撻幎銉叏", "kind": "records"},
+        {"label": "瀹搞儱宕熼崚妤勩", "kind": "records"},
+        {"label": "閺堝秴濮熺拠鍕幆", "kind": "dashboard"},
     ],
     "data-portal": [
         {"label": "閹稿洦鐖ｉ惇瀣緲", "kind": "dashboard"},
@@ -766,30 +770,30 @@ DEFAULT_MENU_ITEMS: dict[str, list[dict[str, Any]]] = {
         ]},
         {"section": "閸旂偛鍙曟潏鍛И", "items": [
             {"code": "meetings", "label": "娴兼俺顔呯粻锛勬倞", "icon": "i-calendar", "href": "#/subsystem/oa/meetings"},
-            {"code": "notices", "label": "闁氨鐓￠崗顒€鎲?, "icon": "i-bell", "href": "#/subsystem/oa/notices"},
+            {"code": "notices", "label": "闁氨鐓￠崗顒鎲", "icon": "i-bell", "href": "#/subsystem/oa/notices"},
         ]},
     ],
     "supervision": [
-        {"section": "閻絽濮欐禍瀣€?, "items": [
-            {"code": "items", "label": "閸忋劑鍎存禍瀣€?, "icon": "i-list", "href": "#/subsystem/supervision/items"},
-            {"code": "new-item", "label": "閺傛澘缂撻惈锝呭", "icon": "i-plus", "href": "#/subsystem/supervision/items/new"},
-            {"code": "my-items", "label": "閹存垹娈戦惈锝呭", "icon": "i-user", "href": "#/subsystem/supervision/items/my"},
+        {"section": "閻絽濮欐禍瀣", "items": [
+            {"code": "items", "label": "閸忋劑鍎存禍瀣", "icon": "i-list", "href": "#/subsystem/supervision/items"},
+            {"code": "new-item", "label": "閺傛澘缂撻惈锝呭", "icon": "i-plus", "href": "#/subsystem/supervision/items/new"},
+            {"code": "my-items", "label": "閹存垹娈戦惈锝呭", "icon": "i-user", "href": "#/subsystem/supervision/items/my"},
         ]},
         {"section": "鐠愶絼鎹㈠〒鍛礋", "items": [
             {"code": "units", "label": "鐠愶絼鎹㈤崡鏇氱秴", "icon": "i-grid", "href": "#/subsystem/supervision/units"},
             {"code": "progress", "label": "閸旂偟鎮婃潻娑樺", "icon": "i-chart", "href": "#/subsystem/supervision/progress"},
         ]},
-        {"section": "缂佺喕顓搁崚鍡樼€?, "items": [
-            {"code": "stats", "label": "閸旂偟绮ㄧ紒鐔活吀", "icon": "i-bar-chart", "href": "#/subsystem/supervision/stats"},
-            {"code": "overdue", "label": "闁偓婀￠崚鍡樼€?, "icon": "i-alert", "href": "#/subsystem/supervision/overdue"},
+        {"section": "缂佺喕顓搁崚鍡樼", "items": [
+            {"code": "stats", "label": "閸旂偟绮紒鐔活吀", "icon": "i-bar-chart", "href": "#/subsystem/supervision/stats"},
+            {"code": "overdue", "label": "闁偓婀￠崚鍡樼", "icon": "i-alert", "href": "#/subsystem/supervision/overdue"},
         ]},
     ],
     # 閳光偓閳光偓 娴滃搫濮忕紒鍕矏缁?閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓
     "hr": [
         {"section": "鐠囦焦妲戦悽瀹狀嚞", "items": [
-            {"code": "cert-employment", "label": "閸︺劏浜寸拠浣规", "icon": "i-file", "href": "#/subsystem/hr/certificates/employment"},
-            {"code": "cert-income", "label": "閺€璺哄弳鐠囦焦妲?, "icon": "i-file", "href": "#/subsystem/hr/certificates/income"},
-            {"code": "cert-other", "label": "閸忔湹绮拠浣规", "icon": "i-file", "href": "#/subsystem/hr/certificates/other"},
+            {"code": "cert-employment", "label": "閸劏浜寸拠浣规", "icon": "i-file", "href": "#/subsystem/hr/certificates/employment"},
+            {"code": "cert-income", "label": "閺璺哄弳鐠囦焦妲", "icon": "i-file", "href": "#/subsystem/hr/certificates/income"},
+            {"code": "cert-other", "label": "閸忔湹绮拠浣规", "icon": "i-file", "href": "#/subsystem/hr/certificates/other"},
         ]},
         {"section": "閼板啫瀚熺拠宄颁海", "items": [
             {"code": "leave", "label": "鐠囧嘲浜ｉ悽瀹狀嚞", "icon": "i-edit", "href": "#/subsystem/hr/leave"},
@@ -804,14 +808,14 @@ DEFAULT_MENU_ITEMS: dict[str, list[dict[str, Any]]] = {
     # recruitment, training, wellness 閳?menu items deferred
     # 閳光偓閳光偓 鐠愩垼绁崥搴″珶 & 閺€顖涙嫼缁?閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓
     "finance": [
-        {"section": "閹躲儵鏀㈢粻锛勬倞", "items": [
-            {"code": "claims", "label": "閹躲儵鏀㈤悽瀹狀嚞", "icon": "i-edit", "href": "#/subsystem/finance/claims"},
-            {"code": "my-claims", "label": "閹存垹娈戦幎銉╂敘", "icon": "i-user", "href": "#/subsystem/finance/claims/my"},
-            {"code": "claim-approve", "label": "閹躲儵鏀㈢€光剝澹?, "icon": "i-check", "href": "#/subsystem/finance/claims/approve"},
+        {"section": "閹躲儵鏀粻锛勬倞", "items": [
+            {"code": "claims", "label": "閹躲儵鏀悽瀹狀嚞", "icon": "i-edit", "href": "#/subsystem/finance/claims"},
+            {"code": "my-claims", "label": "閹存垹娈戦幎銉敘", "icon": "i-user", "href": "#/subsystem/finance/claims/my"},
+            {"code": "claim-approve", "label": "閹躲儵鏀光剝澹", "icon": "i-check", "href": "#/subsystem/finance/claims/approve"},
         ]},
         {"section": "妫板嫮鐣荤粻锛勬倞", "items": [
-            {"code": "budget", "label": "妫板嫮鐣绘い鍦窗", "icon": "i-list", "href": "#/subsystem/finance/budgets"},
-            {"code": "budget-exec", "label": "妫板嫮鐣婚幍褑顢?, "icon": "i-chart", "href": "#/subsystem/finance/budgets/exec"},
+            {"code": "budget", "label": "妫板嫮鐣绘鍦窗", "icon": "i-list", "href": "#/subsystem/finance/budgets"},
+            {"code": "budget-exec", "label": "妫板嫮鐣婚幍褑顢", "icon": "i-chart", "href": "#/subsystem/finance/budgets/exec"},
         ]},
         {"section": "閺夋劖鏋″〒鍛礋", "items": [
             {"code": "materials", "label": "鐠愬湱鏁ら弶鎰灐", "icon": "i-file", "href": "#/subsystem/finance/materials"},
@@ -824,9 +828,9 @@ DEFAULT_MENU_ITEMS: dict[str, list[dict[str, Any]]] = {
             {"code": "new-ticket", "label": "閺傛澘缂撻幎銉ゆ叏", "icon": "i-plus", "href": "#/subsystem/repair/tickets/new"},
             {"code": "my-tickets", "label": "閹存垹娈戦幎銉ゆ叏", "icon": "i-user", "href": "#/subsystem/repair/tickets/my"},
         ]},
-        {"section": "濞叉儳宕熸径鍕倞", "items": [
-            {"code": "assign", "label": "瀵板懏娣冲銉ュ礋", "icon": "i-send", "href": "#/subsystem/repair/tickets/assign"},
-            {"code": "processing", "label": "婢跺嫮鎮婃稉?, "icon": "i-clock", "href": "#/subsystem/repair/tickets/processing"},
+        {"section": "濞叉儳宕熸径鍕倞", "items": [
+            {"code": "assign", "label": "瀵板懏娣冲銉礋", "icon": "i-send", "href": "#/subsystem/repair/tickets/assign"},
+            {"code": "processing", "label": "婢跺嫮鎮婃稉", "icon": "i-clock", "href": "#/subsystem/repair/tickets/processing"},
         ]},
         {"section": "缂佺喕顓哥拠鍕幆", "items": [
             {"code": "stats", "label": "瀹搞儱宕熺紒鐔活吀", "icon": "i-chart", "href": "#/subsystem/repair/stats"},
@@ -837,15 +841,15 @@ DEFAULT_MENU_ITEMS: dict[str, list[dict[str, Any]]] = {
         {"section": "閺佺増宓侀惇瀣緲", "items": [
             {"code": "overview", "label": "閺佺増宓佸鍌濐潔", "icon": "i-chart", "href": "#/subsystem/data-portal/overview"},
             {"code": "metrics", "label": "閹稿洦鐖ｇ拠锔藉剰", "icon": "i-list", "href": "#/subsystem/data-portal/metrics"},
-            {"code": "trends", "label": "鐡掑濞嶉崚鍡樼€?, "icon": "i-bar-chart", "href": "#/subsystem/data-portal/trends"},
+            {"code": "trends", "label": "鐡掑濞嶉崚鍡樼", "icon": "i-bar-chart", "href": "#/subsystem/data-portal/trends"},
         ]},
         {"section": "娑撴捇顣介弫鐗堝祦", "items": [
             {"code": "tickets-data", "label": "瀹搞儱宕熼弫鐗堝祦", "icon": "i-file", "href": "#/subsystem/data-portal/tickets"},
             {"code": "assets-data", "label": "鐠у嫪楠囬弫鐗堝祦", "icon": "i-file", "href": "#/subsystem/data-portal/assets"},
             {"code": "flows-data", "label": "濞翠胶鈻奸弫鐗堝祦", "icon": "i-file", "href": "#/subsystem/data-portal/flows"},
         ]},
-        {"section": "閺佺増宓佺挧鍕爱", "items": [
-            {"code": "exports", "label": "閺佺増宓佺€电厧鍤?, "icon": "i-download", "href": "#/subsystem/data-portal/exports"},
+        {"section": "閺佺増宓佺挧鍕爱", "items": [
+            {"code": "exports", "label": "閺佺増宓佺电厧鍤", "icon": "i-download", "href": "#/subsystem/data-portal/exports"},
             {"code": "reports", "label": "閹躲儴銆冮柊宥囩枂", "icon": "i-settings", "href": "#/subsystem/data-portal/reports"},
         ]},
     ],
@@ -1076,7 +1080,7 @@ class PortalStore(
                         .where(portal_subsystems_table.c.code == code)
                         .values(**values)
                     )
-            generic_action_labels = {"閺屻儳婀呭鍌濐潔", "閺屻儳婀呴崗瀹犱粓閺堝秴濮?, "閺屻儳婀呴崗瀹犱粓鐠у嫭绨?}
+            generic_action_labels = {"閺屻儳婀呭鍌濐潔", "閺屻儳婀呴崗瀹犱粓閺堝秴濮", "閺屻儳婀呴崗瀹犱粓鐠嫭绨"}
             for code, *_ in DEFAULT_SUBSYSTEMS:
                 desired_actions = DEFAULT_SUBSYSTEM_ACTIONS.get(code)
                 if not desired_actions:
@@ -1169,7 +1173,7 @@ class PortalStore(
                         "title": item["title"],
                         "source": item["source"],
                         "category": item["category"],
-                        "body": f"{item['title']}閵嗗倽顕惄绋垮彠闁劑妫幐澶愨偓姘辩叀鐟曚焦鐪扮€瑰本鍨氶崥搴ｇ敾瀹搞儰缍旈敍灞借嫙閸︺劎绮烘稉鈧梻銊﹀煕娑擃厽鐓￠惇瀣閻炲棜绻樼仦鏇樷偓?,
+                        "body": f"{item['title']}閵嗗倽顕惄绋垮彠闁劑妫幐澶愨偓姘辩叀鐟曚焦鐪扮瑰本鍨氶崥搴ｇ敾瀹搞儰缍旈敍灞借嫙閸劎绮烘稉鈧梻銊煕娑擃厽鐓￠惇瀣閻炲棜绻樼仦鏇樷偓",
                         "pinned": index == 0,
                         "published_at": f"2026-{item['time'][:2]}-{item['time'][3:5]}T{item['time'][6:]}:00",
                         "read_count": 0,
@@ -1186,7 +1190,7 @@ class PortalStore(
                         "location": item["location"],
                         "owner": item["owner"],
                         "file_type": item["file_type"],
-                        "summary": f"{item['name']}閻劋绨梻銊﹀煕閸愬懎宕楁担婧库偓浣圭叀闂冨懎鎷伴惌銉ㄧ槕濞屽绌╅妴?,
+                        "summary": f"{item['name']}閻劋绨梻銊煕閸愬懎宕楁担婧库偓浣圭叀闂冨懎鎷伴惌銉槕濞屽绌妴",
                         "updated_at": f"2026-{item['updated_at'][:2]}-{item['updated_at'][3:]}T09:00:00",
                         "favorite_count": 0,
                         "visit_count": 0,
@@ -1201,7 +1205,7 @@ class PortalStore(
                         "title": item["title"],
                         "source": item["source"],
                         "category": item["category"],
-                        "body": f"{item['title']}閵嗗倽顕涢幆鍛殺閸︺劏绁拋顖欒厬韫囧啯瀵旂紒顓熸纯閺傝埇鈧?,
+                        "body": f"{item['title']}閵嗗倽顕涢幆鍛殺閸劏绁拋顖欒厬韫囧啯瀵旂紒顓熸纯閺傝埇鈧",
                         "pinned": index == 0,
                         "published_at": f"{item['published_at']}T09:00:00",
                         "created_at": now,
@@ -1415,39 +1419,39 @@ class PortalStore(
     def enterprise_workbench(self, code: str, user: dict[str, Any] | None = None) -> dict[str, Any] | None:
         configs = {
             "repair": {
-                "title": "閹躲儰鎱ㄥ銉ュ礋",
-                "columns": ["瀹搞儱宕?, "閻樿埖鈧?, "婢跺嫮鎮婃禍?, "閺囧瓨鏌婇弮鍫曟？"],
+                "title": "閹躲儰鎱銉礋",
+                "columns": ["瀹搞儱宕", "閻樿埖鈧", "婢跺嫮鎮婃禍", "閺囧瓨鏌婇弮鍫曟？"],
                 "collection": self.list_repair_tickets,
                 "map": lambda item: {
                     "title": item["title"],
                     "status": item["status"],
-                    "owner": item.get("assignee") or "瀵板懎鍨庡ú?,
+                    "owner": item.get("assignee") or "瀵板懎鍨庡",
                     "updated": item["updated_at"][:10],
                     "detail": item["description"],
                 },
             },
             "assets": {
-                "title": "鐠у嫪楠囬崣鎷屽",
-                "columns": ["鐠у嫪楠?, "閻樿埖鈧?, "娣囨繄顓告禍?, "閺囧瓨鏌婇弮鍫曟？"],
+                "title": "鐠嫪楠囬崣鎷屽",
+                "columns": ["鐠嫪楠", "閻樿埖鈧", "娣囨繄顓告禍", "閺囧瓨鏌婇弮鍫曟？"],
                 "collection": self.list_asset_items,
                 "map": lambda item: {
                     "title": item["name"],
                     "status": item["status"],
-                    "owner": item.get("custodian") or "閺堫亝瀵氱€?,
+                    "owner": item.get("custodian") or "閺堫亝瀵氱",
                     "updated": item["updated_at"][:10],
                     "detail": f"{item['asset_code']} 璺?{item['category']} 璺?{item['location']}",
                 },
             },
             "oa": {
-                "title": "瀵板懎濮欏ù浣衡柤",
-                "columns": ["濞翠胶鈻?, "閻樿埖鈧?, "瑜版挸澧犳径鍕倞娴?, "閺囧瓨鏌婇弮鍫曟？"],
+                "title": "瀵板懎濮欏浣衡柤",
+                "columns": ["濞翠胶鈻", "閻樿埖鈧", "瑜版挸澧犳径鍕倞娴", "閺囧瓨鏌婇弮鍫曟？"],
                 "collection": self.list_oa_flows,
                 "map": lambda item: {
                     "title": item["title"],
                     "status": item["status"],
-                    "owner": item.get("current_handler") or "瀵板懎鍨庡ú?,
+                    "owner": item.get("current_handler") or "瀵板懎鍨庡",
                     "updated": item["updated_at"][:10],
-                    "detail": f"{item['flow_type']} 璺?瑜版挸澧犻懞鍌滃仯閿涙item.get('current_handler') or '瀵板懎鍨庡ú?}",
+                    "detail": f"{item[chr(39)+chr(102)+chr(108)+chr(111)+chr(119)+chr(95)+chr(116)+chr(121)+chr(112)+chr(101)+chr(39)]} -- {item.get(chr(39)+chr(99)+chr(117)+chr(114)+chr(114)+chr(101)+chr(110)+chr(116)+chr(95)+chr(104)+chr(97)+chr(110)+chr(100)+chr(108)+chr(101)+chr(114)+chr(39)) or chr(39)+chr(26410)+chr(20998)+chr(37197)+chr(39)}",
                 },
             },
         }
@@ -1481,8 +1485,8 @@ class PortalStore(
             },
             "portal": {
                 "profile": {
-                    "name": user.get("display_name") or "闁繈鏀? if user else "闁繈鏀?,
-                    "department": user.get("default_dept_id") or "" if user else "鎼存梻鏁ら悧鈺冩倞娑撳孩娼楅弬娆忣劅闂?,
+                    "name": user.get("display_name") or ("未知用户" if user else "未知用户"),
+                    "department": user.get("default_dept_id") or ("" if user else "未知部门"),
                     "last_login": user.get("last_login_at") or "" if user else "2026-07-16 10:56",
                 },
                 "systems": self.list_subsystems(user=user),
@@ -1515,7 +1519,7 @@ class PortalStore(
             with self._session() as db:
                 values = {
                     "title": payload["title"],
-                    "tag": payload.get("tag") or "娴犲﹤銇?,
+                    "tag": payload.get("tag") or "娴犲銇",
                     "deadline": payload.get("deadline") or None,
                     "done": False,
                     "overdue_notified_at": None,
@@ -1526,29 +1530,20 @@ class PortalStore(
                 # AccessContext so a user cannot inject attribution columns via
                 # extra JSON fields (defence-in-depth; the Pydantic schema already
                 # strips unknown fields, but the store layer must not rely on that).
-                if user is not None:
-                    ctx = self._build_scope_context(user, db)
-                    values["org_id"] = ctx.default_org_id if ctx else "default"
-                    values["department_id"] = ctx.default_dept_id if ctx else "HQ"
-                    values["owner_id"] = ctx.user_id if ctx else None
-                    values["visibility"] = "private"
-                    values["sensitivity"] = "normal"
-                else:
-                    values.setdefault("org_id", "default")
-                    values.setdefault("department_id", "HQ")
-                    values.setdefault("visibility", "private")
-                    values.setdefault("sensitivity", "normal")
+                ctx = self._build_scope_context(user, db)
+                values["org_id"] = ctx.default_org_id
+                values["department_id"] = ctx.default_dept_id
+                values["owner_id"] = ctx.user_id
+                values["visibility"] = "private"
+                values["sensitivity"] = "normal"
 
                 result = db.execute(insert(tasks_table).values(**values))
                 db.commit()
                 task_id = int(result.inserted_primary_key[0])
 
                 # Re-read through scope filter so the response is consistent
-                scope_clause = self._scope_single(ctx, tasks_table, task_id) if user is not None else (tasks_table.c.id == task_id)
-                row = db.execute(select(tasks_table).where(scope_clause)).mappings().first()
-                if row is None:
-                    # Shouldn't happen (just created by this user), but be defensive
-                    row = db.execute(select(tasks_table).where(tasks_table.c.id == task_id)).mappings().one()
+                scope_clause = self._scope_single(ctx, tasks_table, task_id)
+                row = db.execute(select(tasks_table).where(scope_clause)).mappings().one()
                 return self._task_from_row(row)
 
     def update_task(self, task_id: int, payload: dict[str, Any], user: dict[str, Any] | None = None) -> dict[str, Any] | None:
@@ -1616,12 +1611,13 @@ class PortalStore(
                 db.commit()
                 return int(result.rowcount or 0)
 
-    def find_overdue_tasks(self) -> list[dict[str, Any]]:
+    def find_overdue_tasks(self, *, actor: object = None) -> list[dict[str, Any]]:
         """Return undone tasks whose deadline has passed but not yet notified.
 
         Used by the APScheduler overdue scanner. Returns the raw row dict
         so the scanner can create notifications and update statuses.
         """
+        require_system_actor(actor, SystemActor.OVERDUE_SCANNER)
         now = self._now_iso()
         with self._session() as db:
             rows = db.execute(
@@ -1631,18 +1627,25 @@ class PortalStore(
                         tasks_table.c.deadline.isnot(None),
                         tasks_table.c.deadline < now,
                         tasks_table.c.overdue_notified_at.is_(None),
+                        tasks_table.c.visibility.in_(KNOWN_VISIBILITIES),
+                        tasks_table.c.sensitivity.in_(KNOWN_SENSITIVITIES),
                     )
                 )
             ).mappings().all()
             return [self._task_from_row(row) for row in rows]
 
-    def mark_task_overdue_notified(self, task_id: int) -> None:
+    def mark_task_overdue_notified(self, task_id: int, *, actor: object = None) -> None:
         """Set overdue_notified_at and status='overdue' for a task."""
+        require_system_actor(actor, SystemActor.OVERDUE_SCANNER)
         now = self._now_iso()
         with self._session() as db:
             db.execute(
                 update(tasks_table)
-                .where(tasks_table.c.id == task_id)
+                .where(
+                    tasks_table.c.id == task_id,
+                    tasks_table.c.visibility.in_(KNOWN_VISIBILITIES),
+                    tasks_table.c.sensitivity.in_(KNOWN_SENSITIVITIES),
+                )
                 .values(overdue_notified_at=now, status="overdue")
             )
             db.commit()
@@ -1677,27 +1680,19 @@ class PortalStore(
                 }
                 # Phase 4: set attribution from user context.
                 # Same defence-in-depth rationale as create_task above.
-                if user is not None:
-                    ctx = self._build_scope_context(user, db)
-                    values["org_id"] = ctx.default_org_id if ctx else "default"
-                    values["department_id"] = ctx.default_dept_id if ctx else "HQ"
-                    values["owner_id"] = ctx.user_id if ctx else None
-                    values["visibility"] = "private"
-                    values["sensitivity"] = "normal"
-                else:
-                    values.setdefault("org_id", "default")
-                    values.setdefault("department_id", "HQ")
-                    values.setdefault("visibility", "private")
-                    values.setdefault("sensitivity", "normal")
+                ctx = self._build_scope_context(user, db)
+                values["org_id"] = ctx.default_org_id
+                values["department_id"] = ctx.default_dept_id
+                values["owner_id"] = ctx.user_id
+                values["visibility"] = "private"
+                values["sensitivity"] = "normal"
 
                 result = db.execute(insert(events_table).values(**values))
                 db.commit()
                 event_id = int(result.inserted_primary_key[0])
 
-                scope_clause = self._scope_single(ctx, events_table, event_id) if user is not None else (events_table.c.id == event_id)
-                row = db.execute(select(events_table).where(scope_clause)).mappings().first()
-                if row is None:
-                    row = db.execute(select(events_table).where(events_table.c.id == event_id)).mappings().one()
+                scope_clause = self._scope_single(ctx, events_table, event_id)
+                row = db.execute(select(events_table).where(scope_clause)).mappings().one()
                 return self._event_from_row(row)
 
     def update_event(self, event_id: int, payload: dict[str, Any], user: dict[str, Any] | None = None) -> dict[str, Any] | None:
@@ -1890,13 +1885,18 @@ class PortalStore(
     # Knowledge sync & import records
     # 閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳?
 
-    def sync_knowledge_mappings(self, resources: list[dict[str, Any]]) -> dict[str, Any]:
+    def sync_knowledge_mappings(
+        self, resources: list[dict[str, Any]], user: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         created = 0
         updated = 0
         mapping_ids: list[str] = []
         now = datetime.now(timezone.utc).isoformat()
         with self._lock:
             with self._session() as db:
+                ctx = self._build_scope_context(user, db)
+                if not ctx.is_super_admin:
+                    raise HTTPException(status_code=403, detail="知识数据集全局同步需要超级管理员身份")
                 db.execute(update(knowledge_mappings_table).values(stale=True, updated_at=now))
                 for resource in resources:
                     resource_id = resource["id"]
@@ -1916,9 +1916,9 @@ class PortalStore(
                         "stale": False,
                         "updated_at": now,
                         # Phase 4: default attribution for synced resources
-                        "org_id": "default",
-                        "department_id": "HQ",
-                        "owner_id": 1,
+                        "org_id": ctx.default_org_id,
+                        "department_id": ctx.default_dept_id,
+                        "owner_id": ctx.user_id,
                         "visibility": "dept",
                         "sensitivity": "internal",
                     }
@@ -1970,19 +1970,15 @@ class PortalStore(
                 # Phase 4 P2-1: scope the mapping lookup to datasets the user
                 # can access.  Without this a user with kb:import could create
                 # import records for datasets outside their data scope.
-                if user is not None:
-                    ctx = self._build_scope_context(user, db)
-                    mapping = db.execute(
-                        select(knowledge_mappings_table)
-                        .where(knowledge_mappings_table.c.fastgpt_dataset_id == dataset_id)
-                        .where(self._scope_filter(ctx, knowledge_mappings_table))
-                    ).mappings().first()
-                else:
-                    mapping = db.execute(
-                        select(knowledge_mappings_table)
-                        .where(knowledge_mappings_table.c.fastgpt_dataset_id == dataset_id),
-                    ).mappings().first()
-                mapping_id = mapping["id"] if mapping else None
+                ctx = self._build_scope_context(user, db)
+                mapping = db.execute(
+                    select(knowledge_mappings_table)
+                    .where(knowledge_mappings_table.c.fastgpt_dataset_id == dataset_id)
+                    .where(self._scope_filter(ctx, knowledge_mappings_table))
+                ).mappings().first()
+                if mapping is None:
+                    raise HTTPException(status_code=403, detail="无权访问知识数据集")
+                mapping_id = mapping["id"]
                 result = db.execute(
                     insert(knowledge_import_records_table).values(
                         mapping_id=mapping_id,
@@ -2009,86 +2005,71 @@ class PortalStore(
                 return dict(row)
 
     def list_knowledge_imports(self, user: dict[str, Any] | None = None) -> dict[str, Any]:
-        """List knowledge import records scoped to the user's visible mappings.
-
-        Joins against knowledge_dataset_mappings so a user can only see import
-        records that belong to datasets within their data scope (Phase 4 F3).
-        When *user* is None the old full-list behaviour is preserved for
-        internal / seed paths.
-        """
+        """List imports linked to mappings visible to the current user."""
         with self._session() as db:
-            if user is not None:
-                ctx = self._build_scope_context(user, db)
-                # Join import records 閳?mappings and apply the visibility filter
-                # on the mappings side so we only return imports for datasets the
-                # user is authorised to see.
-                stmt = (
-                    select(knowledge_import_records_table)
-                    .select_from(
-                        knowledge_import_records_table.join(
-                            knowledge_mappings_table,
-                            knowledge_import_records_table.c.mapping_id == knowledge_mappings_table.c.id,
-                            isouter=True,
-                        )
+            ctx = self._build_scope_context(user, db)
+            # Join import records 閳?mappings and apply the visibility filter
+            # on the mappings side so we only return imports for datasets the
+            # user is authorised to see.
+            stmt = (
+                select(knowledge_import_records_table)
+                .select_from(
+                    knowledge_import_records_table.join(
+                        knowledge_mappings_table,
+                        knowledge_import_records_table.c.mapping_id == knowledge_mappings_table.c.id,
+                        isouter=True,
                     )
-                    .where(
-                        or_(
-                            # Import records linked to a visible mapping
-                            self._scope_filter(ctx, knowledge_mappings_table),
-                            # Import records with no mapping (mapping_id IS NULL)
-                            # still need to be visible 閳?only super_admin / internal
-                            # users see unlinked records.
-                            and_(
-                                knowledge_import_records_table.c.mapping_id.is_(None),
-                                ctx.is_super_admin,
-                            ),
-                        )
+                )
+                .where(
+                    or_(
+                        # Import records linked to a visible mapping
+                        self._scope_filter(ctx, knowledge_mappings_table),
+                        # Import records with no mapping (mapping_id IS NULL)
+                        # still need to be visible 閳?only super_admin / internal
+                        # users see unlinked records.
+                        and_(
+                            knowledge_import_records_table.c.mapping_id.is_(None),
+                            ctx.is_super_admin,
+                        ),
                     )
-                    .order_by(knowledge_import_records_table.c.id.desc())
                 )
-            else:
-                stmt = (
-                    select(knowledge_import_records_table)
-                    .order_by(knowledge_import_records_table.c.id.desc())
-                )
+                .order_by(knowledge_import_records_table.c.id.desc())
+            )
             rows = db.execute(stmt).mappings().all()
             return self.list_response([self._stringify_dt(dict(row)) for row in rows])
 
     def delete_knowledge_import_by_collection(
         self, collection_id: str,
         user: dict[str, Any] | None = None,
+        *,
+        dataset_id: str | None = None,
     ) -> None:
-        """閸掔娀娅庨幐鍥х暰 collection_id 閻ㄥ嫬顕遍崗銉唶瑜版洏鈧?
-
-        Phase 4 P2-2: when *user* is provided only delete import records
-        linked to mappings the user can see.
+        """Delete import records by collection_id.
+        Only delete records linked to mappings visible to the authenticated user.
         """
         with self._lock:
             with self._session() as db:
-                if user is not None:
-                    ctx = self._build_scope_context(user, db)
-                    # Only delete records whose mapping is in the user's scope
-                    visible_mapping_ids = {
-                        r[0] for r in db.execute(
-                            select(knowledge_mappings_table.c.id)
-                            .where(self._scope_filter(ctx, knowledge_mappings_table))
-                        ).fetchall()
-                    }
-                    db.execute(
-                        knowledge_import_records_table.delete()
-                        .where(knowledge_import_records_table.c.collection_id == collection_id)
-                        .where(
-                            or_(
-                                knowledge_import_records_table.c.mapping_id.in_(visible_mapping_ids),
-                                knowledge_import_records_table.c.mapping_id.is_(None),
-                            )
-                        ),
-                    )
-                else:
-                    db.execute(
-                        knowledge_import_records_table.delete()
-                        .where(knowledge_import_records_table.c.collection_id == collection_id),
-                    )
+                target = knowledge_import_records_table.c.collection_id == collection_id
+                if dataset_id is not None:
+                    target = and_(target, knowledge_import_records_table.c.dataset_id == dataset_id)
+                ctx = self._build_scope_context(user, db)
+                # Only delete records whose mapping is in the user's scope
+                visible_mapping_ids = {
+                    r[0] for r in db.execute(
+                        select(knowledge_mappings_table.c.id)
+                        .where(self._scope_filter(ctx, knowledge_mappings_table))
+                    ).fetchall()
+                }
+                db.execute(
+                    knowledge_import_records_table.delete()
+                    .where(target)
+                    .where(
+                        or_(
+                            knowledge_import_records_table.c.mapping_id.in_(visible_mapping_ids),
+                            and_(knowledge_import_records_table.c.mapping_id.is_(None), ctx.is_super_admin),
+                        )
+                    ),
+                )
                 db.commit()
 
     # 閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳烘劏鏅查埡鎰ㄦ櫜閳?
@@ -2106,12 +2087,12 @@ class PortalStore(
         created_at: str | None = None,
         user_id: int | None = None,
     ) -> None:
-        """娣囨繂鐡ㄦ稉鈧弶陇浜版径鈺傜Х閹垽绱濋崥灞炬 upsert 娴兼俺鐦介妴?
-
-        When *user_id* is provided the session is scoped to that user:
-        new sessions record the owner; existing sessions are validated
-        for ownership before accepting messages.
+        """娣囨繂鐡稉鈧弶陇浜版径鈺傜閹垽绱濋崥灞炬 upsert 娴兼俺鐦介妴
+        A valid user_id is required; existing sessions must have that owner.
+        Unowned legacy sessions are inaccessible until explicitly migrated.
         """
+        if type(user_id) is not int or user_id <= 0:
+            raise HTTPException(status_code=401, detail="保存聊天消息需要有效的用户身份")
         now = created_at or datetime.now(timezone.utc).isoformat()
         with self._lock:
             with self._session() as db:
@@ -2134,16 +2115,11 @@ class PortalStore(
                 else:
                     # Ownership check: if the session belongs to a different
                     # user, reject (silently 閳?don't leak session existence).
-                    if user_id is not None and existing_row["user_id"] is not None:
-                        if existing_row["user_id"] != user_id:
-                            return  # silently drop 閳?don't write to foreign session
+                    if existing_row["user_id"] != user_id:
+                        return  # Do not write to foreign or unowned sessions.
                     values: dict[str, Any] = {"updated_at": now}
                     if title:
                         values["title"] = title
-                    # If the session has no owner yet (backfilled to NULL),
-                    # claim it for this user.
-                    if existing_row["user_id"] is None and user_id is not None:
-                        values["user_id"] = user_id
                     db.execute(
                         update(chat_sessions_table)
                         .where(chat_sessions_table.c.id == session_id)
@@ -2162,14 +2138,14 @@ class PortalStore(
                 db.commit()
 
     def list_chat_sessions(self, user: dict[str, Any] | None = None) -> dict[str, Any]:
-        """閸掓鍤ぐ鎾冲閻劍鍩涢惃鍕喊婢垛晙绱扮拠婵撶礉閹稿娲块弬鐗堟闂傛潙鈧帒绨妴?
-
-        When *user* is None the full list is returned (internal / seed path).
-        """
+        """List only sessions owned by the authenticated user."""
         with self._session() as db:
-            stmt = select(chat_sessions_table).order_by(chat_sessions_table.c.updated_at.desc())
-            if user is not None:
-                stmt = stmt.where(chat_sessions_table.c.user_id == user["id"])
+            ctx = self._build_scope_context(user, db)
+            stmt = (
+                select(chat_sessions_table)
+                .where(chat_sessions_table.c.user_id == ctx.user_id)
+                .order_by(chat_sessions_table.c.updated_at.desc())
+            )
             rows = db.execute(stmt).mappings().all()
             return self.list_response([self._stringify_dt(dict(row)) for row in rows])
 
@@ -2177,23 +2153,22 @@ class PortalStore(
         self, session_id: str, limit: int = 0,
         user: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
-        """閼惧嘲褰囬幐鍥х暰娴兼俺鐦介惃鍕Х閹垬鈧?
-
-        When *user* is provided the session must belong to that user or
+        """閼惧嘲褰囬幐鍥暰娴兼俺鐦介惃鍕閹垬鈧
+        The session must belong to the authenticated user or
         the response is empty (uniform with nonexistent sessions to
         prevent ID enumeration).
         """
         with self._session() as db:
+            ctx = self._build_scope_context(user, db)
             # Verify ownership first
-            if user is not None:
-                session = db.execute(
-                    select(chat_sessions_table.c.user_id)
-                    .where(chat_sessions_table.c.id == session_id)
-                ).mappings().first()
-                if session is None:
-                    return self.list_response([])
-                if session["user_id"] is not None and session["user_id"] != user["id"]:
-                    return self.list_response([])  # uniform empty 閳?don't leak existence
+            session = db.execute(
+                select(chat_sessions_table.c.user_id)
+                .where(chat_sessions_table.c.id == session_id)
+            ).mappings().first()
+            if session is None:
+                return self.list_response([])
+            if session["user_id"] != ctx.user_id:
+                return self.list_response([])  # uniform empty 閳?don't leak existence
 
             stmt = (
                 select(chat_messages_table)
@@ -2203,7 +2178,8 @@ class PortalStore(
             if limit > 0:
                 stmt = stmt.limit(limit)
             rows = db.execute(stmt).mappings().all()
-            # 閹?id 閸楀洤绨潻鏂挎礀閿涘牊妞傞梻鎾€庢惔蹇ョ礆閿涘苯娲滄稉鐑樺灉娴狀剛鏁?desc 閺屻儴顕?            result = [dict(row) for row in rows]
+            # Restore chronological order after fetching the latest messages.
+            result = [dict(row) for row in rows]
             result.reverse()
             return self.list_response(result)
 
@@ -2211,23 +2187,22 @@ class PortalStore(
         self, session_id: str,
         user: dict[str, Any] | None = None,
     ) -> bool:
-        """閸掔娀娅庢导姘崇樈閸欏﹤鍙鹃幍鈧張澶嬬Х閹垬鈧?
-
-        When *user* is provided the session must belong to that user.
+        """Delete a chat session.
+        The session must belong to the authenticated user.
         Returns False when the session doesn't exist or isn't owned by
         *user* (uniform response).
         """
         with self._lock:
             with self._session() as db:
-                if user is not None:
-                    session = db.execute(
-                        select(chat_sessions_table.c.user_id)
-                        .where(chat_sessions_table.c.id == session_id)
-                    ).mappings().first()
-                    if session is None:
-                        return False
-                    if session["user_id"] is not None and session["user_id"] != user["id"]:
-                        return False  # uniform 閳?don't leak existence
+                ctx = self._build_scope_context(user, db)
+                session = db.execute(
+                    select(chat_sessions_table.c.user_id)
+                    .where(chat_sessions_table.c.id == session_id)
+                ).mappings().first()
+                if session is None:
+                    return False
+                if session["user_id"] != ctx.user_id:
+                    return False  # uniform 閳?don't leak existence
 
                 db.execute(
                     delete(chat_messages_table).where(chat_messages_table.c.session_id == session_id)
@@ -2258,7 +2233,7 @@ def configured_knowledge_spaces(
             "id": dataset_id,
             "title": display_name or dataset_id,
             "owner": "FastGPT",
-            "desc": "閺夈儴鍤?FastGPT 闁板秶鐤嗛惃鍕埂鐎圭偟鐓＄拠鍡楃氨閿涘苯褰查悽銊ょ艾閺傚洣娆㈢€电厧鍙嗛妴浣哥サ閸忋儱鎷伴崥鎴﹀櫤濡偓缁鳖潿鈧?,
+            "desc": "閺夈儴鍤?FastGPT 闁板秶鐤嗛惃鍕埂鐎圭偟鐓＄拠鍡楃氨閿涘苯褰查悽銊艾閺傚洣娆电厧鍙嗛妴浣哥閸忋儱鎷伴崥鎴櫤濡偓缁鳖潿鈧",
             "type": "public",
             "meta": f"{dataset_id} 璺?{mode}",
             "tone": "app-purple",
@@ -2275,8 +2250,8 @@ def knowledge_space_from_mapping(row: Any) -> dict[str, Any]:
     return {
         "id": row["id"],
         "title": row["display_name"],
-        "owner": "FastGPT 閺佺増宓侀梿? if is_dataset else "FastGPT 鎼存梻鏁?,
-        "desc": "閸欘垰顕遍崗銉︽瀮娴犺泛鑻熼悽?FastGPT 鐎瑰本鍨氬畵灞藉弳閸滃苯鎮滈柌蹇旑梾缁鳖潿鈧? if is_dataset else "閸欘垳鏁ゆ禍?FastGPT 闂傤喚鐡熼幋鏍梾缁便垹绨查悽銊ｂ偓?,
+        "owner": ("FastGPT 数据集" if is_dataset else "FastGPT 应用"),
+        "desc": ("从FastGPT数据源导入的知识" if is_dataset else "从FastGPT应用导入的知识"),
         "type": "public",
         "meta": f"{resource_id} 璺?synced",
         "tone": "app-purple" if is_dataset else "app-blue",

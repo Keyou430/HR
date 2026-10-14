@@ -13,11 +13,13 @@ the application never loads rows the user isn't authorised to see.
 
 from __future__ import annotations
 
-from sqlalchemy import and_, or_
+from sqlalchemy import and_, false, or_
 from sqlalchemy.sql.elements import ClauseElement
 
 from authorization.scope import (
     AccessContext,
+    KNOWN_SENSITIVITIES,
+    KNOWN_VISIBILITIES,
     SENSITIVITY_NORMAL,
     SENSITIVITY_RESTRICTED,
     VISIBILITY_DEPT,
@@ -36,12 +38,15 @@ from authorization.scope import (
 def _owner_only_visibility_filter(ctx: AccessContext, table) -> ClauseElement:
     """WHERE clause that restricts rows to those owned by the current user.
 
-    Super-admins bypass the filter (see everything).  All other roles see
-    only rows where ``owner_id`` matches the authenticated user.
+    Super-admins see all rows with declared policy values. All other roles
+    see only rows where ``owner_id`` matches the authenticated user.
     """
+    if not isinstance(ctx, AccessContext):
+        return false()
+    policy = and_(table.c.visibility.in_(KNOWN_VISIBILITIES), table.c.sensitivity.in_(KNOWN_SENSITIVITIES))
     if ctx.is_super_admin:
-        return True
-    return table.c.owner_id == ctx.user_id
+        return policy
+    return and_(policy, table.c.owner_id == ctx.user_id)
 
 
 def task_visibility_filter(ctx: AccessContext, table) -> ClauseElement:
@@ -127,9 +132,12 @@ def _build_filter(
 
     The two gates are AND-ed together: a row must pass **both** to be visible.
     """
+    if not isinstance(ctx, AccessContext):
+        return false()
+    policy = and_(vis_col.in_(KNOWN_VISIBILITIES), sens_col.in_(KNOWN_SENSITIVITIES))
     # ── Super-admin shortcut ──────────────────────────────────────
     if ctx.is_super_admin:
-        return True  # no filter — SQLAlchemy treats ``True`` as "no WHERE restriction"
+        return policy
 
     # ── Visibility gate ──────────────────────────────────────────
 
@@ -160,12 +168,6 @@ def _build_filter(
                 org_col.in_(ctx.org_ids),
             ),
         )
-    elif ctx.visible_dept_ids:
-        # No org scope (e.g. external-only) — dept check alone is still valid
-        # because visible_dept_ids is empty for external users.
-        vis_parts.append(
-            and_(vis_col == VISIBILITY_DEPT, dept_col.in_(ctx.visible_dept_ids)),
-        )
 
     visibility_clause = or_(*vis_parts)
 
@@ -179,4 +181,4 @@ def _build_filter(
 
     # ── Combine ───────────────────────────────────────────────────
 
-    return and_(visibility_clause, sensitivity_clause)
+    return and_(policy, visibility_clause, sensitivity_clause)

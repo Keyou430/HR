@@ -207,7 +207,7 @@ class AdminSetRolesRequest(BaseModel):
 
 
 class AdminResetPasswordRequest(BaseModel):
-    """绠＄悊鍛橀噸缃敤鎴峰瘑鐮?鈥?鍙寚瀹氭柊瀵嗙爜鎴栬嚜鍔ㄧ敓鎴?""
+    """�＄��员重罔�户密�?�?双�定新密码或自劔��?"""
     password: str | None = Field(
         default=None, min_length=8, max_length=72,
         description="鑷畾涔夋柊瀵嗙爜锛涗笉浼犲垯鑷姩鐢熸垚闅忔満瀵嗙爜"
@@ -215,7 +215,7 @@ class AdminResetPasswordRequest(BaseModel):
 
 
 class AdminResetPasswordResponse(BaseModel):
-    """杩斿洖涓€娆℃€ф槑鏂囧瘑鐮?鈥?浠呮鍝嶅簲涓寘鍚紝涓嶅瓨鏃ュ織/鏁版嵁搴?""
+    ""  # corrupted docstring removed
     user_id: int
     username: str
     display_name: str

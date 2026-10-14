@@ -16,7 +16,24 @@ if str(BACKEND_ROOT) not in sys.path:
 
 from alembic.config import Config
 from alembic import command
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine, insert, text
+
+
+MIGRATION_READER = {"id": 1, "roles": ["super_admin"]}
+
+
+def _insert_legacy_resource(db_url, table, values):
+    """Seed pre-migration rows directly, outside authenticated Store CRUD."""
+    engine = create_engine(db_url)
+    try:
+        with engine.begin() as conn:
+            result = conn.execute(insert(table).values(
+                **values, org_id="default", department_id="HQ",
+                visibility="private", sensitivity="normal",
+            ))
+            return {"id": int(result.inserted_primary_key[0])}
+    finally:
+        engine.dispose()
 
 
 # ──────────────────────────────────────────────────────────────────
@@ -184,12 +201,12 @@ def test_existing_db_upgrade_preserves_data(tmp_path, monkeypatch) -> None:
     from config import get_settings
     get_settings.cache_clear()
 
-    from store import PortalStore
-    store = PortalStore()
+    from store import PortalStore, events_table, tasks_table
+    PortalStore()
 
     # Create some data
-    t = store.create_task({"title": "Phase 1 测试任务", "tag": "今天"})
-    e = store.create_event({"title": "Phase 1 测试日程", "date": "2026-07-30", "tone": "blue"})
+    t = _insert_legacy_resource(db_url, tasks_table, {"title": "Phase 1 测试任务", "tag": "今天"})
+    e = _insert_legacy_resource(db_url, events_table, {"title": "Phase 1 测试日程", "date": "2026-07-30", "tone": "blue"})
 
     # Step B: Run Alembic migration over the existing DB
     _upgrade(_alembic_config(str(db_path)), "head")
@@ -198,11 +215,11 @@ def test_existing_db_upgrade_preserves_data(tmp_path, monkeypatch) -> None:
     get_settings.cache_clear()
     store2 = PortalStore()
 
-    tasks = store2.list_tasks()
+    tasks = store2.list_tasks(user=MIGRATION_READER)
     assert tasks["total"] >= 1
     assert any(item["id"] == t["id"] and item["title"] == "Phase 1 测试任务" for item in tasks["items"])
 
-    events = store2.list_events()
+    events = store2.list_events(user=MIGRATION_READER)
     assert events["total"] >= 1
     assert any(ev["id"] == e["id"] and ev["title"] == "Phase 1 测试日程" for ev in events["items"])
 
@@ -216,10 +233,10 @@ def test_backfill_assigns_correct_default_values(tmp_path, monkeypatch) -> None:
     from config import get_settings
     get_settings.cache_clear()
 
-    from store import PortalStore
-    store = PortalStore()
-    store.create_task({"title": "回填测试", "tag": "今天"})
-    store.create_event({"title": "回填日程", "date": "2026-08-01", "tone": "green"})
+    from store import PortalStore, events_table, tasks_table
+    PortalStore()
+    _insert_legacy_resource(db_url, tasks_table, {"title": "回填测试", "tag": "今天"})
+    _insert_legacy_resource(db_url, events_table, {"title": "回填日程", "date": "2026-08-01", "tone": "green"})
 
     # Run migration
     _upgrade(_alembic_config(str(db_path)), "head")
@@ -280,9 +297,9 @@ def test_downgrade_removes_new_tables(tmp_path, monkeypatch) -> None:
     get_settings.cache_clear()
 
     # Create some business data first
-    from store import PortalStore
-    store = PortalStore()
-    t = store.create_task({"title": "降级测试", "tag": "今天"})
+    from store import PortalStore, tasks_table
+    PortalStore()
+    t = _insert_legacy_resource(f"sqlite:///{db_path.as_posix()}", tasks_table, {"title": "降级测试", "tag": "今天"})
 
     # Upgrade then downgrade
     cfg = _alembic_config(str(db_path))
@@ -298,7 +315,7 @@ def test_downgrade_removes_new_tables(tmp_path, monkeypatch) -> None:
     assert _table_exists(str(db_path), "portal_tasks")
     get_settings.cache_clear()
     store2 = PortalStore()
-    tasks = store2.list_tasks()
+    tasks = store2.list_tasks(user=MIGRATION_READER)
     assert any(item["id"] == t["id"] for item in tasks["items"]), "Task lost after downgrade"
 
 

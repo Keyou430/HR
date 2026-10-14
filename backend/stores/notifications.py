@@ -6,6 +6,8 @@ from typing import Any
 
 from sqlalchemy import and_, select, text
 
+from authorization.system import SystemActor, require_system_actor
+
 
 class NotificationMixin:
     """Notification store — all operations force user_id = current user for isolation."""
@@ -94,13 +96,15 @@ class NotificationMixin:
         title: str,
         content: str = "",
         *,
+        actor: object = None,
         type_: str = "info",
         reference_type: str | None = None,
         reference_id: str | None = None,
         org_id: str | None = None,
         department_id: str | None = None,
     ) -> dict[str, Any] | None:
-        """Create a notification for a user. Returns the created row as a dict."""
+        """Create a notification through a declared internal notification producer."""
+        require_system_actor(actor, SystemActor.OVERDUE_SCANNER, SystemActor.ROLE_NOTIFIER)
         ts = self._now_iso()
         row = {
             "user_id": user_id,

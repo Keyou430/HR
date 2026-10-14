@@ -35,7 +35,7 @@ class Settings(BaseSettings):
     FASTGPT_DEFAULT_TEAM_ID: str | None = "team-default"
     FASTGPT_DEFAULT_APP_ID: str | None = None
     FASTGPT_DEFAULT_DATASET_ID: str | None = None
-    FASTGPT_DEFAULT_DISPLAY_NAME: str = "FastGPT 鏈湴鐭ヨ瘑搴?
+    FASTGPT_DEFAULT_DISPLAY_NAME: str = "FastGPT ����֪ʶ��"
 
     # 鈹€鈹€ Integration Embed URLs 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
     FEISHU_EMBED_URL: str | None = "https://www.feishu.cn/"

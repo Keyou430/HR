@@ -87,7 +87,7 @@ async def sync_knowledge_mappings() -> dict[str, Any]:
     settings = get_settings()
     try:
         resources = await list_fastgpt_resources(settings)
-        return store.sync_knowledge_mappings(resources)
+        return store.sync_knowledge_mappings(resources, user=current_user)
     except KnowledgeGatewayError as exc:
         raise HTTPException(
             status_code=exc.status_code,
@@ -96,7 +96,7 @@ async def sync_knowledge_mappings() -> dict[str, Any]:
 
 
 async def _build_search_queries(settings: Settings, question: str) -> list[str]:
-    """灏嗗鏉傞棶棰樻媶鍒嗕负 2-3 涓嫭绔嬫悳绱㈡煡璇紝瑕嗙洊闂鐨勪笉鍚屾柟闈€傜煭闂鐩存帴杩斿洖鍘熸枃銆?""
+    """Split a long question into at most three retrieval queries."""
     if len(question) <= 40:
         return [question]
     try:
@@ -106,16 +106,15 @@ async def _build_search_queries(settings: Settings, question: str) -> list[str]:
                 {
                     "role": "system",
                     "content": (
-                        "灏嗙敤鎴烽棶棰樻媶鍒嗕负2-3涓嫭绔嬬殑鎼滅储鏌ヨ锛屾瘡涓煡璇㈣仛鐒﹂棶棰樼殑涓€涓牳蹇冩蹇垫垨鏂归潰銆?
-                        "瑙勫垯锛氭瘡琛屼竴涓煡璇紝鐢ㄦ崲琛屽垎闅旓紝涓嶈缂栧彿銆佷笉瑕佽В閲娿€佷笉瑕佷换浣曞叾浠栨枃瀛椼€?
-                        "姣忎釜鏌ヨ搴旂畝娲侊紙5-15瀛楋級锛屼娇鐢ㄩ棶棰樹腑鐨勫叧閿湳璇€?
+                        "将用户问题拆分为2-3个独立的搜索查询，每个查询聚焦一个核心概念或方面。"
+                        "每行一个查询，不要编号、解释或其他文字。每个查询应简洁，使用问题中的关键词。"
                     ),
                 },
                 {"role": "user", "content": question},
             ],
         )
         queries = [q.strip() for q in answer.strip().split("\n") if q.strip()]
-        if len(queries) >= 1:
+        if queries:
             logger.info("Query split result: %r", queries)
             return queries[:3]
     except HermesGatewayError:
@@ -124,15 +123,12 @@ async def _build_search_queries(settings: Settings, question: str) -> list[str]:
 
 
 def _extract_score(score: Any) -> float:
-    """浠?FastGPT 杩斿洖鐨?score 瀛楁涓畨鍏ㄦ彁鍙栫浉浼煎害鏁板€笺€?
-
-    FastGPT 涓嶅悓鐗堟湰鍙兘杩斿洖: 瑁?float (0.85)銆乴ist ([{"value": 0.85}])銆佹垨 None銆?
-    """
+    """Accept FastGPT numeric, list and object score formats."""
     if score is None:
         return 0.0
     if isinstance(score, (int, float)):
         return float(score)
-    if isinstance(score, list) and len(score) > 0:
+    if isinstance(score, list) and score:
         first = score[0]
         if isinstance(first, dict):
             val = first.get("value", 0)
@@ -150,7 +146,7 @@ def _load_chat_history(
     max_messages: int = 12,
     user: dict[str, Any] | None = None,
 ) -> list[dict[str, str]]:
-    """鍔犺浇鏈€杩戠殑瀵硅瘽鍘嗗彶锛岃浆鎹负 Hermes API 娑堟伅鏍煎紡銆傜浉閭婚噸澶嶆秷鎭幓閲嶃€?
+    """加载�近的对话历史，转捸� Hermes API 消息格式。相邻重复消恎�重�?
 
     When *user* is provided the store enforces session ownership 鈥?only the
     session owner can load the history (Phase 4 security fix).
@@ -520,7 +516,7 @@ async def list_dataset_files(
     dataset_id: str,
     current_user: dict[str, Any] = Depends(get_current_user),
 ) -> dict[str, Any]:
-    """鍒楀嚭 FastGPT 鐭ヨ瘑搴撲腑鐨勬枃浠讹紙collection锛夈€?
+    ""  # corrupted docstring removed
 
     Verifies that the user is authorised to access the dataset's knowledge
     mapping before forwarding the request to FastGPT (Phase 4 security fix).
@@ -575,7 +571,7 @@ async def delete_dataset_file(
     dataset_id: str, file_id: str,
     current_user: dict[str, Any] = Depends(get_current_user),
 ) -> dict[str, Any]:
-    """鍒犻櫎 FastGPT 鐭ヨ瘑搴撲腑鐨勬枃浠讹紙collection锛夈€?""
+    """删除 FastGPT 矯�库中的文件（collection）�?"""
     settings = get_settings()
     if settings.FASTGPT_MODE != "real":
         raise HTTPException(status_code=409, detail="璇峰厛鍚敤 FastGPT real 妯″紡")

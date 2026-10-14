@@ -15,10 +15,23 @@ from datetime import datetime, timezone
 from threading import RLock
 from typing import Any, Iterator
 
-from sqlalchemy import Table, and_, insert, or_, select, update
+from fastapi import HTTPException
+from sqlalchemy import Table, and_, false, insert, or_, select, update
 from sqlalchemy.orm import Session
 
+from authorization.scope import KNOWN_VISIBILITIES, AccessContext, get_access_context
 from session import get_session_local
+
+# New resources must declare their scope policy before being accessible.
+ENTERPRISE_SCOPE_TABLES = frozenset({
+    "enterprise_repair_tickets", "enterprise_asset_items", "enterprise_oa_flows",
+    "hr_requests", "finance_claims", "finance_budgets", "cms_sites", "estate_spaces", "job_postings",
+})
+OWNER_SCOPE_TABLES = ENTERPRISE_SCOPE_TABLES | {"portal_tasks", "portal_calendar_events"}
+RESOURCE_SCOPE_TABLES = OWNER_SCOPE_TABLES | {"knowledge_dataset_mappings"}
+PORTAL_SCOPE_TABLES = frozenset({
+    "portal_subsystems", "portal_notices", "portal_documents", "portal_resources", "portal_news",
+})
 
 
 class BaseStore:
@@ -68,44 +81,17 @@ class BaseStore:
     def _build_scope_context(
         self, user: dict[str, Any] | None, db: Session
     ):
-        """Build an AccessContext from a user dict + DB session.
-
-        Returns None when *user* is None (no scope filtering — internal / seed path).
-        """
-        if user is None:
-            return None
-        from authorization.scope import get_access_context as _get_ctx
-        return _get_ctx(user, db)
+        """Require an authenticated identity and build its data scope."""
+        return get_access_context(user, db)
 
     def _scope_filter(self, ctx, table):
-        """Return a SQLAlchemy WHERE clause for *table* scoped to *ctx*, or True."""
-        if ctx is None:
-            return True  # No user context — return everything (seed / internal path)
-        from authorization.sql_filters import (
-            calendar_visibility_filter,
-            knowledge_visibility_filter,
-            task_visibility_filter,
-        )
-        table_name = str(table.name)
-        if table_name == "portal_tasks":
-            return task_visibility_filter(ctx, table)
-        elif table_name == "portal_calendar_events":
-            return calendar_visibility_filter(ctx, table)
-        elif table_name == "knowledge_dataset_mappings":
+        """Return only rows covered by a declared policy and valid context."""
+        if not isinstance(ctx, AccessContext) or table.name not in RESOURCE_SCOPE_TABLES:
+            return false()
+        from authorization.sql_filters import knowledge_visibility_filter, task_visibility_filter
+        if table.name == "knowledge_dataset_mappings":
             return knowledge_visibility_filter(ctx, table)
-        elif table_name in {
-            "enterprise_repair_tickets",
-            "enterprise_asset_items",
-            "enterprise_oa_flows",
-            "hr_requests",
-            "finance_claims",
-            "finance_budgets",
-            "cms_sites",
-            "estate_spaces",
-            "job_postings",
-        }:
-            return task_visibility_filter(ctx, table)
-        return True
+        return task_visibility_filter(ctx, table)
 
     def _scope_single(self, ctx, table, resource_id: int | str):
         """Build WHERE clause for single-resource access (update/delete).
@@ -115,31 +101,32 @@ class BaseStore:
         Tasks and calendar events use owner-only isolation: only the
         creator (or super_admin) can modify or delete them.
         """
-        if ctx is None:
-            return table.c.id == resource_id
-        table_name = str(table.name)
-        if table_name in {"portal_tasks", "portal_calendar_events"}:
-            if ctx.is_super_admin:
-                return table.c.id == resource_id
-            from sqlalchemy import and_
-            return and_(table.c.id == resource_id, table.c.owner_id == ctx.user_id)
+        if not isinstance(ctx, AccessContext) or table.name not in RESOURCE_SCOPE_TABLES:
+            return false()
+        if table.name in {"portal_tasks", "portal_calendar_events"}:
+            return and_(table.c.id == resource_id, self._scope_filter(ctx, table))
         from authorization.sql_filters import resource_owner_filter
         return resource_owner_filter(ctx, table, resource_id)
 
     def _portal_visibility_clause(
         self, user: dict[str, Any] | None, table: Table, db: Session
     ):
-        if user is None:
-            return True
         ctx = self._build_scope_context(user, db)
-        if ctx is None or ctx.is_super_admin:
-            return True
+        if table.name not in PORTAL_SCOPE_TABLES:
+            return false()
+        policy = and_(
+            table.c.visibility.in_(KNOWN_VISIBILITIES),
+            table.c.sensitivity.in_(ctx.allowed_sensitivities),
+        )
+        if ctx.is_super_admin:
+            return policy
+        # Explicit public-content policy; anonymous access is not supported.
         clauses = [table.c.visibility == "public"]
-        if ctx.default_org_id is not None:
+        if ctx.org_ids:
             clauses.append(
-                and_(table.c.visibility == "org", table.c.org_id == ctx.default_org_id)
+                and_(table.c.visibility == "org", table.c.org_id.in_(ctx.org_ids))
             )
-        if ctx.default_dept_id is not None:
+        if ctx.org_ids and ctx.default_dept_id is not None:
             # Include own dept + descendants (visible_dept_ids) + ancestors (walk up path)
             dept_ids = set(ctx.visible_dept_ids) if ctx.visible_dept_ids else {ctx.default_dept_id}
             if ctx.default_dept_id not in dept_ids:
@@ -169,12 +156,16 @@ class BaseStore:
             except Exception:
                 pass  # departments table may not exist in very early migration states
             clauses.append(
-                and_(table.c.visibility == "dept", table.c.department_id.in_(dept_ids))
+                and_(
+                    table.c.visibility == "dept",
+                    table.c.org_id.in_(ctx.org_ids),
+                    table.c.department_id.in_(dept_ids),
+                )
             )
         clauses.append(
             and_(table.c.visibility == "private", table.c.owner_id == ctx.user_id)
         )
-        return or_(*clauses)
+        return and_(policy, or_(*clauses))
 
     # ── Row helpers ────────────────────────────────────────────────────
 
@@ -243,6 +234,8 @@ class BaseStore:
         with self._lock:
             with self._session() as db:
                 ctx = self._build_scope_context(user, db)
+                if table.name not in ENTERPRISE_SCOPE_TABLES:
+                    raise HTTPException(status_code=403, detail="未声明资源的数据范围政策")
                 values = {
                     key: value
                     for key, value in payload.items()
@@ -251,9 +244,9 @@ class BaseStore:
                 values.update({
                     "created_at": now,
                     "updated_at": now,
-                    "org_id": ctx.default_org_id if ctx else "default",
-                    "department_id": ctx.default_dept_id if ctx else "HQ",
-                    "owner_id": ctx.user_id if ctx else None,
+                    "org_id": ctx.default_org_id,
+                    "department_id": ctx.default_dept_id,
+                    "owner_id": ctx.user_id,
                     "visibility": "org",
                     "sensitivity": "normal",
                 })

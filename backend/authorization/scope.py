@@ -26,6 +26,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
+from fastapi import HTTPException
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
@@ -37,6 +38,7 @@ VISIBILITY_PRIVATE = "private"
 VISIBILITY_DEPT = "dept"
 VISIBILITY_ORG = "org"
 VISIBILITY_PUBLIC = "public"
+KNOWN_VISIBILITIES = (VISIBILITY_PRIVATE, VISIBILITY_DEPT, VISIBILITY_ORG, VISIBILITY_PUBLIC)
 
 # ── Sensitivity constants ───────────────────────────────────────────
 
@@ -44,6 +46,7 @@ SENSITIVITY_NORMAL = "normal"
 SENSITIVITY_INTERNAL = "internal"
 SENSITIVITY_SENSITIVE = "sensitive"
 SENSITIVITY_RESTRICTED = "restricted"
+KNOWN_SENSITIVITIES = (SENSITIVITY_NORMAL, SENSITIVITY_INTERNAL, SENSITIVITY_SENSITIVE, SENSITIVITY_RESTRICTED)
 
 # ── Sentinel for "all orgs / all depts" (super_admin) ────────────────
 
@@ -141,6 +144,9 @@ def get_access_context(
         org_id: Optional override for the organisation scope.  Defaults to
             the user's primary org.
     """
+    if not isinstance(user, dict) or type(user.get("id")) is not int or user["id"] <= 0:
+        raise HTTPException(status_code=401, detail="数据范围访问需要有效的用户身份")
+
     roles: list[str] = user.get("roles", [])
     permissions: list[str] = user.get("permissions", [])
     is_super = SUPER_ADMIN_ROLE in roles
@@ -222,7 +228,13 @@ def can_access_resource(
 
     Returns ``True`` if access is permitted.
     """
-    # super_admin sees everything
+    if (
+        not isinstance(ctx, AccessContext)
+        or resource_visibility not in KNOWN_VISIBILITIES
+        or resource_sensitivity not in KNOWN_SENSITIVITIES
+    ):
+        return False
+    # Super-admin access still requires a declared resource policy.
     if ctx.is_super_admin:
         return True
 
@@ -240,20 +252,20 @@ def can_access_resource(
     if resource_visibility == VISIBILITY_PRIVATE:
         return False  # only owner — already handled above
     elif resource_visibility == VISIBILITY_DEPT:
-        if resource_dept_id is None:
+        if resource_dept_id is None or resource_org_id is None:
             return False
-        if _ALL_SENTINEL in ctx.visible_dept_ids:
-            return True
-        return resource_dept_id in ctx.visible_dept_ids
+        return (
+            (_ALL_SENTINEL in ctx.org_ids or resource_org_id in ctx.org_ids)
+            and (_ALL_SENTINEL in ctx.visible_dept_ids or resource_dept_id in ctx.visible_dept_ids)
+        )
     elif resource_visibility == VISIBILITY_ORG:
         if resource_org_id is None:
             return False
         if _ALL_SENTINEL in ctx.org_ids:
             return True
         return resource_org_id in ctx.org_ids
-    # VISIBILITY_PUBLIC — always passes
-
-    return True
+    # Public visibility is an explicit policy for authenticated contexts.
+    return resource_visibility == VISIBILITY_PUBLIC
 
 
 # ═════════════════════════════════════════════════════════════════════

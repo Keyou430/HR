@@ -122,15 +122,18 @@ def client(tmp_path, monkeypatch):
     _login_attempts.clear()
 
     # Seed a notification for user A using the store
+    from authorization.system import SystemActor
     from store import store
     store.create_notification(
         user_id=uid_a,
+        actor=SystemActor.ROLE_NOTIFIER,
         title="测试通知",
         content="这是一条测试通知内容",
         type_="info",
     )
     store.create_notification(
         user_id=uid_a,
+        actor=SystemActor.ROLE_NOTIFIER,
         title="已读通知",
         content="这条已经读过了",
         type_="system",

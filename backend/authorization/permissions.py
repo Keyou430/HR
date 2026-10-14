@@ -42,13 +42,13 @@ PERMISSIONS: list[dict[str, str]] = [
     {"code": "calendar:update",  "name": "鏇存柊鏃ュ巻",       "resource": "calendar", "action": "update"},
     {"code": "calendar:delete",  "name": "鍒犻櫎鏃ュ巻",       "resource": "calendar", "action": "delete"},
     # knowledge
-    {"code": "kb:view",          "name": "鏌ョ湅鐭ヨ瘑搴?,     "resource": "kb",       "action": "view"},
-    {"code": "kb:create",        "name": "鍒涘缓鐭ヨ瘑搴?,     "resource": "kb",       "action": "create"},
-    {"code": "kb:update",        "name": "鏇存柊鐭ヨ瘑搴?,     "resource": "kb",       "action": "update"},
-    {"code": "kb:delete",        "name": "鍒犻櫎鐭ヨ瘑搴?,     "resource": "kb",       "action": "delete"},
-    {"code": "kb:import",        "name": "瀵煎叆鐭ヨ瘑搴?,     "resource": "kb",       "action": "import"},
-    {"code": "kb:chat",          "name": "鐭ヨ瘑搴撻棶绛?,     "resource": "kb",       "action": "chat"},
-    {"code": "kb:chat_sensitive","name": "鏁忔劅鐭ヨ瘑闂瓟",   "resource": "kb",       "action": "chat_sensitive"},
+    {"code": "kb:view",          "name": "查看知识库",     "resource": "kb",       "action": "view"},
+    {"code": "kb:create",        "name": "创建知识库",     "resource": "kb",       "action": "create"},
+    {"code": "kb:update",        "name": "更新知识库",     "resource": "kb",       "action": "update"},
+    {"code": "kb:delete",        "name": "删除知识库",     "resource": "kb",       "action": "delete"},
+    {"code": "kb:import",        "name": "导入知识库",     "resource": "kb",       "action": "import"},
+    {"code": "kb:chat",          "name": "知识库问答",     "resource": "kb",       "action": "chat"},
+    {"code": "kb:chat_sensitive","name": "敏感知识问答",   "resource": "kb",       "action": "chat_sensitive"},
     # search
     {"code": "search:view",      "name": "鎼滅储",           "resource": "search",   "action": "view"},
     # notices
@@ -77,17 +77,17 @@ PERMISSIONS: list[dict[str, str]] = [
     {"code": "hr:view",          "name": "鏌ョ湅浜轰簨",       "resource": "hr",       "action": "view"},
     {"code": "hr:create",        "name": "鍒涘缓浜轰簨",       "resource": "hr",       "action": "create"},
     {"code": "hr:update",        "name": "鏇存柊浜轰簨",       "resource": "hr",       "action": "update"},
-    # finance (璐㈠姟)
-    {"code": "finance:view",     "name": "鏌ョ湅璐㈠姟",       "resource": "finance",  "action": "view"},
-    {"code": "finance:create",   "name": "鍒涘缓璐㈠姟",       "resource": "finance",  "action": "create"},
-    {"code": "finance:approve",  "name": "瀹℃壒璐㈠姟",       "resource": "finance",  "action": "approve"},
-    # subsystem (瀛愮郴缁熺鐞?
-    {"code": "subsystem:view",   "name": "鏌ョ湅瀛愮郴缁?,     "resource": "subsystem","action": "view"},
-    {"code": "subsystem:manage", "name": "绠＄悊瀛愮郴缁?,     "resource": "subsystem","action": "manage"},
-    # dashboard (浠〃鏉?
-    {"code": "dashboard:view",   "name": "鏌ョ湅浠〃鏉?,     "resource": "dashboard","action": "view"},
-    # enterprise records (浼佷笟璁板綍鎬昏)
-    {"code": "enterprise:records:view", "name": "鏌ョ湅浼佷笟璁板綍", "resource": "enterprise", "action": "records:view"},
+    # finance (璐姟)
+    {"code": "finance:view",     "name": "鏌湅璐姟",       "resource": "finance",  "action": "view"},
+    {"code": "finance:create",   "name": "鍒涘缓璐姟",       "resource": "finance",  "action": "create"},
+    {"code": "finance:approve",  "name": "瀹壒璐姟",       "resource": "finance",  "action": "approve"},
+    # subsystem (瀛愮郴缁熺鐞""
+    {"code": "subsystem:view",   "name": "查看子系统",     "resource": "subsystem","action": "view"},
+    {"code": "subsystem:manage", "name": "管理子系统",     "resource": "subsystem","action": "manage"},
+    {"code": "dashboard:view",   "name": "查看仪表板",     "resource": "dashboard","action": "view"},
+    {"code": "dashboard:view",   "name": "鏌湅浠〃鏉",     "resource": "dashboard","action": "view"},
+    # enterprise records (浼佷笟璁板綍鎬昏)
+    {"code": "enterprise:records:view", "name": "鏌湅浼佷笟璁板綍", "resource": "enterprise", "action": "records:view"},
 ]
 
 # 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
@@ -95,11 +95,11 @@ PERMISSIONS: list[dict[str, str]] = [
 # 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
 
 ROLES: list[dict[str, Any]] = [
-    {"code": "super_admin", "name": "瓒呯骇绠＄悊鍛?, "description": "骞冲彴绾х鐞嗗憳锛屾嫢鏈夋墍鏈夋潈闄?,              "is_system": True},
-    {"code": "org_admin",   "name": "缁勭粐绠＄悊鍛?, "description": "绠＄悊鏈粍缁囬厤缃拰涓氬姟鏁版嵁",                "is_system": True},
-    {"code": "dept_leader", "name": "閮ㄩ棬璐熻矗浜?, "description": "绠＄悊鏈儴闂ㄥ強涓嬬骇閮ㄩ棬涓氬姟鏁版嵁",            "is_system": True},
-    {"code": "dept_staff",  "name": "閮ㄩ棬鍛樺伐",   "description": "绠＄悊涓汉浠诲姟銆佹棩绋嬪拰鐭ヨ瘑",                "is_system": True},
-    {"code": "external",    "name": "澶栭儴鐢ㄦ埛",   "description": "浠呭彲璁块棶鍏紑鍐呭",                        "is_system": True},
+    {"code": "super_admin", "name": "超级管理员", "description": "平台级管理员，拥有所有权限", "is_system": True},
+    {"code": "org_admin",   "name": "组织管理员", "description": "管理本组织配置和业务数据", "is_system": True},
+    {"code": "dept_leader", "name": "部门负责人", "description": "管理本部门及下级部门业务数据", "is_system": True},
+    {"code": "dept_staff",  "name": "部门员工",   "description": "管理个人任务、日程和知识", "is_system": True},
+    {"code": "external",    "name": "外部用户",   "description": "仅可访问公开内容", "is_system": True},
 ]
 
 # 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
@@ -237,16 +237,16 @@ PERMISSION_GROUPS: dict[str, dict[str, str | list[dict[str, str]]]] = {
             {"code": "calendar:delete", "name": "鍒犻櫎鏃ュ巻"},
         ],
     },
-    "鐭ヨ瘑搴?: {
+    "知识库": {
         "resource": "kb",
         "permissions": [
-            {"code": "kb:view",           "name": "鏌ョ湅鐭ヨ瘑搴?},
-            {"code": "kb:create",         "name": "鍒涘缓鐭ヨ瘑搴?},
-            {"code": "kb:update",         "name": "鏇存柊鐭ヨ瘑搴?},
-            {"code": "kb:delete",         "name": "鍒犻櫎鐭ヨ瘑搴?},
-            {"code": "kb:import",         "name": "瀵煎叆鐭ヨ瘑搴?},
-            {"code": "kb:chat",           "name": "鐭ヨ瘑搴撻棶绛?},
-            {"code": "kb:chat_sensitive", "name": "鏁忔劅鐭ヨ瘑闂瓟"},
+            {"code": "kb:view",           "name": "查看知识库"},
+            {"code": "kb:create",         "name": "创建知识库"},
+            {"code": "kb:update",         "name": "更新知识库"},
+            {"code": "kb:delete",         "name": "删除知识库"},
+            {"code": "kb:import",         "name": "导入知识库"},
+            {"code": "kb:chat",           "name": "知识库问答"},
+            {"code": "kb:chat_sensitive", "name": "敏感知识问答"},
         ],
     },
     "鎼滅储": {
@@ -308,17 +308,17 @@ PERMISSION_GROUPS: dict[str, dict[str, str | list[dict[str, str]]]] = {
             {"code": "finance:approve", "name": "瀹℃壒璐㈠姟"},
         ],
     },
-    "瀛愮郴缁熺鐞?: {
+    "子系统管理": {
         "resource": "subsystem",
         "permissions": [
-            {"code": "subsystem:view",   "name": "鏌ョ湅瀛愮郴缁?},
-            {"code": "subsystem:manage", "name": "绠＄悊瀛愮郴缁?},
+            {"code": "subsystem:view",   "name": "查看子系统"},
+            {"code": "subsystem:manage", "name": "管理子系统"},
         ],
     },
-    "浠〃鏉?: {
+    "仪表板": {
         "resource": "dashboard",
         "permissions": [
-            {"code": "dashboard:view", "name": "鏌ョ湅浠〃鏉?},
+            {"code": "dashboard:view", "name": "查看仪表板"},
         ],
     },
     "浼佷笟璁板綍": {

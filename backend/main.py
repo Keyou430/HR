@@ -19,6 +19,7 @@ from audit.middleware import AuditMiddleware
 from auth.router import router as auth_router
 from calendar_api import router as calendar_router
 from chat_api import router as chat_router
+from authorization.system import SystemActor
 from config import get_settings
 from integrations import router as integrations_router
 from knowledge import router as knowledge_router
@@ -121,7 +122,7 @@ async def _lifespan(_app: FastAPI) -> AsyncIterator[None]:
     async def _scan_overdue_tasks():
         """Find tasks whose deadline has passed and notify their owners."""
         try:
-            overdue = _store.find_overdue_tasks()
+            overdue = _store.find_overdue_tasks(actor=SystemActor.OVERDUE_SCANNER)
         except Exception:
             logger.exception("Overdue scanner failed to query tasks")
             return
@@ -133,12 +134,13 @@ async def _lifespan(_app: FastAPI) -> AsyncIterator[None]:
                 title = task.get("title", "")
 
                 # Mark task as overdue-notified
-                _store.mark_task_overdue_notified(task_id)
+                _store.mark_task_overdue_notified(task_id, actor=SystemActor.OVERDUE_SCANNER)
 
                 # Create notification record
                 if owner_id is not None:
                     notif = _store.create_notification(
                         user_id=owner_id,
+                        actor=SystemActor.OVERDUE_SCANNER,
                         title="任务已过期",
                         content=f"「{title}」已超过截止时间，请尽快处理",
                         type_="task_overdue",

@@ -21,6 +21,7 @@ from auth.router import _ensure_seed_data
 from auth.sessions import revoke_all_user_sessions
 from store import store
 from authorization.permissions import PERMISSION_GROUPS, PERMISSIONS, ROLE_PERMISSION_MAP
+from authorization.system import SystemActor
 from authorization.rbac import SUPER_ADMIN_ROLE
 from schemas import (
     AdminCreateUserRequest,
@@ -136,7 +137,7 @@ def _load_user_or_404(db: Session, user_id: int) -> dict[str, Any]:
         {"uid": user_id},
     ).fetchone()
     if row is None:
-        raise HTTPException(status_code=404, detail="鐢ㄦ埛涓嶅瓨鍦?)
+        raise HTTPException(status_code=404, detail="用户不存在")
     return {"id": row[0], "username": row[1], "display_name": row[2], "is_active": bool(int(row[3]))}
 
 
@@ -457,7 +458,7 @@ def _load_role_by_id(db: Session, role_id: int) -> AdminRoleItem:
         {"rid": role_id},
     ).fetchone()
     if row is None:
-        raise HTTPException(status_code=404, detail="瑙掕壊涓嶅瓨鍦?)
+        raise HTTPException(status_code=404, detail="角色不存在")
     perm_rows = db.execute(
         text(
             "SELECT p.code FROM role_permissions rp "
@@ -491,7 +492,7 @@ def _load_role_or_404(
         {"rid": role_id},
     ).fetchone()
     if row is None:
-        raise HTTPException(status_code=404, detail="瑙掕壊涓嶅瓨鍦?)
+        raise HTTPException(status_code=404, detail="角色不存在")
     is_system = bool(int(row[4])) if row[4] is not None else False
     if not allow_system and is_system:
         raise HTTPException(status_code=403, detail="绯荤粺瑙掕壊涓嶅彲缂栬緫")
@@ -563,7 +564,7 @@ def create_user(
             {"un": body.username},
         ).fetchone()
         if existing:
-            raise HTTPException(status_code=409, detail="鐢ㄦ埛鍚嶅凡琚崰鐢?)
+            raise HTTPException(status_code=409, detail="用户名已被占")
         result = db.execute(
             text(
                 "INSERT INTO users (username, password_hash, display_name, email, "
@@ -690,18 +691,18 @@ def set_user_roles(
         }
         for code in body.role_codes:
             if code not in found:
-                raise HTTPException(status_code=400, detail=f"瑙掕壊 '{code}' 涓嶅瓨鍦?)
+                raise HTTPException(status_code=400, detail=f"角色 '{code}' 不存")
 
     # Guard: cannot remove super_admin from yourself
     is_self = user_id == current_user["id"]
     if is_self and SUPER_ADMIN_ROLE not in body.role_codes:
-        raise HTTPException(status_code=400, detail="涓嶈兘鎾ら攢鑷繁鐨勮秴绾х鐞嗗憳瑙掕壊")
+        raise HTTPException(status_code=400, detail="涓嶈兘鎾攢鑷繁鐨勮秴绾鐞嗗憳瑙掕壊")
 
     # Guard: cannot remove the last active super_admin
     currently_has_super = _user_has_role(db, user_id, SUPER_ADMIN_ROLE)
     if currently_has_super and SUPER_ADMIN_ROLE not in body.role_codes:
         if _count_active_super_admins(db) <= 1:
-            raise HTTPException(status_code=400, detail="涓嶈兘绉婚櫎鏈€鍚庝竴鍚嶈秴绾х鐞嗗憳")
+            raise HTTPException(status_code=400, detail="涓嶈兘绉婚櫎鏈鍚庝竴鍚嶈秴绾鐞嗗憳")
 
     # Commit any implicit transaction from pre-checks above
     db.commit()
@@ -743,12 +744,13 @@ def set_user_roles(
         )
 
     # Notify target user of role change (T7 鈥?Phase 1 notification hook)
-    role_names = ", ".join(body.role_codes) if body.role_codes else "鏃犺鑹?
+    role_names = ", ".join(body.role_codes) if body.role_codes else "无角色"
     try:
         store.create_notification(
             user_id=user_id,
-            title="瑙掕壊宸叉洿鏂?,
-            content=f"绠＄悊鍛樺凡灏嗕綘鐨勮鑹叉洿鏂颁负锛歿role_names}",
+            actor=SystemActor.ROLE_NOTIFIER,
+            title="角色权限已更新",
+            content=f"绠＄管理员已将你的角色更新为：{role_names}",
             type_="system",
             reference_type="user",
             reference_id=str(user_id),
@@ -778,7 +780,7 @@ def reset_user_password(
 
     # Guard: cannot reset own password via admin panel
     if user_id == current_user["id"]:
-        raise HTTPException(status_code=400, detail="涓嶈兘閲嶇疆褰撳墠鐧诲綍璐﹀彿鐨勫瘑鐮侊紝璇蜂娇鐢ㄤ慨鏀瑰瘑鐮佸姛鑳?)
+        raise HTTPException(status_code=400, detail="不能重置当前登录的密码，请使用修改密码功")
 
     # Determine the new password
     new_password: str = body.password or secrets.token_urlsafe(12)
@@ -1126,7 +1128,7 @@ def revoke_user_sessions(
             if membership is None:
                 raise HTTPException(
                     status_code=403,
-                    detail="鏃犳潈鎿嶄綔鍏朵粬缁勭粐鐨勭敤鎴蜂細璇?,
+# FIXME:                     detail="?,
                 )
 
     result = db.execute(
@@ -1170,7 +1172,7 @@ def delete_user(
     user = _load_user_or_404(db, user_id)
 
     if user_id == current_user["id"]:
-        raise HTTPException(status_code=400, detail="涓嶈兘鍒犻櫎鑷繁鐨勮处鍙?)
+        raise HTTPException(status_code=400, detail="不能删除自己的账号")
 
     if _user_has_role(db, user_id, SUPER_ADMIN_ROLE):
         active_super_count = _count_active_super_admins(db)
@@ -1477,7 +1479,7 @@ def update_org(
         {"oid": org_id},
     ).fetchone()
     if row is None:
-        raise HTTPException(status_code=404, detail="缁勭粐涓嶅瓨鍦?)
+        raise HTTPException(status_code=404, detail="组织不存在")
 
     ts = _ts()
     updates: list[str] = []
@@ -1535,7 +1537,7 @@ def delete_org(
         text("SELECT id FROM orgs WHERE id = :oid"), {"oid": org_id}
     ).fetchone()
     if row is None:
-        raise HTTPException(status_code=404, detail="缁勭粐涓嶅瓨鍦?)
+        raise HTTPException(status_code=404, detail="组织不存在")
 
     ts = _ts()
     db.commit()
@@ -1638,7 +1640,7 @@ def create_department(
         {"oid": body.org_id},
     ).fetchone()
     if org_row is None:
-        raise HTTPException(status_code=400, detail="缁勭粐涓嶅瓨鍦ㄦ垨宸插仠鐢?)
+        raise HTTPException(status_code=400, detail="组织不存在在或已停")
 
     # Uniqueness check
     existing = db.execute(
@@ -1735,7 +1737,7 @@ def update_department(
         {"did": dept_id},
     ).fetchone()
     if row is None:
-        raise HTTPException(status_code=404, detail="閮ㄩ棬涓嶅瓨鍦?)
+        raise HTTPException(status_code=404, detail="部门不存在")
 
     ts = _ts()
     new_name = body.name if body.name is not None else row[2]
@@ -1815,7 +1817,7 @@ def delete_department(
         text("SELECT id FROM departments WHERE id = :did"), {"did": dept_id}
     ).fetchone()
     if row is None:
-        raise HTTPException(status_code=404, detail="閮ㄩ棬涓嶅瓨鍦?)
+        raise HTTPException(status_code=404, detail="部门不存在")
 
     ts = _ts()
     db.commit()
@@ -1992,14 +1994,14 @@ def update_notice(
         {"nid": notice_id},
     ).mappings().fetchone()
     if row is None:
-        raise HTTPException(status_code=404, detail="鍏憡涓嶅瓨鍦?)
+        raise HTTPException(status_code=404, detail="公告不存在")
 
     # Scope guard: non-super_admins can only update their own org/dept notices
     if not is_super:
         user_org = current_user.get("default_org_id") or "default"
         user_dept = current_user.get("default_dept_id") or "HQ"
         if row.get("org_id") != user_org or row.get("department_id") != user_dept:
-            raise HTTPException(status_code=404, detail="鍏憡涓嶅瓨鍦?)
+            raise HTTPException(status_code=404, detail="公告不存在")
 
     ts = _ts()
     updates: list[str] = []
@@ -2062,14 +2064,14 @@ def delete_notice(
         {"nid": notice_id},
     ).fetchone()
     if row is None:
-        raise HTTPException(status_code=404, detail="鍏憡涓嶅瓨鍦?)
+        raise HTTPException(status_code=404, detail="公告不存在")
 
     # Scope guard: non-super_admins can only delete their own org/dept notices
     if not is_super:
         user_org = current_user.get("default_org_id") or "default"
         user_dept = current_user.get("default_dept_id") or "HQ"
         if row[2] != user_org or row[3] != user_dept:
-            raise HTTPException(status_code=404, detail="鍏憡涓嶅瓨鍦?)
+            raise HTTPException(status_code=404, detail="公告不存在")
 
     ts = _ts()
     db.commit()
@@ -2215,7 +2217,7 @@ def update_news(
         {"nid": news_id},
     ).mappings().fetchone()
     if row is None:
-        raise HTTPException(status_code=404, detail="璧勮涓嶅瓨鍦?)
+        raise HTTPException(status_code=404, detail="资讯不存在")
 
     ts = _ts()
     updates: list[str] = []
@@ -2273,7 +2275,7 @@ def delete_news(
         {"nid": news_id},
     ).fetchone()
     if row is None:
-        raise HTTPException(status_code=404, detail="璧勮涓嶅瓨鍦?)
+        raise HTTPException(status_code=404, detail="资讯不存在")
 
     db.commit()
     with db.begin():
@@ -2341,7 +2343,7 @@ def export_audit_csv(
     ).fetchall()
 
     output = io.StringIO()
-    output.write("锘?)  # UTF-8 BOM
+# FIXME:     output.write("锘?)  # UTF-8 BOM
     writer = csv.writer(output)
     writer.writerow([
         "ID", "Request ID", "User ID", "Org ID", "Department ID",
