@@ -39,8 +39,9 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    # Remove the index before dropping columns it references.
+    op.execute("DROP INDEX IF EXISTS ix_portal_tasks_overdue_scan")
     with op.batch_alter_table("portal_tasks") as batch_op:
         batch_op.add_column(sa.Column("due_time", sa.String(8), nullable=True))
     op.execute("ALTER TABLE portal_tasks DROP COLUMN deadline")
     op.execute("ALTER TABLE portal_tasks DROP COLUMN overdue_notified_at")
-    op.execute("DROP INDEX IF EXISTS ix_portal_tasks_overdue_scan")
